@@ -3410,7 +3410,7 @@ async function startRecording(button, targetEl) {
       const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
       const resp = await fetch('/api/transcribe', {
         method: 'POST',
-        headers: { 'Content-Type': blob.type || 'audio/webm' },
+        headers: { 'Content-Type': blob.type || 'audio/webm', ...notionHeaders() },
         body: blob,
       });
       const data = await resp.json();
@@ -3525,7 +3525,7 @@ async function startSmartRecording() {
       const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
       const transcribeResp = await fetch('/api/transcribe', {
         method: 'POST',
-        headers: { 'Content-Type': blob.type || 'audio/webm' },
+        headers: { 'Content-Type': blob.type || 'audio/webm', ...notionHeaders() },
         body: blob,
       });
       const transcribeData = await transcribeResp.json();
@@ -3536,7 +3536,7 @@ async function startSmartRecording() {
       setSmartVoiceStatus(`「${transcribeData.text}」を解析中…`, '');
       const parseResp = await fetch('/api/parse-entry', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...notionHeaders() },
         body: JSON.stringify({ text: transcribeData.text }),
       });
       const parsed = await parseResp.json();

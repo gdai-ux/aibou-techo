@@ -3420,7 +3420,8 @@ async function startRecording(button, targetEl) {
         targetEl.value = targetEl.value ? `${targetEl.value}${sep}${t}` : t;
         targetEl.dispatchEvent(new Event('input'));
       } else {
-        alert('文字起こしに失敗しました: ' + (data.error || '不明なエラー'));
+        // 無料枠を使い切った時（429）は、失敗ではなく案内としてそのまま見せる
+        alert(resp.status === 429 ? data.error : '文字起こしに失敗しました: ' + (data.error || '不明なエラー'));
       }
     } catch (e) {
       alert('通信エラー: ' + e.message);

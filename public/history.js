@@ -1266,6 +1266,7 @@ function openAccountModal() {
       <div class="modal-panel">
         <h3>アカウント</h3>
         <p class="hs-note" id="accountEmail"></p>
+        <div class="point-rules" id="accountQuota"></div>
         <div class="settings-menu">
           <button type="button" class="settings-menu-item" id="accountLogout">
             <span class="settings-menu-title">ログアウト</span>
@@ -1302,6 +1303,29 @@ function openAccountModal() {
   document.getElementById('accountEmail').textContent = window.authEmail ? `ログイン中: ${window.authEmail}` : '';
   document.getElementById('accountMsg').textContent = '';
   overlay.classList.remove('hidden');
+  renderAccountQuota();
+}
+
+// プランと、AI機能を今どれだけ使ったか（無料枠の残り）を出す
+async function renderAccountQuota() {
+  const el = document.getElementById('accountQuota');
+  if (!el) return;
+  el.innerHTML = '';
+  try {
+    const resp = await fetch('/api/status', { headers: notionHeaders() });
+    const data = await resp.json();
+    const q = data.quota;
+    if (!q) return;
+    const rows = [
+      { label: 'プラン', detail: '', pts: q.plan === 'premium' ? 'プレミアム' : '無料' },
+      { label: '音声入力', detail: '今月', pts: q.voice.limit === null ? `${q.voice.used}回（上限なし）` : `${q.voice.used} / ${q.voice.limit}回` },
+      { label: 'ふりかえり', detail: '今週', pts: q.review.limit === null ? `${q.review.used}回（上限なし）` : `${q.review.used} / ${q.review.limit}回` },
+    ];
+    el.innerHTML = rows.map((r) => `<div class="point-rule-row"><span class="pr-label">${escapeHtml(r.label)}</span>`
+      + `<span class="pr-detail">${escapeHtml(r.detail)}</span><span class="pr-pts">${escapeHtml(r.pts)}</span></div>`).join('');
+  } catch (e) {
+    // 出せなくても致命的ではない
+  }
 }
 
 // --- からだの設定（身長・体重など） -----------------------------------------

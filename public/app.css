@@ -1,0 +1,1548 @@
+/* ホーム画面（index.html）専用のスタイル。
+   index.html の中に埋め込んでいたものを、そのまま外に出したもの。
+   共通の部品（履歴・設定シート・チャートなど）は history.css にある。 */
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --bg-blur: rgba(0, 0, 0, 0.72);
+    --card: #1c1c1e;
+    --fill: rgba(140, 140, 150, 0.32);
+    --text: #f2f2f7;
+    --muted: #98989f;
+    --accent: #0a84ff;
+    --accent-2: #64d2ff;
+    --accent-text: #ffffff;
+    /* 境界線は「線で囲む」のではなく「面の境目をうっすら示す」太さにする。
+       操作できるもの（入力欄・ボタン）だけ少し強い線を使う。 */
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --ok: #34c759;
+    --record-ok: #ffd60a;
+    --err: #ff453a;
+    --warn: #ff9f0a;
+    --pink: #ff375f;
+    --purple: #bf5af2;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 36px -22px rgba(0, 0, 0, 0.9);
+    /* カード上端のごく淡いハイライト。面が光を受けているように見せる */
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --ease: cubic-bezier(.32, .72, 0, 1);
+    /* 時計カードは背景に天気の色が乗るため、--muted ではなく専用トークンで
+       文字色を作る（ホワイトテーマでは黒の透明度に切り替わる） */
+    --clock-sub: rgba(255, 255, 255, 0.68);
+    --clock-sub2: rgba(255, 255, 255, 0.55);
+    --clock-track: rgba(255, 255, 255, 0.16);
+    --clock-fill: rgba(255, 255, 255, 0.85);
+    /* カテゴリタブの選択つまみ（ホワイトテーマでは白いつまみに変わる） */
+    --seg-thumb: #303034;
+    /* マスコットの縁取り。背景と同系色のキャラクター（黒地のダンベルくん、
+       白地のもちくん等）でも輪郭が沈まないよう、ドット絵風に1px縁取る */
+    --sprite-outline: rgba(255, 255, 255, 0.32);
+  }
+  /* 設定 → ホーム画面の表示 でOFFにした項目を隠す。
+     <head>のスクリプトが描画前に hs-off-〇〇 クラスを付けるのでちらつかない。
+     記録フォーム（カテゴリタブと入力カード）はこのアプリの中心なので常に表示する */
+  html.hs-off-clock [data-hs="clock"],
+  html.hs-off-quote [data-hs="quote"],
+  html.hs-off-review [data-hs="review"],
+  html.hs-off-chart [data-hs="chart"],
+  html.hs-off-exercise [data-hs="exercise"],
+  html.hs-off-voice [data-hs="voice"],
+  html.hs-off-records [data-hs="records"] { display: none; }
+  /* ホワイトテーマ（設定 → テーマで切り替え。既定はブラック） */
+  :root.theme-light {
+    --bg: #f2f2f7;
+    --bg-blur: rgba(242, 242, 247, 0.8);
+    --card: #ffffff;
+    --fill: rgba(120, 120, 128, 0.12);
+    --text: #1c1c1e;
+    --muted: #6e6e73;
+    --accent: #007aff;
+    --accent-2: #32ade6;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.16);
+    --record-ok: #d4a000; /* 白地では黄色の文字が読めないので少し濃く */
+    --warn: #ff9500;
+    --err: #ff3b30;
+    --pink: #ff2d55;
+    --purple: #af52de;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 18px 36px -22px rgba(0, 0, 0, 0.25);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --clock-sub: rgba(0, 0, 0, 0.6);
+    --clock-sub2: rgba(0, 0, 0, 0.52);
+    --clock-track: rgba(0, 0, 0, 0.14);
+    --clock-fill: rgba(0, 0, 0, 0.65);
+    --seg-thumb: #ffffff;
+    --sprite-outline: rgba(40, 40, 44, 0.5);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html {
+    background: var(--bg);
+  }
+  body {
+    margin: 0 auto;
+    max-width: 480px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 0 16px calc(60px + env(safe-area-inset-bottom));
+    overscroll-behavior-y: contain;
+  }
+  @media (min-width: 640px) {
+    body { max-width: 600px; }
+  }
+  @media (min-width: 900px) {
+    body { max-width: 760px; }
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    margin: 0;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-weight: 700;
+    margin: 28px 4px 12px;
+  }
+  .page-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 -16px 14px;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
+    background: var(--bg-blur);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid transparent;
+  }
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* キャラクターは歩き回る時に絶対配置へ切り替わり、ヘッダーの高さに
+       効かなくなる。頭上のレベルバッジまで収まる高さを確保しておく
+       （キャラクター50px＋バッジ16px） */
+    min-height: 66px;
+  }
+  /* ヘッダーのマスコット「ごはんくん」（ドット絵）。
+     角丸の枠には入れず、キャラクターをそのまま立たせる。
+     小さいと表情や着せ替えが分かりにくいので、タイトルの文字より
+     一回り大きい48pxで見せる。この大きさは歩き回る範囲（bounds）と
+     浮ける高さ（maxRise）の計算にも効いてくるので、変える時は
+     startGohanRoamの動きも合わせて確認する */
+  .app-icon {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+  }
+  .app-icon .gohan-kun {
+    width: 48px;
+    height: 48px;
+  }
+  .icon-btn-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--fill);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    font-size: 16px;
+    color: var(--text);
+    transition: transform .1s var(--ease), background .15s ease;
+  }
+  .icon-btn-circle:active {
+    transform: scale(0.92);
+    background: var(--border-strong);
+  }
+  /* ステータスボタンは、記号ではなく相棒そのものの姿にする（今の着せ替えが映る） */
+  .status-icon-btn .gohan-kun { width: 22px; height: 22px; }
+  /* 設定ボタンは共通コード（history.js）が後から差し込むため先に置かれるが、
+     ホーム画面ではステータスボタンを左、設定を右に出したいのでCSSで順序だけ入れ替える
+     （.header-actionsの直下の子はこのラップ側なので、orderはこちらに付ける） */
+  .header-actions .header-status-wrap { order: -1; }
+
+  /* --- セグメントコントロール --- */
+  .segmented {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    background: var(--fill);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    padding: 3px;
+    margin-bottom: 16px;
+  }
+  .segmented-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: calc(20% - 2.4px);
+    height: calc(100% - 6px);
+    background: var(--seg-thumb);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: left .28s var(--ease), width .28s var(--ease);
+    z-index: 0;
+  }
+  .seg-item {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 9px 2px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    border-radius: 9px;
+    cursor: pointer;
+    user-select: none;
+    transition: color .2s ease;
+  }
+  .seg-item.active { color: var(--text); }
+
+  /* スワイプで切り替えた時、指を払った向きに合わせて新しいフォームが入ってくる */
+  @keyframes formFromNext { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+  @keyframes formFromPrev { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+  .form.from-next { animation: formFromNext .26s var(--ease); }
+  .form.from-prev { animation: formFromPrev .26s var(--ease); }
+  /* カレンダーを払って月を変えた時も、同じように新しい月が入ってくる */
+  .calendar-card.from-next .calendar-header,
+  .calendar-card.from-next .calendar-grid { animation: formFromNext .26s var(--ease); }
+  .calendar-card.from-prev .calendar-header,
+  .calendar-card.from-prev .calendar-grid { animation: formFromPrev .26s var(--ease); }
+  @media (prefers-reduced-motion: reduce) {
+    .form.from-next, .form.from-prev,
+    .calendar-card.from-next .calendar-header,
+    .calendar-card.from-next .calendar-grid,
+    .calendar-card.from-prev .calendar-header,
+    .calendar-card.from-prev .calendar-grid { animation: none; }
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    /* 余白・角丸・間隔はカードごとに変えず、ここで一括してそろえる */
+    padding: 18px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow), var(--edge);
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    margin: 16px 0 6px;
+  }
+  label:first-of-type { margin-top: 0; }
+  input[type="time"],
+  input[type="text"],
+  select,
+  textarea {
+    width: 100%;
+    padding: 13px 14px;
+    font-size: 16px;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--fill);
+    color: var(--text);
+    font-family: inherit;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  textarea { min-height: 90px; resize: vertical; font-family: inherit; }
+  /* 自動リサイズする欄（.auto-grow）の共通スタイルは history.css にある。
+     こちらのtextareaの既定（min-height: 90px）に負けないよう、
+     history.css側で .auto-grow を後から効かせている。 */
+  .field-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .field-row-top { align-items: flex-start; }
+  .field-row input,
+  .field-row textarea,
+  .field-row .time-select-wrap {
+    flex: 1 1 auto;
+  }
+  .voice-btn {
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--fill);
+    cursor: pointer;
+    color: var(--muted);
+    transition: transform .1s ease, background .15s ease;
+  }
+  .voice-btn:active { transform: scale(0.94); }
+  .voice-btn:disabled { opacity: 0.5; }
+  .voice-btn .icon-stop { display: none; }
+  .voice-btn.recording {
+    background: var(--err);
+    color: var(--accent-text);
+    animation: pulse 1s infinite;
+  }
+  .voice-btn.recording .icon-mic { display: none; }
+  .voice-btn.recording .icon-stop { display: block; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .now-btn {
+    flex: 0 0 auto;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    background: var(--fill);
+    cursor: pointer;
+    color: var(--muted);
+    transition: transform .1s ease;
+  }
+  .now-btn:active { transform: scale(0.95); }
+  .meal-types,
+  .condition-levels,
+  .stool-options {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .meal-types,
+  .condition-levels {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  /* 隣のマイクボタン（.smart-voice-btn）と同じ輪郭だけの作りにそろえている。
+     どちらかを変える時は両方あわせて直すこと。
+     幅と上の余白は .submit-row の中では上書きされる（単独で使う画面のための既定値） */
+  button.submit {
+    width: 100%;
+    margin-top: 22px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.1px;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: transform .1s var(--ease), background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  button.submit:active {
+    transform: scale(0.98);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  button.submit:disabled { opacity: 0.5; }
+  /* 記録成功時は、ボタン自体を一時的に黄色にして「記録が完了しました」を表示する。
+     黄色⇄青の切り替えは色のtransitionでふわっと変わる */
+  button.submit {
+    position: relative;
+    transition: color 0.5s ease, background-color 0.5s ease, border-color 0.5s ease;
+  }
+  button.submit.success {
+    color: var(--record-ok);
+    background: color-mix(in srgb, var(--record-ok) 14%, transparent);
+    border-color: color-mix(in srgb, var(--record-ok) 50%, transparent);
+  }
+  /* 戻る直前に中身（マスコット・文字）をふわっと消す */
+  button.submit .submit-msg, button.submit .gohan-kun { transition: opacity 0.25s ease; }
+  button.submit.leaving .submit-msg,
+  button.submit.leaving .gohan-kun { opacity: 0; }
+  button.submit.returned { animation: submitReturn 0.35s ease; }
+  @keyframes submitReturn { from { opacity: 0.45; } to { opacity: 1; } }
+  /* 完了中、ボタンの上で金色のキラキラが順にきらめく */
+  .submit-sparkles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .submit-sparkles i {
+    position: absolute;
+    bottom: 42%;
+    width: 7px;
+    height: 7px;
+    background: #ffd60a;
+    clip-path: polygon(50% 0, 63% 37%, 100% 50%, 63% 63%, 50% 100%, 37% 63%, 0 50%, 37% 37%);
+    opacity: 0;
+    animation: submitSpark 1.1s ease-out infinite;
+  }
+  @keyframes submitSpark {
+    0% { opacity: 0; transform: translateY(0) scale(0.4) rotate(0); }
+    18% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(var(--rise, -24px)) scale(1) rotate(170deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .submit-sparkles { display: none; }
+    button.submit { transition: none; }
+    button.submit.returned { animation: none; }
+  }
+  /* 完了時はボタンの中でごはんくんが2回ぴょこんと跳ねる */
+  button.submit .gohan-kun {
+    width: 20px;
+    height: 20px;
+    vertical-align: -4px;
+    margin-right: 8px;
+    animation: gohanHop 0.9s ease-in-out;
+  }
+  @keyframes gohanHop {
+    0%, 50%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-6px); }
+    75% { transform: translateY(-4px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    button.submit .gohan-kun { animation: none; }
+  }
+  /* 記録完了メッセージはカード最上部（各フォームの1つ目のラベルの上あたり）に
+     オーバーレイ表示する。空の時は高さ0まで畳んで、ボタン下の余白を残さない。 */
+  .queue-notice {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  }
+  #status {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .2s ease, margin-bottom .2s ease;
+  }
+  #status:not(:empty) {
+    max-height: 40px;
+    margin-bottom: 12px;
+  }
+  #status.ok { color: var(--record-ok); }
+  #status.err { color: var(--err); }
+  .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: center;
+  }
+  /* 画面の一番上に鮮やかな色の面があると、その下のカードが全部負けてしまうので、
+     下地は他のカードと同じ暗い面にしておく。天気ごとの色は weather.js が
+     この上に半透明の層として重ねる（下地が透けるぶん、落ち着いた見え方になる）。 */
+  .clock-card {
+    text-align: center;
+    padding: 24px 18px 20px;
+    background:
+      radial-gradient(130% 150% at 50% -40%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 62%),
+      var(--card);
+  }
+  .clock-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .clock-time {
+    font-size: 42px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -1px;
+    line-height: 1.05;
+  }
+  .weather-icon {
+    font-size: 28px;
+    line-height: 1;
+  }
+  /* 背景に天気の色が乗るので、--muted ではなく白の透明度で色を作る
+     （明るい空色の上でも暗い夜空の上でも読める） */
+  .clock-date {
+    font-size: 13px;
+    color: var(--clock-sub);
+    margin-top: 8px;
+    font-weight: 500;
+  }
+  .weather-label {
+    font-size: 12px;
+    color: var(--clock-sub);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  /* --- 1日の進み具合 --- */
+  .day-progress { margin-top: 14px; }
+  .day-progress-track {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--clock-track);
+    overflow: hidden;
+  }
+  .day-progress-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 2px;
+    background: var(--clock-fill);
+    /* 1秒ごとの更新でカクつかないよう、伸び方をなめらかにする */
+    transition: width 1s linear;
+  }
+  .day-progress-label {
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--clock-sub2);
+    font-variant-numeric: tabular-nums;
+  }
+  /* 格言が短くても長くても上下中央に来るよう、本文(.quote-body)をflexで
+     中央寄せする。アイコン行の分だけpadding-bottomで常に余白を確保しておく
+     ことで、本文がどれだけ伸びても右下アイコンと重ならないようにする。 */
+  .quote-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 124px;
+    /* 左右は他のカードと同じ18px。下だけ、右下のアイコン行と本文が
+       重ならないように広めに取っている */
+    padding: 18px 18px 44px;
+  }
+  .quote-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .quote-text {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.65;
+    letter-spacing: -0.1px;
+  }
+  .quote-author {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    font-weight: 500;
+  }
+  .quote-actions {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .quote-icon-btn {
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--muted);
+    transition: transform .1s ease, color .15s ease;
+  }
+  .quote-icon-btn:active { transform: scale(0.88); }
+  .quote-icon-btn .icon-filled { display: none; }
+  .quote-icon-btn.active .icon-outline { display: none; }
+  .quote-icon-btn.active .icon-filled { display: block; }
+  .quote-pin-btn.active { color: var(--accent); }
+  .quote-star-btn.active { color: #ffcc00; }
+  .quote-lib-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .quote-lib-item:last-child { border-bottom: none; }
+  .quote-lib-quote { font-size: 14px; font-weight: 600; line-height: 1.55; }
+  .quote-lib-author {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .quote-lib-actions {
+    display: flex;
+    gap: 2px;
+    flex: 0 0 auto;
+  }
+  /* --- きのうのふりかえり（小さなキャラクターのAIレビュー） --- */
+  .review-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .review-avatar {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--fill);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .review-avatar .gohan-kun { width: 26px; height: 26px; }
+  .review-bubble { flex: 1 1 auto; min-width: 0; padding-top: 2px; }
+  /* 見出しの行。左に「今日の活動（9/2 水）」、右に今日のスコア */
+  .review-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .review-head .review-label { flex: 1 1 auto; min-width: 0; }
+  /* 今日のスコア（0〜100点）。色は点数の段階に合わせてJS側から入れる */
+  .review-score {
+    flex: 0 0 auto;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: -0.3px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .review-score small { font-size: 11px; font-weight: 700; opacity: 0.7; }
+  .review-score b { font-size: 11px; font-weight: 900; letter-spacing: 0.02em; }
+  /* 今日のスコアはまだ記録が増えて変わることがあるので、確定した日と区別できるよう
+     「進行中」を添えてそっと明滅させる（ポイントの推移チャートの今日の点と同じ扱い） */
+  .review-score .review-live {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    animation: wordBlink 1.6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .review-score .review-live { animation: none; }
+  }
+  /* --- ごはんくんのタップ芸（10パターンからランダム） --- */
+  .gohan-tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+  /* .gohan-kun の輪郭と、レベルの節目で増える飾り（.gohan-stage-*）は
+     ステータス画面（status.html）でも使うので history.css に置いている */
+  @keyframes gohanJump { 0%, 100% { transform: none; } 30% { transform: translateY(-9px); } 55% { transform: translateY(0); } 75% { transform: translateY(-4px); } }
+  @keyframes gohanSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  @keyframes gohanFlip { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }
+  @keyframes gohanWiggle { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-14deg); } 45% { transform: rotate(12deg); } 70% { transform: rotate(-8deg); } 85% { transform: rotate(5deg); } }
+  @keyframes gohanSquash { 0%, 100% { transform: none; } 25% { transform: scale(1.2, 0.75); } 50% { transform: translateY(-11px) scale(0.92, 1.12); } 78% { transform: scale(1.08, 0.88); } }
+  @keyframes gohanDance { 0%, 100% { transform: none; } 20% { transform: translateX(-4px) rotate(-10deg); } 50% { transform: translateX(0) rotate(0); } 80% { transform: translateX(4px) rotate(10deg); } }
+  @keyframes gohanStretch { 0%, 100% { transform: none; } 40% { transform: scaleY(1.22); } 70% { transform: scaleY(0.85); } }
+  @keyframes gohanShake { 0%, 100% { transform: none; } 15%, 45%, 75% { transform: translateX(-4px); } 30%, 60%, 90% { transform: translateX(4px); } }
+  @keyframes gohanTilt { 0%, 100% { transform: none; } 30%, 70% { transform: rotate(18deg) translateY(-2px); } }
+  @keyframes gohanBeat { 0%, 100% { transform: none; } 20% { transform: scale(1.22); } 45% { transform: scale(1); } 65% { transform: scale(1.14); } }
+  /* --- ごはんくんの育成 --- */
+  /* ヘッダーの中をてくてく歩き回る（位置はJSがtranslateXで動かす） */
+  .page-header.gohan-roam { position: sticky; }
+  .page-header.gohan-roam .app-icon {
+    position: absolute;
+    left: 0;
+    bottom: 6px;
+    z-index: 2;
+    will-change: transform;
+  }
+  .gohan-walking .gohan-kun { animation: gohanWalkBob 0.4s ease-in-out infinite; }
+  /* 宙に浮いている間は、ゆっくり上下にふわふわする */
+  .gohan-floating .gohan-kun { animation: gohanHoverBob 2.2s ease-in-out infinite; }
+  @keyframes gohanHoverBob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+  /* 飛んでいる間は左右に傾けて、勢いよく進んでいるように見せる */
+  .gohan-flying .gohan-kun { animation: gohanFlyWobble 0.7s ease-in-out infinite; }
+  @keyframes gohanFlyWobble {
+    0%, 100% { transform: translateY(0) rotate(-7deg); }
+    50%      { transform: translateY(-3px) rotate(7deg); }
+  }
+  @keyframes gohanWalkBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+  /* 記録が2日以上途切れると眠そうになる（歩みが遅くなるのはJS側） */
+  .gohan-sleepy::after, .gohan-zz::after {
+    content: '💤';
+    position: absolute;
+    top: -6px;
+    right: -10px;
+    font-size: 11px;
+    animation: gohanZzz 2.4s ease-in-out infinite;
+  }
+  @keyframes gohanZzz {
+    0%, 100% { opacity: 0.35; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-3px); }
+  }
+  /* ごはんくんの頭上に付いてまわるレベルバッジ */
+  .gohan-lv {
+    position: absolute;
+    bottom: calc(100% + 1px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0;
+    white-space: nowrap;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--card) 85%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 1px 7px;
+    pointer-events: none;
+  }
+  .app-icon { position: relative; }
+  /* --- レベルアップ演出（金色のリング・きらきら・LEVEL UP!の文字） --- */
+  .gohan-lv.pop {
+    color: #ffd60a;
+    border-color: color-mix(in srgb, #ffd60a 60%, transparent);
+    animation: lvBadgePop 0.6s var(--ease);
+  }
+  @keyframes lvBadgePop {
+    0% { transform: translateX(-50%) scale(1); }
+    40% { transform: translateX(-50%) scale(1.35); }
+    100% { transform: translateX(-50%) scale(1); }
+  }
+  .gohan-levelup-fx {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .lvup-ring {
+    position: absolute;
+    left: -26px;
+    top: -26px;
+    width: 52px;
+    height: 52px;
+    border: 2px solid #ffd60a;
+    border-radius: 50%;
+    box-shadow: 0 0 18px rgba(255, 214, 10, 0.55);
+    animation: lvupRing 0.9s ease-out forwards;
+  }
+  @keyframes lvupRing {
+    from { transform: scale(0.3); opacity: 1; }
+    to { transform: scale(1.9); opacity: 0; }
+  }
+  .lvup-spark {
+    position: absolute;
+    left: -2px;
+    top: -2px;
+    width: 4px;
+    height: 4px;
+    background: #ffd60a;
+    animation: lvupSpark 0.95s ease-out forwards;
+  }
+  @keyframes lvupSpark {
+    from { transform: translate(0, 0) rotate(0); opacity: 1; }
+    to { transform: translate(var(--dx), var(--dy)) rotate(200deg); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gohan-levelup-fx { display: none; }
+    .gohan-lv.pop { animation: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gohan-walking .gohan-kun, .gohan-sleepy::after { animation: none; }
+  }
+  .gohan-kun.gohan-play-1 { animation: gohanJump 0.7s ease-in-out; }
+  .gohan-kun.gohan-play-2 { animation: gohanSpin 0.6s var(--ease); }
+  .gohan-kun.gohan-play-3 { animation: gohanFlip 0.65s var(--ease); }
+  .gohan-kun.gohan-play-4 { animation: gohanWiggle 0.7s ease-in-out; }
+  .gohan-kun.gohan-play-5 { animation: gohanSquash 0.75s ease-in-out; }
+  .gohan-kun.gohan-play-6 { animation: gohanDance 0.8s ease-in-out; }
+  .gohan-kun.gohan-play-7 { animation: gohanStretch 0.6s ease-in-out; }
+  .gohan-kun.gohan-play-8 { animation: gohanShake 0.55s ease-in-out; }
+  .gohan-kun.gohan-play-9 { animation: gohanTilt 0.8s ease-in-out; }
+  .gohan-kun.gohan-play-10 { animation: gohanBeat 0.7s ease-in-out; }
+  /* 11番目: その場でおおきくなってから戻る（画面中央には出さない） */
+  .gohan-kun.gohan-play-11 { animation: gohanBigUp 1s ease-in-out; }
+  @keyframes gohanBigUp {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(2.1); }
+    40% { transform: scale(1.9) rotate(-6deg); }
+    55% { transform: scale(2) rotate(6deg); }
+    70% { transform: scale(1.95) rotate(0deg); }
+  }
+  /* --- 記録した時のリアクション（カテゴリ別） --- */
+  .gohan-kun.gohan-play-munch { animation: gohanMunch 1.1s ease-in-out; }
+  @keyframes gohanMunch {
+    0%, 100% { transform: none; }
+    15%, 45%, 75% { transform: scale(1.08, 0.82); }
+    30%, 60%, 90% { transform: scale(0.96, 1.06); }
+  }
+  .gohan-kun.gohan-play-workout { animation: gohanWorkout 1.05s ease-in-out; }
+  @keyframes gohanWorkout {
+    0%, 30%, 60%, 100% { transform: translateY(0) scale(1); }
+    8%, 38%, 68% { transform: translateY(2px) scale(1.08, 0.84); }
+    18%, 48%, 78% { transform: translateY(-8px) scale(0.96, 1.06); }
+  }
+  .gohan-kun.gohan-play-doze { animation: gohanDoze 1.5s ease-in-out; }
+  @keyframes gohanDoze {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-13deg); }
+    50% { transform: rotate(0); }
+    75% { transform: rotate(13deg); }
+  }
+  .gohan-kun.gohan-play-nod { animation: gohanNod 1s ease-in-out; }
+  @keyframes gohanNod {
+    0%, 40%, 100% { transform: rotate(0); }
+    15%, 60% { transform: rotate(11deg) translateY(2px); }
+  }
+  .gohan-kun.gohan-play-cheer { animation: gohanJump 0.8s ease-in-out; }
+  /* --- 記録完了後の「成長」 --- */
+  /* ぐんっとひとまわり大きくなってから戻る。gohan-play-*にしてあるので歩きは止まる */
+  .gohan-kun.gohan-play-grow { animation: gohanGrow 1.2s cubic-bezier(.32, .72, 0, 1); }
+  @keyframes gohanGrow {
+    0% { transform: scale(1); }
+    35% { transform: scale(1.5); }
+    55% { transform: scale(1.28); }
+    75% { transform: scale(1.38); }
+    100% { transform: scale(1); }
+  }
+  /* 成長中は緑のオーラをまとう（縁取りのfilterと合成） */
+  .gohan-growing .gohan-kun {
+    filter:
+      drop-shadow(1px 0 0 var(--sprite-outline))
+      drop-shadow(-1px 0 0 var(--sprite-outline))
+      drop-shadow(0 1px 0 var(--sprite-outline))
+      drop-shadow(0 -1px 0 var(--sprite-outline))
+      drop-shadow(0 0 6px rgba(52, 199, 89, 0.9));
+  }
+  .gohan-grow-fx {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .grow-ring {
+    position: absolute;
+    left: -24px;
+    top: -24px;
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--ok);
+    border-radius: 50%;
+    box-shadow: 0 0 14px rgba(52, 199, 89, 0.55);
+    animation: lvupRing 0.9s ease-out forwards;
+  }
+  .grow-exp {
+    position: absolute;
+    left: 50%;
+    bottom: 28px;
+    font-size: 13px;
+    font-weight: 900;
+    white-space: nowrap;
+    color: var(--ok);
+    text-shadow: 0 0 10px rgba(52, 199, 89, 0.7);
+    animation: growExp 1.3s ease-out forwards;
+  }
+  @keyframes growExp {
+    0% { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
+    20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
+    40% { transform: translate(-50%, 0) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -14px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gohan-grow-fx { display: none; }
+  }
+  /* --- でっかく登場 --- */
+  /* 記録完了後の成長演出で、画面中央にキャラクターを大きく映す
+     （big-grow: 緑のオーラ・リング・+Npt付き） */
+  .gohan-big-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 300;
+  }
+  .gohan-big-stage { position: relative; width: 170px; height: 170px; }
+  .gohan-big-stage .gohan-kun {
+    width: 100%;
+    height: 100%;
+    transform-origin: 50% 50%;
+  }
+  .big-grow .gohan-kun {
+    animation: gohanBigGrow 1.55s cubic-bezier(.32, .72, 0, 1) both;
+    filter:
+      drop-shadow(1px 0 0 var(--sprite-outline))
+      drop-shadow(-1px 0 0 var(--sprite-outline))
+      drop-shadow(0 1px 0 var(--sprite-outline))
+      drop-shadow(0 -1px 0 var(--sprite-outline))
+      drop-shadow(0 0 22px rgba(52, 199, 89, 0.85));
+  }
+  @keyframes gohanBigGrow {
+    0% { opacity: 0; transform: scale(0.35); }
+    25% { opacity: 1; transform: scale(1.12); }
+    40% { transform: scale(0.98); }
+    55% { transform: scale(1.08); }
+    80% { opacity: 1; transform: scale(1.04); }
+    100% { opacity: 0; transform: scale(1.18); }
+  }
+  .big-grow-ring {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 150px;
+    height: 150px;
+    margin: -75px 0 0 -75px;
+    border: 3px solid var(--ok);
+    border-radius: 50%;
+    box-shadow: 0 0 26px rgba(52, 199, 89, 0.55);
+    opacity: 0;
+    animation: bigGrowRing 1.1s ease-out 0.15s forwards;
+  }
+  @keyframes bigGrowRing {
+    0% { opacity: 0.95; transform: scale(0.55); }
+    100% { opacity: 0; transform: scale(1.6); }
+  }
+  /* +Npt は頭の上に。浮かび上がりはヘッダー版と同じ growExp を使い回す */
+  .big-grow-exp {
+    position: absolute;
+    left: 50%;
+    top: -30px;
+    font-size: 22px;
+    font-weight: 900;
+    white-space: nowrap;
+    color: var(--ok);
+    text-shadow: 0 0 14px rgba(52, 199, 89, 0.7);
+    animation: growExp 1.5s ease-out forwards;
+  }
+  /* --- レベルアップのお祝い（画面いっぱい） ---
+     レベルが上がった記録では、いつもの「成長」（緑）の代わりにこちらを出す。
+     金色の光が広がり、衝撃波が3重に走り、キャラクターが跳ねて、
+     「LEVEL UP!」と Lv.4 → Lv.5 が出る。紙吹雪はJS側で撒く。 */
+  .lvup-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 320;
+  }
+  /* 画面全体がぶわっと金色に光る（お祝いの始まりの合図） */
+  .lvup-flash {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 46%,
+      rgba(255, 214, 10, 0.34), rgba(255, 153, 0, 0.12) 42%, transparent 68%);
+    animation: lvupFlash 2.3s ease-out forwards;
+  }
+  @keyframes lvupFlash {
+    0% { opacity: 0; }
+    8% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+  .lvup-hero-stage { position: relative; width: 190px; height: 190px; }
+  .lvup-hero-stage .gohan-kun {
+    width: 100%;
+    height: 100%;
+    /* 足元を軸にすると、跳ねた時に「地面から飛んだ」ように見える */
+    transform-origin: 50% 100%;
+    filter:
+      drop-shadow(1px 0 0 var(--sprite-outline))
+      drop-shadow(-1px 0 0 var(--sprite-outline))
+      drop-shadow(0 1px 0 var(--sprite-outline))
+      drop-shadow(0 -1px 0 var(--sprite-outline))
+      drop-shadow(0 0 30px rgba(255, 214, 10, 0.95));
+    animation: lvupHero 2.4s cubic-bezier(.32, .72, 0, 1) both;
+  }
+  /* 小さく現れて大きく着地 → 2回ガッツポーズのように跳ねる → 誇らしげに消える */
+  @keyframes lvupHero {
+    0%   { opacity: 0; transform: translateY(26px) scale(0.25); }
+    9%   { opacity: 1; transform: translateY(0) scale(1.2); }
+    16%  { transform: translateY(0) scale(1.08, 0.9); }
+    24%  { transform: translateY(0) scale(1); }
+    36%  { transform: translateY(-38px) scale(0.94, 1.1); }
+    47%  { transform: translateY(0) scale(1.08, 0.92); }
+    58%  { transform: translateY(-24px) scale(0.97, 1.06); }
+    68%  { transform: translateY(0) scale(1.05, 0.95); }
+    76%  { transform: translateY(0) scale(1); }
+    88%  { opacity: 1; transform: translateY(0) scale(1.03); }
+    100% { opacity: 0; transform: translateY(-12px) scale(1.14); }
+  }
+  /* 足元から広がる衝撃波。3重に時間差で走らせる（間隔はJS側で指定） */
+  .lvup-wave {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 150px;
+    height: 150px;
+    margin: -75px 0 0 -75px;
+    border: 3px solid #ffd60a;
+    border-radius: 50%;
+    box-shadow: 0 0 30px rgba(255, 214, 10, 0.6);
+    opacity: 0;
+    animation: lvupWave 1.3s ease-out forwards;
+  }
+  @keyframes lvupWave {
+    0% { opacity: 0.95; transform: scale(0.3); }
+    100% { opacity: 0; transform: scale(2.7); }
+  }
+  .lvup-big-text {
+    position: absolute;
+    left: 50%;
+    top: -70px;
+    font-size: 34px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    color: #ffd60a;
+    /* 下の画面がどんな色でも読めるよう、光に加えて濃い影で輪郭を作る */
+    text-shadow:
+      0 0 20px rgba(255, 214, 10, 0.85),
+      0 3px 10px rgba(0, 0, 0, 0.95),
+      0 0 3px rgba(0, 0, 0, 0.9);
+    animation: lvupBigText 2.4s cubic-bezier(.32, .72, 0, 1) both;
+  }
+  @keyframes lvupBigText {
+    0%   { opacity: 0; transform: translateX(-50%) scale(0.4) rotate(-8deg); }
+    12%  { opacity: 1; transform: translateX(-50%) scale(1.24) rotate(2deg); }
+    22%  { transform: translateX(-50%) scale(1) rotate(0); }
+    86%  { opacity: 1; transform: translateX(-50%) scale(1) rotate(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-16px) scale(1.08); }
+  }
+  /* 「Lv.4 → Lv.5」。前のレベルは控えめに、新しいレベルは遅れて大きく出す */
+  .lvup-levels {
+    position: absolute;
+    left: 50%;
+    bottom: -54px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    white-space: nowrap;
+    font-weight: 900;
+    animation: lvupLevels 2.4s ease-out both;
+  }
+  @keyframes lvupLevels {
+    0%, 8% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    22%    { opacity: 1; transform: translateX(-50%) translateY(0); }
+    86%    { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100%   { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  }
+  .lvup-from { font-size: 18px; color: rgba(255, 255, 255, 0.5); text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9); }
+  .lvup-arrow { font-size: 16px; color: #ffd60a; }
+  .lvup-to {
+    font-size: 30px;
+    color: #ffd60a;
+    text-shadow:
+      0 0 18px rgba(255, 214, 10, 0.85),
+      0 3px 10px rgba(0, 0, 0, 0.95);
+    animation: lvupToPop 0.85s cubic-bezier(.2, 1.5, .4, 1) 0.5s both;
+  }
+  @keyframes lvupToPop {
+    0% { opacity: 0; transform: scale(0.3); }
+    60% { opacity: 1; transform: scale(1.35); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  /* 獲得ポイントは主役ではないので、文字の下に小さく添える */
+  .lvup-pt {
+    position: absolute;
+    left: 50%;
+    top: -30px;
+    transform: translateX(-50%);
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+    color: #fff3b0;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+    animation: lvupLevels 2.4s ease-out both;
+  }
+  /* 紙吹雪。向き・距離・回り方・色はJS側から渡す */
+  .lvup-confetti {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 7px;
+    height: 12px;
+    margin: -6px 0 0 -3px;
+    border-radius: 2px;
+    background: var(--c, #ffd60a);
+    opacity: 0;
+    animation: lvupConfetti 1.7s ease-out forwards;
+  }
+  @keyframes lvupConfetti {
+    0% { opacity: 1; transform: translate(0, 0) rotate(0) scale(0.5); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lvup-overlay { display: none; }
+  }
+  /* --- 怒って発射、画面を飛び回る --- */
+  /* 飛んでいる間だけ画面いっぱいのレイヤーを敷く。操作の邪魔をしないよう
+     pointer-eventsは切ってある。飛ぶ位置はJS側（launchGohanRocket）が
+     transformで動かす。 */
+  .gohan-fly-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 300;
+    overflow: hidden;
+  }
+  .gohan-flyer {
+    position: fixed;
+    width: 48px;
+    height: 48px;
+    will-change: transform;
+  }
+  .gohan-flyer .gohan-kun {
+    width: 100%;
+    height: 100%;
+    /* 怒っているので赤いオーラをまとう */
+    filter:
+      drop-shadow(1px 0 0 var(--sprite-outline))
+      drop-shadow(-1px 0 0 var(--sprite-outline))
+      drop-shadow(0 1px 0 var(--sprite-outline))
+      drop-shadow(0 -1px 0 var(--sprite-outline))
+      drop-shadow(0 0 12px rgba(255, 69, 58, 0.9));
+  }
+  /* 発射前のためを作る。ぷるぷる震えてから、ぐっと縮んで飛び出す */
+  .gohan-flyer.winding .gohan-kun { animation: flyWindUp 0.32s ease-in-out; }
+  @keyframes flyWindUp {
+    0%   { transform: translate(0, 0) scale(1); }
+    20%  { transform: translate(-2px, 1px) scale(1.06, 0.94); }
+    40%  { transform: translate(2px, 1px) scale(0.94, 1.06); }
+    60%  { transform: translate(-2px, 1px) scale(1.06, 0.94); }
+    80%  { transform: translate(1px, 2px) scale(1.18, 0.8); }
+    100% { transform: translate(0, 0) scale(0.9, 1.15); }
+  }
+  /* 怒りマーク。発射までの間に出して、飛んでいる間も付いてくる */
+  .gohan-anger {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    font-size: 15px;
+    animation: angerPop 0.3s ease-out;
+  }
+  @keyframes angerPop {
+    from { opacity: 0; transform: scale(0.3); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gohan-big-overlay { display: none; }
+  }
+  /* リアクション中に舞うハート */
+  .gohan-cheer-fx {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .gohan-cheer-fx span {
+    position: absolute;
+    bottom: 70%;
+    font-size: 10px;
+    color: #ff5c8a;
+    opacity: 0;
+    animation: cheerFloat 1.25s ease-out forwards;
+  }
+  @keyframes cheerFloat {
+    0% { opacity: 0; transform: translateY(4px) scale(0.6); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-16px) scale(1.05); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gohan-cheer-fx { display: none; }
+  }
+  .gohan-levelup .gohan-kun { animation: gohanSquash 0.8s ease-in-out 2; }
+  @media (prefers-reduced-motion: reduce) {
+    .gohan-kun[class*="gohan-play-"] { animation: none; }
+  }
+  .review-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-weight: 700;
+    margin-bottom: 5px;
+  }
+  .review-text {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .review-text.err { color: var(--err); }
+
+  .calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 10px;
+    letter-spacing: -0.1px;
+  }
+  /* 前の月・次の月へ動かすボタン。履歴画面の月送り（.month-nav）と同じ形 */
+  .cal-nav {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--fill);
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform .1s ease, opacity .15s ease;
+  }
+  .cal-nav:active { transform: scale(0.92); }
+  /* これ以上さかのぼれない／先に進めない時は押せないことが分かるようにする */
+  .cal-nav:disabled { opacity: 0.3; cursor: default; }
+  #calendarTitle { min-width: 96px; }
+  .calendar-grid {
+    display: grid;
+    /* minmax(0,1fr) にしておかないと、中身の最小幅で列が広がって枠からはみ出す */
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 2px 4px;
+    text-align: center;
+  }
+  .calendar-grid .cal-weekday {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    padding-bottom: 6px;
+  }
+  .calendar-grid .cal-day {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 0;
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--text);
+    transition: background .15s ease, transform .1s var(--ease);
+  }
+  .calendar-grid .cal-day:active { transform: scale(0.9); }
+  .calendar-grid .cal-day.empty {
+    cursor: default;
+  }
+  .calendar-grid .cal-day.today {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+  }
+  .calendar-grid .cal-day .cal-dot {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--ok);
+  }
+  .calendar-grid .cal-day.today .cal-dot {
+    background: #fff;
+  }
+  /* --- 週間リング（今週の運動） --- */
+
+  .exercise-ring-card h2 { text-align: center; }
+  .exercise-ring-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+  }
+  /* リングと、その中央に重ねる言葉。
+     リングは rotate(-90deg) しているので、言葉はSVGの外に重ねる。 */
+  .ring-stack {
+    flex: 0 0 auto;
+    width: 108px;
+    height: 108px;
+    display: grid;
+    place-items: center;
+  }
+  /* リングと炎（と雨）を同じマス目に重ねる（絶対配置より確実に中央で重なる） */
+  .ring-svg,
+  .ring-flame-box,
+  .ring-rain { grid-area: 1 / 1; }
+  .ring-svg {
+    width: 108px;
+    height: 108px;
+    transform: rotate(-90deg);
+  }
+  /* --- リングの中の炎 ---
+     日数が増えるほど大きくなる（--flame-scale）。下端を軸に伸ばすことで、
+     「上に燃え上がる」ように見せている。言葉の可読性を保つため、
+     炎自体は薄く敷いて、文字はその上に置く。 */
+  /* 箱: 日数に応じた大きさ（--flame-scale）と、ゲージと同じ拍の明滅を担当 */
+  .ring-flame-box {
+    width: 104px;
+    height: 104px;
+    justify-self: center;
+    align-self: center;
+    transform: scale(var(--flame-scale, 0.5));
+    transform-origin: 50% 50%;
+    /* 目標を達成した時にリングの上へ燃え上がって見えるよう、リングより手前に置く */
+    z-index: 2;
+    transition: transform .5s var(--ease);
+    pointer-events: none;
+  }
+  /* SVG本体: 炎全体のゆらぎ（伸び縮み）を担当。
+     SVGの根元はHTMLの箱として扱われるので、transform-originが
+     どのブラウザでも同じに効く。overflowを開けて、揺れてもviewBoxの端で
+     切れないようにしておく */
+  .ring-flame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    transform-origin: 50% 88%; /* 炎の根元（y=90あたり）を軸に伸び縮みさせる */
+    animation: flameFlicker 1.6s ease-in-out infinite;
+  }
+  /* 中の各層は濃さだけを揺らす（位置や形はいじらない） */
+  .ring-flame .flame-lay {
+    opacity: var(--o);
+    animation: flameGlowFlicker 1.6s ease-in-out infinite;
+  }
+  /* 炎は達成状況に関わらず常に赤（火の色）。段階の色はリング・言葉・ドットで表す */
+  .flame-outer { --o: 0.45; fill: #ff3b30; }
+  .flame-mid   { --o: 0.60; fill: #ff6b1a; animation-delay: -0.35s; }
+  .flame-core  { --o: 0.92; fill: #ffcc00; animation-delay: -0.75s; }
+  /* 炎は上下・左右に不規則に伸び縮みさせると、それらしく揺れて見える */
+  @keyframes flameFlicker {
+    0%, 100% { transform: scale(1, 1); }
+    25%      { transform: scale(0.93, 1.07); }
+    50%      { transform: scale(1.06, 0.94); }
+    75%      { transform: scale(0.97, 1.04); }
+  }
+  /* 層ごとに時間差で濃くなったり薄くなったりして、火がちらつくように見せる */
+  @keyframes flameGlowFlicker {
+    0%, 100% { opacity: var(--o); }
+    25%      { opacity: calc(var(--o) * 0.6); }
+    50%      { opacity: var(--o); }
+    75%      { opacity: calc(var(--o) * 0.75); }
+  }
+
+  /* --- リングの中の雨（今日まだ運動していない日） --- */
+  .ring-rain {
+    width: 104px;
+    height: 104px;
+    justify-self: center;
+    align-self: center;
+    display: none;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .exercise-ring-card.ring-no-fire .ring-flame-box { display: none; }
+  .exercise-ring-card.ring-no-fire .ring-rain { display: block; }
+  .rain-cloud { fill: #8a8a93; opacity: 0.75; }
+  .ring-rain .rd {
+    stroke: #64a8ff;
+    stroke-width: 3;
+    stroke-linecap: round;
+    animation: rainFall 1.2s linear infinite;
+  }
+  .rd-2 { animation-delay: -0.4s; }
+  .rd-3 { animation-delay: -0.8s; }
+  @keyframes rainFall {
+    0% { transform: translateY(0); opacity: 0; }
+    20% { opacity: 0.9; }
+    80% { opacity: 0.9; }
+    100% { transform: translateY(22px); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ring-rain .rd { animation: none; opacity: 0.8; }
+  }
+
+  /* 段階の言葉はこのカードの主役なので、下の「週5日を目標」より大きく出す */
+  .ring-word {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    line-height: 1.15;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    color: var(--ring-color, var(--ok));
+    transition: color .35s ease;
+  }
+  /* ゲージ・炎・段階の言葉・ねぎらいの一言は「今週どれだけ動けたか」を
+     表す一組なので、同じ拍でまとめて明滅させる。どれも同じ長さで、
+     ページを開いた時に一緒に始まるので拍がずれない。
+     明滅（wordBlink）は睡眠グラフの言葉と共通なので history.css に置いている */
+  .ring-progress,
+  .ring-flame-box,
+  .ring-word,
+  .exercise-ring-info .main {
+    animation: wordBlink 1.6s ease-in-out infinite;
+  }
+  /* 320px級の狭い端末だけ、一番長い「EXCELLENT!!」が炎と並ぶと
+     カードに収まらないので、その分だけ縮める */
+  @media (max-width: 350px) {
+    .ring-word { font-size: 17px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ring-progress,
+    .ring-flame-box,
+    .ring-word,
+    .exercise-ring-info .main { animation: none; }
+  }
+  .ring-track {
+    fill: none;
+    stroke: var(--fill);
+    stroke-width: 10;
+  }
+  .ring-progress {
+    fill: none;
+    stroke: var(--ring-color, var(--ok));
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset .4s ease, stroke .35s ease;
+  }
+  .exercise-ring-info { min-width: 0; }
+  .exercise-ring-info .main { font-size: 15px; font-weight: 700; }
+  /* 今日すでに運動した日は、ねぎらいの言葉として少し色を付ける */
+  .exercise-ring-info .main.celebrate { color: var(--ring-color, var(--ok)); transition: color .35s ease; }
+  .exercise-ring-info .sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .exercise-ring-days {
+    display: flex;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .ring-day { flex: 1; text-align: center; }
+  .ring-day .lbl { font-size: 10px; color: var(--muted); margin-bottom: 5px; }
+  /* 運動した日は小さな炎で表す（リングの中の炎と同じ形）。
+     運動していない過去の日（と今日）は炎を無くして雨つぶを置き、
+     まだ来ていない日はうっすらグレーの炎（これから火をつける場所）にする。 */
+  .ring-day .dot {
+    width: 18px;
+    height: 18px;
+    margin: 0 auto;
+    color: var(--fill);
+  }
+  .ring-day .dot svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+  }
+  /* 運動した日の炎は「火の色」＝赤にする。リングの中の炎と同じ色づかいで、
+     隣に並ぶ雨つぶ（青）と一目で見分けられるようにする
+     （以前は達成段階の色に合わせていたため、青い段階では炎と雨つぶが
+     同じ青になり、どちらがどちらか分からなかった） */
+  .ring-day .dot.done {
+    color: #ff3b30;
+    transition: color .35s ease;
+    /* ゲージ・炎・言葉と同じ拍で明滅させる。曜日の炎は記録を取ってから
+       作るので、そのままだとページを開いた時から動いているリング側と
+       拍がずれる。開始時刻はJS側（syncRingBlink）でそろえている */
+    animation: wordBlink 1.6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ring-flame,
+    .ring-flame .flame-lay,
+    .ring-day .dot.done { animation: none; }
+  }
+  .ring-day .dot.future { opacity: 0.4; }
+  /* 運動していない日の雨つぶは「水の色」＝青。炎（赤）と対になる。
+     達成ではないので、少し落ち着いた濃さにしておく */
+  .ring-day .dot.rain { color: rgba(90, 160, 255, 0.75); }
+
+
+  /* 「記録する」と、その右に置く音声のマイクボタン */
+  .submit-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .submit-row .submit { flex: 1 1 auto; width: auto; margin-top: 0; }
+  /* 音声でまとめて記録するボタン。主役は「記録する」なので、大きなボタンは
+     並べず、入力欄のマイクと同じ小さなアイコンにしている。
+     ただし入力欄のマイク（灰色）とは働きが違う（カテゴリまで自動で選ぶ）ので、
+     こちらはアクセント色にして見分けが付くようにする */
+  .smart-voice-btn {
+    flex: 0 0 auto;
+    width: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-radius: 16px;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    cursor: pointer;
+    transition: transform .1s var(--ease), background .15s ease;
+  }
+  .smart-voice-btn:active {
+    transform: scale(0.94);
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .smart-voice-btn:disabled { opacity: 0.5; }
+  .smart-voice-btn .icon-stop { display: none; }
+  .smart-voice-btn.recording {
+    color: var(--accent-text);
+    background: var(--err);
+    border-color: var(--err);
+    animation: pulse 1s infinite;
+  }
+  .smart-voice-btn.recording .icon-mic { display: none; }
+  .smart-voice-btn.recording .icon-stop { display: block; }
+  /* エラー/完了メッセージは自然には消えないため、左端に✕ボタンを置いて
+     手動で消せるようにする（左右均等にパディングを確保し、ボタンの表示・非表示に
+     関わらずテキストの中央位置がずれないようにする） */
+  .smart-voice-status-row {
+    position: relative;
+    margin-top: 10px;
+  }
+  .smart-voice-status {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.5;
+    min-height: 18px;
+    padding: 0 26px;
+  }
+  .smart-voice-status.err { color: var(--err); }
+  .smart-voice-status.ok { color: var(--ok); }
+  .smart-voice-dismiss {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1;
+    padding: 4px 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .smart-voice-status-row.show-dismiss .smart-voice-dismiss { display: block; }

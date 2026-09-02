@@ -89,6 +89,21 @@ const { todayInfo, yesterdayInfo } = require(path.join(__dirname, '..', 'lib', '
   assert.ok(dates.has(today.dateStr) && dates.has(yesterday.dateStr));
   console.log('  delete / listDates OK');
 
+  // --- AI利用枠（lib/quota.js） ---
+  const quota = require(path.join(__dirname, '..', 'lib', 'quota'));
+  const limit = quota.FREE_LIMITS.voice.limit;
+  for (let i = 0; i < limit; i++) await quota.consume(me, 'voice');
+  await assert.rejects(quota.consume(me, 'voice'), (e) => e instanceof quota.QuotaError && e.quota.used === limit && e.quota.limit === limit);
+  await quota.consume(me, 'calorie'); // 上限が無い種類は数えるだけ
+  let u = await quota.usage(me);
+  assert.deepStrictEqual([u.plan, u.voice.used, u.voice.limit, u.review.used], ['free', limit, limit, 0]);
+  assert.strictEqual((await quota.usage(other)).voice.used, 0, '他人の回数は混ざらない');
+  await db.query(`UPDATE users SET plan = 'premium' WHERE id = $1`, [me]);
+  await quota.consume(me, 'voice'); // プレミアムは上限なし
+  u = await quota.usage(me);
+  assert.deepStrictEqual([u.plan, u.voice.limit], ['premium', null]);
+  console.log('  quota OK');
+
   // --- アカウント削除で全部消える ---
   await store.deleteUser(me);
   assert.strictEqual((await store.fetchHistory(me, 30)).length, 0);

@@ -37,14 +37,16 @@ CREATE INDEX IF NOT EXISTS entries_user_date ON entries (user_id, date DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS entries_one_review_per_day
   ON entries (user_id, date) WHERE category = 'review';
 
--- AI機能（音声入力・ふりかえり）の月ごとの利用回数。無料枠の判定に使う
-CREATE TABLE IF NOT EXISTS ai_usage (
+-- AI機能の利用履歴（1回=1行）。無料枠の判定と、利用者ごとのAI費用の把握に使う
+--   kind: 'voice'（音声入力）| 'review'（ふりかえり）| 'calorie'（カロリー推定）
+CREATE TABLE IF NOT EXISTS ai_events (
+  id          bigserial PRIMARY KEY,
   user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  month       char(7) NOT NULL,                -- 'YYYY-MM'
-  voice       integer NOT NULL DEFAULT 0,
-  review      integer NOT NULL DEFAULT 0,
-  PRIMARY KEY (user_id, month)
+  kind        text NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS ai_events_user_kind_time ON ai_events (user_id, kind, created_at DESC);
+DROP TABLE IF EXISTS ai_usage;
 
 -- Stripe の契約状態（Step 1 の後半で使う）
 CREATE TABLE IF NOT EXISTS subscriptions (

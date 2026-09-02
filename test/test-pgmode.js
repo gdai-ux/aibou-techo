@@ -17,6 +17,7 @@ process.env.OBSIDIAN_FILE_PATH = '';
 delete process.env.NOTION_TOKEN;
 delete process.env.NOTION_PAGE_ID;
 process.env.PORT = '4890';
+process.env.AI_FREE_REVIEW_LIMIT = '2'; // ふりかえりは週2回まで（テストを短くするため）
 
 const { signTestToken } = require(path.join(__dirname, '..', 'lib', 'auth'));
 const { todayInfo } = require(path.join(__dirname, '..', 'lib', 'format'));
@@ -121,6 +122,32 @@ async function api(method, p, { token, body } = {}) {
   r = await api('GET', '/api/review', { token: tokOther });
   assert.strictEqual(r.data.hasData, false);
   console.log('  review OK');
+
+  // --- 無料枠: ふりかえりは2回生成済みなので、3回目の作り直しは 429 ---
+  r = await api('GET', '/api/status', { token: tokMe });
+  assert.deepStrictEqual([r.data.quota.plan, r.data.quota.review.used, r.data.quota.review.limit], ['free', 2, 2]);
+  r = await api('GET', '/api/review?regenerate=1', { token: tokMe });
+  assert.strictEqual(r.status, 429, JSON.stringify(r.data));
+  assert.ok(/ふりかえりの無料枠/.test(r.data.error), r.data.error);
+  assert.deepStrictEqual(r.data.quota, { kind: 'review', used: 2, limit: 2 });
+  assert.strictEqual(openaiCalls, before + 2, '枠を超えた時はOpenAIを呼ばない');
+  // 保存済みのふりかえりを読むだけなら枠を使わない
+  r = await api('GET', '/api/review', { token: tokMe });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.data.comment, second);
+  // プレミアムなら上限なし
+  const db = require(path.join(__dirname, '..', 'lib', 'db'));
+  await db.query(`UPDATE users SET plan = 'premium' WHERE id = $1`, [me.id]);
+  r = await api('GET', '/api/review?regenerate=1', { token: tokMe });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(openaiCalls, before + 3);
+  r = await api('GET', '/api/status', { token: tokMe });
+  assert.deepStrictEqual([r.data.quota.plan, r.data.quota.review.limit], ['premium', null]);
+  await db.query(`UPDATE users SET plan = 'free' WHERE id = $1`, [me.id]);
+  // 音声入力の枠: 未ログインは401、ログイン済みで本文なしは400系の案内（枠は消費しない）
+  r = await api('POST', '/api/transcribe');
+  assert.strictEqual(r.status, 401);
+  console.log('  quota OK');
 
   // --- 削除 ---
   r = await api('DELETE', `/api/entry/meta/${memoId}`, { token: tokMe });

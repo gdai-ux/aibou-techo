@@ -11,6 +11,7 @@ const { notionStore, pgUserStore, resolveDbId, rememberDbId } = require('./lib/s
 const { userFromRequest, authConfigured } = require('./lib/auth');
 const pgStore = require('./lib/pgStore');
 const db = require('./lib/db');
+const quota = require('./lib/quota');
 const notionDb = require('./lib/notionDb');
 const crypto = require('crypto');
 
@@ -182,9 +183,20 @@ function toUserMessage(err) {
 // ルートの失敗を利用者向けの形で返す。未ログインだけは 401 にして、
 // 画面側がログインへ誘導できるようにする
 function sendError(res, err, prefix) {
+  if (err instanceof quota.QuotaError) {
+    return res.status(429).json({ error: err.message, quota: err.quota });
+  }
   const message = toUserMessage(err);
   const status = err.message === LOGIN_REQUIRED ? 401 : 500;
   res.status(status).json({ error: prefix ? `${prefix}: ${message}` : message });
+}
+
+// AI機能の利用枠（Web版だけ）。無料枠を超えていれば QuotaError を投げる。
+// Notionモード（自分のAPIキーで動かす形）では数えない
+async function consumeAiQuota(req, kind) {
+  if (STORAGE_MODE !== 'pg') return;
+  if (!req.user) throw new Error(LOGIN_REQUIRED);
+  await quota.consume(req.user.id, kind);
 }
 
 app.get('/api/status', async (req, res) => {
@@ -195,6 +207,7 @@ app.get('/api/status', async (req, res) => {
       authRequired: true,
       loggedIn: Boolean(req.user),
       email: req.user ? req.user.email : '',
+      quota: req.user ? await quota.usage(req.user.id).catch(() => null) : null,
       supabaseUrl: SUPABASE_URL,
       supabaseAnonKey: SUPABASE_ANON_KEY,
       obsidianConfigured: false,
@@ -288,6 +301,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
     // 保存済みのふりかえりをいまの進捗・口調で書き換える。
     // 前回のコメントも渡して、同じ言い回しの繰り返しを避けさせる
     if ((regenerate || staleReview) && day && day.review && OPENAI_API_KEY) {
+      await consumeAiQuota(req, 'review');
       const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, previous: day.review.content });
       await store.saveReview(dateStr, weekday, comment, day.review);
       return res.json({ dateStr, weekday, comment, hasData: true });
@@ -305,6 +319,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
     }
 
     if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY が設定されていません');
+    await consumeAiQuota(req, 'review');
     const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest });
     await store.saveReview(dateStr, weekday, comment, null);
     res.json({ dateStr, weekday, comment, hasData: true });
@@ -317,11 +332,16 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
 app.post('/api/transcribe', openaiRateLimit, express.raw({ type: '*/*', limit: '15mb' }), async (req, res) => {
   try {
     if (!OPENAI_API_KEY) throw new Error(VOICE_UNAVAILABLE);
+    // ログインの確認は先に（未ログインの空リクエストを「録音できていない」と案内しないように）、
+    // 枠の消費は本文の確認の後に（失敗したリクエストで枠を減らさないように）
+    if (STORAGE_MODE === 'pg' && !req.user) throw new Error(LOGIN_REQUIRED);
     if (!req.body || !req.body.length) throw new Error('音声が録音できていないようです。もう一度お試しください。');
+    await consumeAiQuota(req, 'voice');
     const mimeType = req.headers['content-type'] || 'audio/webm';
     const text = await transcribeAudio(OPENAI_API_KEY, req.body, mimeType);
     res.json({ text });
   } catch (err) {
+    if (err instanceof quota.QuotaError || err.message === LOGIN_REQUIRED) return sendError(res, err);
     console.error('[aibou-techo] 文字起こし失敗:', err.message);
     res.status(500).json({ error: isUserFacing(err) ? err.message : '音声をうまく聞き取れませんでした。もう一度お試しください。' });
   }
@@ -332,11 +352,13 @@ app.post('/api/transcribe', openaiRateLimit, express.raw({ type: '*/*', limit: '
 app.post('/api/parse-entry', openaiRateLimit, async (req, res) => {
   try {
     if (!OPENAI_API_KEY) throw new Error(VOICE_UNAVAILABLE);
+    if (STORAGE_MODE === 'pg' && !req.user) throw new Error(LOGIN_REQUIRED);
     const text = (req.body?.text || '').trim();
     if (!text) throw new Error('話した内容が読み取れませんでした。もう一度お試しください。');
     const parsed = await parseVoiceEntry(OPENAI_API_KEY, text);
     res.json(parsed);
   } catch (err) {
+    if (err.message === LOGIN_REQUIRED) return sendError(res, err);
     console.error('[aibou-techo] 音声解析失敗:', err.message);
     res.status(500).json({ error: isUserFacing(err) ? err.message : '内容をうまく読み取れませんでした。もう一度お試しください。' });
   }
@@ -352,6 +374,7 @@ async function attachCalories(req, mealType, payload) {
   if (!items.length) return null;
   if (!consumeOpenAiQuota(req)) return null;
   try {
+    await consumeAiQuota(req, 'calorie');
     const estimated = await withEstimatedCalories(OPENAI_API_KEY, mealType, items);
     payload.items = estimated.items;
     return estimated.totalKcal;
@@ -369,6 +392,7 @@ async function attachBurnedCalories(req, payload) {
   if (!content) return null;
   if (!consumeOpenAiQuota(req)) return null;
   try {
+    await consumeAiQuota(req, 'calorie');
     const estimated = await withBurnedCalories(OPENAI_API_KEY, content);
     payload.content = estimated.content;
     return estimated.burnedKcal;

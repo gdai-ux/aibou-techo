@@ -28,9 +28,18 @@ function clearNotionSettings() {
 }
 
 function notionHeaders() {
+  const headers = {};
+  // Web版（ログインあり）: セッションのトークンを付ける（auth-client.js が用意する）
+  if (typeof authAccessToken === 'function') {
+    const token = authAccessToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
   const s = getNotionSettings();
-  if (!s || !s.token || !s.pageId) return {};
-  return { 'X-Notion-Token': s.token, 'X-Notion-Page-Id': s.pageId };
+  if (s && s.token && s.pageId) {
+    headers['X-Notion-Token'] = s.token;
+    headers['X-Notion-Page-Id'] = s.pageId;
+  }
+  return headers;
 }
 
 // 天気を表示する地域（この端末のブラウザだけに保存する）。

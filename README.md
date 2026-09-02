@@ -17,11 +17,20 @@ App Store で「入れたら動く」を実現するために、次の順で作�
 | 段階 | 内容 | 状態 |
 |---|---|---|
 | Step 0 | ライフログ機能の切り出し・名前の変更 | ✅ 完了（このリポジトリ） |
-| Step 1 | Sign in with Apple、自前DBへの保存、Notion はワンタップのOAuth連携に、利用者ごとのAI利用枠、アカウント削除 | 未着手 |
+| Step 1 | メールでログイン（Supabase Auth）、自前DB（Postgres）への保存、アカウント削除、利用者ごとのAI利用枠、Stripe決済 | 🔄 進行中（ログイン・自前DB・アカウント削除まで実装済み。AI利用枠・Stripeは未） |
 | Step 2 | Capacitor でネイティブ化、HealthKit連携、プッシュ通知、TestFlight | 未着手 |
 | Step 3 | プライバシーポリシー・利用規約・免責、審査、公開 | 未着手 |
 
-価格モデルはサブスク主体（年額推奨）＋無料枠の予定。詳しい経緯は `docs/` を参照。
+価格モデルは「無料 ＋ プレミアム ¥300/月（年払い ¥3,000）」の予定。無料でも手入力の記録・履歴・相棒は使え、
+音声入力（月20回）・ふりかえり（週3回）だけ回数に上限を置く。App Store 版はWeb版の反応を見てから判断する。
+
+### Web版（自前DBモード）の動かし方
+
+`.env` に `STORAGE=pg`・`DATABASE_URL`・`SUPABASE_URL`・`SUPABASE_ANON_KEY`・
+`SUPABASE_JWT_SECRET`（または `SUPABASE_JWKS_URL`）を設定して起動すると、
+記録は Postgres に保存され、`/api` はログイン必須になる。ログインは `login.html`
+（メールのマジックリンク）。未設定なら従来どおり「利用者のNotion」に保存するモードで動く。
+テストは `DATABASE_URL` があれば自前DBのぶんも流れる（無ければ飛ばす）。
 
 
 ## 構成（v2：クラウド対応）

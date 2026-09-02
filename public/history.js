@@ -968,21 +968,23 @@ function buildNotionSettingsModal() {
   overlay.id = 'notionSettingsModal';
   overlay.innerHTML = `
     <div class="modal-panel">
-      <h3>Notion連携の設定</h3>
-      <p class="notion-settings-hint">
+      <h3 id="notionSettingsTitle">Notion連携の設定</h3>
+      <p class="notion-settings-hint notion-only">
         自分のNotionページに記録したい場合は、ここで自分のNotionの連携情報を設定してください。
         設定はこの端末のブラウザだけに保存され、サーバーには保存されません。
       </p>
-      <ol class="notion-settings-steps">
+      <ol class="notion-settings-steps notion-only">
         <li><a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener">Notionのintegrationページ</a>で新しいintegrationを作成し、「Internal Integration Secret」をコピーする</li>
         <li>記録先にしたいNotionページを開き、右上の「…」メニュー→「コネクト」から、作成したintegrationを追加する</li>
         <li>そのページのURLに含まれる32文字のID（ハイフンは省略可）をコピーする</li>
       </ol>
-      <label>Notionの「Internal Integration Secret」</label>
-      <input type="text" id="notionSettingsToken" placeholder="ntn_... または secret_..." autocomplete="off" spellcheck="false" />
-      <label>Notion ページID</label>
-      <input type="text" id="notionSettingsPageId" placeholder="例）1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d" autocomplete="off" spellcheck="false" />
-      <p class="notion-settings-hint">空欄のまま保存すると連携設定を削除します。</p>
+      <div class="notion-only">
+        <label>Notionの「Internal Integration Secret」</label>
+        <input type="text" id="notionSettingsToken" placeholder="ntn_... または secret_..." autocomplete="off" spellcheck="false" />
+        <label>Notion ページID</label>
+        <input type="text" id="notionSettingsPageId" placeholder="例）1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d" autocomplete="off" spellcheck="false" />
+        <p class="notion-settings-hint">空欄のまま保存すると連携設定を削除します。</p>
+      </div>
 
       <label>天気を表示する地域</label>
       <input type="text" id="weatherLocationInput" placeholder="例）大阪、東京、札幌" autocomplete="off" spellcheck="false" />
@@ -991,8 +993,9 @@ function buildNotionSettingsModal() {
       <details class="settings-privacy">
         <summary>データの取り扱いについて</summary>
         <ul>
-          <li>入力した記録は、あなた自身が指定したNotionページにのみ保存されます。このアプリのサーバーには保存されません。</li>
-          <li>Notionの連携情報（シークレット・ページID）と地域の設定は、この端末のブラウザ内にのみ保存されます。他の人が見ることはできません。</li>
+          <li class="notion-only">入力した記録は、あなた自身が指定したNotionページにのみ保存されます。このアプリのサーバーには保存されません。</li>
+          <li class="notion-only">Notionの連携情報（シークレット・ページID）と地域の設定は、この端末のブラウザ内にのみ保存されます。他の人が見ることはできません。</li>
+          <li class="auth-only" hidden>入力した記録は、あいぼう手帳のサーバー（あなたのアカウントに紐づく領域）に保存されます。設定の「アカウント」からいつでも全部削除できます。</li>
           <li>音声入力を使った場合、録音した音声と文字起こし結果は、文字に変換するためにOpenAIへ送信されます。変換後はこのアプリでは保持しません。</li>
           <li>「きのうのふりかえり」を使った場合、前日の記録の内容がコメント生成のためOpenAIへ送信されます。</li>
           <li>連携を解除したい場合は、上の欄を空にして保存するか、Notion側でこのintegrationのコネクトを外してください。</li>
@@ -1030,7 +1033,13 @@ function openNotionSettingsModal() {
   document.getElementById('notionSettingsToken').value = s ? s.token : '';
   document.getElementById('notionSettingsPageId').value = s ? s.pageId : '';
   document.getElementById('weatherLocationInput').value = getWeatherLocation();
-  document.getElementById('notionSettingsModal').classList.remove('hidden');
+  // Web版（ログインあり）では保存先は自前DBなので、Notionの欄は出さず天気の地域だけにする
+  const authMode = !!window.authRequired;
+  const modal = document.getElementById('notionSettingsModal');
+  modal.querySelectorAll('.notion-only').forEach((el) => { el.hidden = authMode; });
+  modal.querySelectorAll('.auth-only').forEach((el) => { el.hidden = !authMode; });
+  document.getElementById('notionSettingsTitle').textContent = authMode ? '天気の地域' : 'Notion連携の設定';
+  modal.classList.remove('hidden');
 }
 
 // --- テーマ（ブラック/ホワイト） ---
@@ -1084,8 +1093,12 @@ function openSettingsMenu() {
             <span class="settings-menu-desc">月ごとの記録をカレンダーで見る</span>
           </button>
           <button type="button" class="settings-menu-item" id="settingsItemNotion">
-            <span class="settings-menu-title">Notion連携と天気の地域</span>
-            <span class="settings-menu-desc">記録の保存先と、天気を表示する地域</span>
+            <span class="settings-menu-title" id="settingsItemNotionTitle">Notion連携と天気の地域</span>
+            <span class="settings-menu-desc" id="settingsItemNotionDesc">記録の保存先と、天気を表示する地域</span>
+          </button>
+          <button type="button" class="settings-menu-item" id="settingsItemAccount" hidden>
+            <span class="settings-menu-title">アカウント</span>
+            <span class="settings-menu-desc" id="settingsItemAccountDesc">ログアウト・アカウントの削除</span>
           </button>
           <button type="button" class="settings-menu-item" id="settingsItemPoints">
             <span class="settings-menu-title">ポイントの説明</span>
@@ -1133,6 +1146,10 @@ function openSettingsMenu() {
       overlay.classList.add('hidden');
       openNotionSettingsModal();
     });
+    document.getElementById('settingsItemAccount').addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      openAccountModal();
+    });
     document.getElementById('settingsItemPoints').addEventListener('click', () => {
       overlay.classList.add('hidden');
       openPointRulesModal();
@@ -1151,6 +1168,12 @@ function openSettingsMenu() {
   const soundItem = document.getElementById('settingsItemSound');
   soundItem.hidden = !window.tapSoundEnabled;
   if (window.tapSoundEnabled) document.getElementById('soundToggle').checked = tapSoundEnabled();
+  // Web版（ログインあり）: 保存先の設定は要らないので「天気の地域」だけにし、アカウントの項目を出す
+  const authMode = !!window.authRequired;
+  document.getElementById('settingsItemNotionTitle').textContent = authMode ? '天気の地域' : 'Notion連携と天気の地域';
+  document.getElementById('settingsItemNotionDesc').textContent = authMode ? '時計に表示する天気の地域' : '記録の保存先と、天気を表示する地域';
+  document.getElementById('settingsItemAccount').hidden = !authMode;
+  if (authMode) document.getElementById('settingsItemAccountDesc').textContent = window.authEmail ? `${window.authEmail} ・ ログアウト・削除` : 'ログアウト・アカウントの削除';
   // 着せ替え・ホーム画面の表示・カレンダーはトップ画面でだけ出す
   document.getElementById('settingsItemMascot').hidden = !window.openMascotSettings;
   document.getElementById('settingsItemHome').hidden = !window.openHomeSectionsSettings;
@@ -1228,6 +1251,56 @@ function openPointRulesModal() {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
     document.getElementById('pointRulesClose').addEventListener('click', () => overlay.classList.add('hidden'));
   }
+  overlay.classList.remove('hidden');
+}
+
+// --- アカウント（Web版） -----------------------------------------------------
+// ログアウトと、記録を含めた全部の削除。削除は取り消せないので2段階で確認する
+function openAccountModal() {
+  let overlay = document.getElementById('accountModal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'modal-overlay hidden';
+    overlay.id = 'accountModal';
+    overlay.innerHTML = `
+      <div class="modal-panel">
+        <h3>アカウント</h3>
+        <p class="hs-note" id="accountEmail"></p>
+        <div class="settings-menu">
+          <button type="button" class="settings-menu-item" id="accountLogout">
+            <span class="settings-menu-title">ログアウト</span>
+            <span class="settings-menu-desc">この端末からログアウトします。記録は残ります</span>
+          </button>
+          <button type="button" class="settings-menu-item" id="accountDelete">
+            <span class="settings-menu-title" style="color:var(--err)">アカウントを削除</span>
+            <span class="settings-menu-desc">記録・設定をすべて消します。取り消せません</span>
+          </button>
+        </div>
+        <p class="hs-note" id="accountMsg"></p>
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" id="accountClose">閉じる</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
+    document.getElementById('accountClose').addEventListener('click', () => overlay.classList.add('hidden'));
+    document.getElementById('accountLogout').addEventListener('click', () => {
+      if (window.authSignOut) authSignOut();
+    });
+    document.getElementById('accountDelete').addEventListener('click', async () => {
+      if (!window.confirm('本当にアカウントを削除しますか？\n記録・設定はすべて消え、元に戻せません。')) return;
+      if (!window.confirm('最終確認です。削除してよろしいですか？')) return;
+      const msg = document.getElementById('accountMsg');
+      msg.textContent = '削除しています…';
+      try {
+        await authDeleteAccount();
+      } catch (e) {
+        msg.textContent = e.message;
+      }
+    });
+  }
+  document.getElementById('accountEmail').textContent = window.authEmail ? `ログイン中: ${window.authEmail}` : '';
+  document.getElementById('accountMsg').textContent = '';
   overlay.classList.remove('hidden');
 }
 
@@ -1357,7 +1430,10 @@ async function checkNotionSetupNeeded() {
   try {
     const resp = await fetch('/api/status', { headers: notionHeaders() });
     const data = await resp.json();
-    if (!data.notionConfigured) openNotionSettingsModal();
+    // Web版（ログインあり）かどうかを画面全体で共有する（設定メニューの出し分けに使う）
+    window.authRequired = !!data.authRequired;
+    window.authEmail = data.email || '';
+    if (!data.notionConfigured && !data.authRequired) openNotionSettingsModal();
   } catch (e) {
     // ステータス取得に失敗しても致命的ではないので何もしない
   }

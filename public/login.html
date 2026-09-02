@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<script>
+try {
+  if (localStorage.getItem('themeSetting') === 'light') document.documentElement.classList.add('theme-light');
+} catch (e) { /* 既定のブラックのまま */ }
+</script>
+<title>あいぼう手帳 ログイン</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="stylesheet" href="history.css" />
+<script src="notion-client.js"></script>
+<script src="vendor/supabase.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --card: #1c1c1e;
+    --fill: rgba(140, 140, 150, 0.32);
+    --text: #f2f2f7;
+    --muted: #98989f;
+    --accent: #0a84ff;
+    --accent-text: #ffffff;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --ok: #34c759;
+    --err: #ff453a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 36px -22px rgba(0, 0, 0, 0.9);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --ease: cubic-bezier(.32, .72, 0, 1);
+  }
+  :root.theme-light {
+    --bg: #f2f2f7;
+    --card: #ffffff;
+    --fill: rgba(120, 120, 128, 0.12);
+    --text: #1c1c1e;
+    --muted: #6e6e73;
+    --accent: #007aff;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.16);
+    --err: #ff3b30;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 18px 36px -22px rgba(0, 0, 0, 0.25);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body {
+    margin: 0 auto;
+    max-width: 480px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: calc(24px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom));
+  }
+  .brand { text-align: center; margin-bottom: 22px; }
+  .brand img { width: 72px; height: 72px; image-rendering: pixelated; }
+  .brand h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; margin: 10px 0 4px; }
+  .brand p { margin: 0; font-size: 13px; color: var(--muted); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px 18px;
+    box-shadow: var(--shadow), var(--edge);
+  }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 6px; }
+  input[type="email"] {
+    width: 100%;
+    font: inherit;
+    font-size: 16px;
+    color: var(--text);
+    background: var(--fill);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 13px 14px;
+    outline: none;
+  }
+  input[type="email"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+  button {
+    width: 100%;
+    margin-top: 12px;
+    padding: 14px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-text);
+    background: var(--accent);
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: transform .1s var(--ease), opacity .15s ease;
+  }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .msg { margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); min-height: 1.6em; }
+  .msg.ok { color: var(--ok); }
+  .msg.err { color: var(--err); }
+  .note { margin: 18px 0 0; font-size: 12px; color: var(--muted); line-height: 1.7; text-align: center; }
+  .note a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+  <div class="brand">
+    <img src="icon.svg" alt="" />
+    <h1>あいぼう手帳</h1>
+    <p>話すだけで記録が残り、相棒が育つ健康記録</p>
+  </div>
+
+  <div class="card">
+    <form id="loginForm">
+      <label for="email">メールアドレス</label>
+      <input type="email" id="email" name="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required />
+      <button type="submit" id="sendBtn">ログイン用のリンクを送る</button>
+      <p class="msg" id="msg">パスワードは不要です。届いたメールのリンクを開くとログインできます。</p>
+    </form>
+  </div>
+
+  <p class="note">初めての方も、同じ手順でそのまま始められます。<br>登録したメールアドレスは、ログインとご案内以外には使いません。</p>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const msg = document.getElementById('msg');
+    const sendBtn = document.getElementById('sendBtn');
+    const params = new URLSearchParams(location.search);
+    const next = (params.get('next') || 'index.html').replace(/[^a-zA-Z0-9_.\-]/g, '') || 'index.html';
+
+    let client = null;
+    async function setup() {
+      try {
+        const resp = await fetch('/api/status');
+        const status = await resp.json();
+        if (!status.authRequired) { location.replace(next); return; }
+        if (status.loggedIn) { location.replace(next); return; }
+        if (!status.supabaseUrl || !status.supabaseAnonKey) {
+          msg.className = 'msg err';
+          msg.textContent = 'ログインの設定がまだ済んでいません（サーバーの SUPABASE_URL / SUPABASE_ANON_KEY）。';
+          sendBtn.disabled = true;
+          return;
+        }
+        client = supabase.createClient(status.supabaseUrl, status.supabaseAnonKey, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
+        });
+        // マジックリンクから戻ってきた（?code=...）時は、ここでセッションに交換して次の画面へ
+        if (/[?&]code=/.test(location.search)) {
+          const { data, error } = await client.auth.getSession();
+          if (data && data.session) { location.replace(next); return; }
+          if (error) { msg.className = 'msg err'; msg.textContent = 'リンクの確認に失敗しました。もう一度送ってください。'; }
+        }
+      } catch (e) {
+        msg.className = 'msg err';
+        msg.textContent = 'サーバーに接続できません。しばらくしてからもう一度お試しください。';
+      }
+    }
+    setup();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!client) return;
+      const email = document.getElementById('email').value.trim();
+      sendBtn.disabled = true;
+      msg.className = 'msg';
+      msg.textContent = '送信しています…';
+      const redirectTo = `${location.origin}${location.pathname}?next=${encodeURIComponent(next)}`;
+      const { error } = await client.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+      if (error) {
+        sendBtn.disabled = false;
+        msg.className = 'msg err';
+        msg.textContent = /rate/i.test(error.message) ? '送信が続きすぎています。少し待ってからもう一度お試しください。' : 'メールを送れませんでした。アドレスを確認してもう一度お試しください。';
+        return;
+      }
+      msg.className = 'msg ok';
+      msg.textContent = `${email} にリンクを送りました。メールを開いてリンクを押してください（届くまで1〜2分かかることがあります）。`;
+    });
+  </script>
+</body>
+</html>

@@ -25,6 +25,9 @@ const CORE = [
   'quotes.js',
   'pull-refresh.js',
   'notion-client.js',
+  'auth-client.js',
+  'vendor/supabase.js',
+  'login.html',
   'manifest.json',
   'icon.svg',
 ];

@@ -25,6 +25,11 @@ const NOTION_PAGE_ID = process.env.NOTION_PAGE_ID;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 // 保存先のモード。'notion'（既定）は利用者のNotion、'pg' はWeb版の自前DB（要ログイン）
 const STORAGE_MODE = process.env.STORAGE === 'pg' ? 'pg' : 'notion';
+// Supabase Auth（Web版のログイン）。URL と anon キーはブラウザに渡してよい公開情報
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+// アカウント削除で認証側の利用者も消すための鍵（サーバーだけが持つ。無ければ記録だけ消す）
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const app = express();
 // Renderなどのリバースプロキシ配下でも、req.ipが実際の接続元IPになるようにする
@@ -60,7 +65,9 @@ app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
-    "font-src 'self'; img-src 'self' data:; connect-src 'self'; " +
+    "font-src 'self'; img-src 'self' data:; " +
+    // Web版はブラウザから Supabase（ログイン）へ直接つなぐので、そこだけ許可する
+    `connect-src 'self'${SUPABASE_URL ? ' ' + SUPABASE_URL : ''}; ` +
     "object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
   );
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -188,6 +195,8 @@ app.get('/api/status', async (req, res) => {
       authRequired: true,
       loggedIn: Boolean(req.user),
       email: req.user ? req.user.email : '',
+      supabaseUrl: SUPABASE_URL,
+      supabaseAnonKey: SUPABASE_ANON_KEY,
       obsidianConfigured: false,
       notionConfigured: true,
       voiceConfigured: Boolean(OPENAI_API_KEY),
@@ -513,6 +522,31 @@ app.post('/api/entry', async (req, res) => {
   }
 
   res.json({ ok: true, result });
+});
+
+// ---- アカウント削除（Web版） -----------------------------------------------
+// 記録・利用回数・契約を全部消し、認証側（Supabase）の利用者も消す。
+// 認証側の削除には service role の鍵が要るので、無い環境では記録だけ消す
+// （その場合もアプリのデータは残らない）。
+app.delete('/api/account', async (req, res) => {
+  if (STORAGE_MODE !== 'pg') return res.status(400).json({ error: 'このモードではアカウントはありません' });
+  try {
+    if (!req.user) throw new Error(LOGIN_REQUIRED);
+    await pgStore.deleteUser(req.user.id);
+    knownUsers.delete(req.user.id);
+    let authDeleted = false;
+    if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      const resp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(req.user.id)}`, {
+        method: 'DELETE',
+        headers: { apikey: SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+      });
+      authDeleted = resp.ok;
+      if (!resp.ok) console.error('[aibou-techo] 認証側の利用者削除に失敗:', resp.status);
+    }
+    res.json({ ok: true, authDeleted });
+  } catch (err) {
+    sendError(res, err, 'アカウントの削除に失敗しました');
+  }
 });
 
 // ---- データベース形式への移行 --------------------------------------------

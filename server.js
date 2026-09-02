@@ -2,64 +2,18 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const { appendToObsidian } = require('./lib/obsidian');
-const { appendToNotion, appendReviewComment, updateReviewBlock, updateMetaBlock, updateMealItems, deleteMealBlock, deleteBlock } = require('./lib/notion');
 const { transcribeAudio } = require('./lib/transcribe');
 const { parseVoiceEntry } = require('./lib/parseEntry');
 const { withEstimatedCalories, withBurnedCalories, isKcalResolved, isBurnedResolved } = require('./lib/calories');
 const { collapseRepeatedItems } = require('./lib/format');
 const { fetchHistory } = require('./lib/history');
-const { cached, invalidate } = require('./lib/cache');
+const { notionStore, pgUserStore, resolveDbId, rememberDbId } = require('./lib/store');
+const { userFromRequest, authConfigured } = require('./lib/auth');
+const pgStore = require('./lib/pgStore');
+const db = require('./lib/db');
 const notionDb = require('./lib/notionDb');
 const crypto = require('crypto');
 
-// ---- Notion履歴の短期キャッシュ -----------------------------------------
-// 画面を1回開くと /api/history が複数回（カレンダー・運動リング・履歴・育成）
-// 呼ばれるが、Notionへの読みに行くのは60秒に1回だけにする。
-// 全期間ぶんを1回で取得してキャッシュし、リクエストごとに必要な日数へ絞る。
-// 書き込み（記録・編集・削除・ふりかえり・カロリー整え）の直後は必ず捨てて、
-// 次の読み込みが最新を見るようにする。
-const HISTORY_CACHE_TTL_MS = 60 * 1000;
-
-function historyCacheKey(token, pageId) {
-  // トークンそのものはキーに残さない（ログやダンプに混ざらないように）
-  const t = crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 16);
-  return `history:${pageId}:${t}`;
-}
-
-async function fetchHistoryCached(token, pageId, limitDays) {
-  const all = await cached(historyCacheKey(token, pageId), HISTORY_CACHE_TTL_MS, async () => {
-    const dbId = await resolveDbId(token, pageId);
-    return dbId
-      ? notionDb.dbFetchHistory(token, dbId, 730)
-      : fetchHistory({ token, pageId, limitDays: 730 });
-  });
-  // キャッシュした配列は共有物なので、切り出しだけ行い中身は書き換えない
-  return all.slice(0, limitDays);
-}
-
-function invalidateHistoryCache(pageId) {
-  invalidate(`history:${pageId}:`);
-}
-
-// ---- 保存形式の判定（ページ本文 or データベース） -------------------------
-// ページ直下に記録データベースがあればDBモード。5分キャッシュする
-// （データベースは一度作れば消えない前提。移行直後はキャッシュを直接更新する）
-const dbIdCache = new Map(); // pageId -> { dbId, expiresAt }
-
-async function resolveDbId(token, pageId) {
-  const hit = dbIdCache.get(pageId);
-  if (hit && hit.expiresAt > Date.now()) return hit.dbId;
-  let dbId = null;
-  try {
-    dbId = await notionDb.findDatabaseId(token, pageId);
-  } catch (err) {
-    // 判定に失敗した時は従来モードで動かす（次のリクエストで再判定）
-    return null;
-  }
-  dbIdCache.set(pageId, { dbId, expiresAt: Date.now() + 5 * 60 * 1000 });
-  return dbId;
-}
-const { syncNotionToObsidian } = require('./lib/notionSync');
 const { fetchWeather, DEFAULT_LOCATION } = require('./lib/weather');
 const { generateDailyReview, REVIEW_TONES, DEFAULT_TONE } = require('./lib/dailyReview');
 const { yesterdayInfo, todayInfo, dateInfoFor } = require('./lib/format');
@@ -69,6 +23,8 @@ const OBSIDIAN_FILE_PATH = process.env.OBSIDIAN_FILE_PATH;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_PAGE_ID = process.env.NOTION_PAGE_ID;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+// 保存先のモード。'notion'（既定）は利用者のNotion、'pg' はWeb版の自前DB（要ログイン）
+const STORAGE_MODE = process.env.STORAGE === 'pg' ? 'pg' : 'notion';
 
 const app = express();
 // Renderなどのリバースプロキシ配下でも、req.ipが実際の接続元IPになるようにする
@@ -76,6 +32,25 @@ const app = express();
 // 意味を成さなくなる）
 app.set('trust proxy', true);
 app.use(express.json());
+
+// pgモードでは、/api へのリクエストから利用者（JWT）を取り出しておく。
+// 未ログインでも 401 はここでは返さず、各ルートが必要な時に LOGIN_REQUIRED を投げる
+// （/api/status や /api/weather は未ログインでも使えるため）。
+const knownUsers = new Set(); // このプロセスで users 行を用意済みの利用者
+app.use('/api', async (req, res, next) => {
+  if (STORAGE_MODE !== 'pg') return next();
+  try {
+    req.user = await userFromRequest(req);
+    if (req.user && !knownUsers.has(req.user.id)) {
+      await pgStore.ensureUser(req.user.id, req.user.email);
+      knownUsers.add(req.user.id);
+    }
+  } catch (err) {
+    console.error('[aibou-techo] 認証の確認に失敗:', err.message);
+    req.user = null;
+  }
+  next();
+});
 
 // ---- セキュリティヘッダー ------------------------------------------------
 // スクリプトはこのサイト由来のもの（＋各ページのインライン）だけを許可する。
@@ -143,6 +118,19 @@ function resolveNotionConfig(req) {
 }
 
 const NOTION_NOT_CONFIGURED = 'Notionが設定されていません。右上の設定から連携してください。';
+const LOGIN_REQUIRED = 'ログインが必要です。';
+
+// リクエストから保存先（store）を決める。pgモードでは認証済みの利用者ごと、
+// notionモードではヘッダー/環境変数のNotion設定から作る。無ければ利用者向けのエラー
+async function getStore(req) {
+  if (STORAGE_MODE === 'pg') {
+    if (!req.user) throw new Error(LOGIN_REQUIRED);
+    return pgUserStore(req.user.id);
+  }
+  const { token, pageId } = resolveNotionConfig(req);
+  if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
+  return notionStore(token, pageId, { obsidianFilePath: OBSIDIAN_FILE_PATH });
+}
 const VOICE_UNAVAILABLE = '音声入力は現在ご利用いただけません。';
 const CALORIE_UNAVAILABLE = 'カロリーの推定は現在ご利用いただけません。';
 
@@ -150,6 +138,7 @@ const CALORIE_UNAVAILABLE = 'カロリーの推定は現在ご利用いただけ
 // OpenAIなど外部APIの生のエラー文をそのまま画面に出さないための判定に使う。
 const USER_FACING_MESSAGES = new Set([
   NOTION_NOT_CONFIGURED,
+  LOGIN_REQUIRED,
   VOICE_UNAVAILABLE,
   CALORIE_UNAVAILABLE,
   '音声が録音できていないようです。もう一度お試しください。',
@@ -165,6 +154,7 @@ function isUserFacing(err) {
 // 詳細なエラーはサーバーログにだけ残す。
 function toUserMessage(err) {
   console.error('[aibou-techo]', err.message);
+  if (err.message === LOGIN_REQUIRED) return LOGIN_REQUIRED;
   switch (err.notionStatus) {
     case 401:
       return 'Notionの連携情報が正しくないようです。設定画面でシークレットを確認してください。';
@@ -182,7 +172,28 @@ function toUserMessage(err) {
   }
 }
 
+// ルートの失敗を利用者向けの形で返す。未ログインだけは 401 にして、
+// 画面側がログインへ誘導できるようにする
+function sendError(res, err, prefix) {
+  const message = toUserMessage(err);
+  const status = err.message === LOGIN_REQUIRED ? 401 : 500;
+  res.status(status).json({ error: prefix ? `${prefix}: ${message}` : message });
+}
+
 app.get('/api/status', async (req, res) => {
+  if (STORAGE_MODE === 'pg') {
+    // Web版: 保存先は自前DB。Notionの設定は不要なので「設定済み」として扱う
+    return res.json({
+      mode: 'pg',
+      authRequired: true,
+      loggedIn: Boolean(req.user),
+      email: req.user ? req.user.email : '',
+      obsidianConfigured: false,
+      notionConfigured: true,
+      voiceConfigured: Boolean(OPENAI_API_KEY),
+      storage: 'pg',
+    });
+  }
   const { token, pageId } = resolveNotionConfig(req);
   let storage = 'page';
   if (token && pageId) {
@@ -190,6 +201,8 @@ app.get('/api/status', async (req, res) => {
     if (dbId) storage = 'db';
   }
   res.json({
+    mode: 'notion',
+    authRequired: false,
     obsidianConfigured: Boolean(OBSIDIAN_FILE_PATH),
     notionConfigured: Boolean(token && pageId),
     voiceConfigured: Boolean(OPENAI_API_KEY),
@@ -223,13 +236,12 @@ app.get('/api/weather', async (req, res) => {
 // Notionページの内容を履歴表示用に構造化して返す
 app.get('/api/history', async (req, res) => {
   try {
-    const { token, pageId } = resolveNotionConfig(req);
-    if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
+    const store = await getStore(req);
     const limitDays = Math.min(Number(req.query.days) || 30, 730);
-    const days = await fetchHistoryCached(token, pageId, limitDays);
+    const days = await store.history(limitDays);
     res.json({ days });
   } catch (err) {
-    res.status(500).json({ error: toUserMessage(err) });
+    sendError(res, err);
   }
 });
 
@@ -241,8 +253,7 @@ app.get('/api/history', async (req, res) => {
 // 一度生成したコメントは日別の記録として残るので、後から履歴でも振り返れる。
 app.get('/api/review', openaiRateLimit, async (req, res) => {
   try {
-    const { token, pageId } = resolveNotionConfig(req);
-    if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
+    const store = await getStore(req);
 
     // ふりかえりの口調（超スパルタ〜超やさしい）。不正な値は既定にする
     const tone = REVIEW_TONES[req.query.tone] ? req.query.tone : DEFAULT_TONE;
@@ -254,7 +265,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
     // ふりかえりの対象は「今日ここまで」の記録。記録が増えたり口調を変えたりした時は
     // regenerate=1 で呼ばれ、その時点の進捗で書き直す
     const { dateStr, weekday } = todayInfo();
-    const days = await fetchHistoryCached(token, pageId, 5);
+    const days = await store.history(5);
     const day = days.find((d) => d.dateStr === dateStr) || null;
 
     // 保存済みのふりかえりを書いた後で記録が編集・追加されていたら、
@@ -269,10 +280,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
     // 前回のコメントも渡して、同じ言い回しの繰り返しを避けさせる
     if ((regenerate || staleReview) && day && day.review && OPENAI_API_KEY) {
       const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, previous: day.review.content });
-      const dbId = await resolveDbId(token, pageId);
-      if (dbId) await notionDb.dbUpdateReview(token, day.review.blockId, comment);
-      else await updateReviewBlock(token, day.review.blockId, comment);
-      invalidateHistoryCache(pageId);
+      await store.saveReview(dateStr, weekday, comment, day.review);
       return res.json({ dateStr, weekday, comment, hasData: true });
     }
 
@@ -289,13 +297,10 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
 
     if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY が設定されていません');
     const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest });
-    const dbId = await resolveDbId(token, pageId);
-    if (dbId) await notionDb.dbAppendReview(token, dbId, dateStr, comment);
-    else await appendReviewComment(token, pageId, dateStr, weekday, comment);
-    invalidateHistoryCache(pageId);
+    await store.saveReview(dateStr, weekday, comment, null);
     res.json({ dateStr, weekday, comment, hasData: true });
   } catch (err) {
-    res.status(500).json({ error: toUserMessage(err) });
+    sendError(res, err);
   }
 });
 
@@ -398,12 +403,10 @@ function collectBackfillTargets(days) {
 
 // 1件ぶんカロリーを付ける。実際にカロリーが付いたら true、
 // 内容から推定できずカロリーが付かなかったら false を返す。
-async function backfillOne(token, pageId, target) {
-  const dbId = await resolveDbId(token, pageId);
+async function backfillOne(store, target) {
   if (target.kind === 'exercise') {
     const { content, burnedKcal } = await withBurnedCalories(OPENAI_API_KEY, target.content);
-    if (dbId) await notionDb.dbUpdateMeta(token, target.blockId, 'exercise', { time: target.time, content });
-    else await updateMetaBlock(token, target.blockId, 'exercise', { time: target.time, content });
+    await store.updateMeta(target.blockId, 'exercise', { time: target.time, content });
     return burnedKcal !== null;
   }
   // 以前の不具合で品目が増えてしまった記録は、繰り返しを1つにまとめてから扱う
@@ -415,8 +418,7 @@ async function backfillOne(token, pageId, target) {
   });
   const estimated = await withEstimatedCalories(OPENAI_API_KEY, target.mealType, parts.map((p) => p.text));
   const restored = estimated.items.map((text, i) => (parts[i].time ? `${parts[i].time} ${text}` : text));
-  if (dbId) await notionDb.dbUpdateMealItems(token, target.blockId, restored);
-  else await updateMealItems(token, pageId, target.blockId, restored);
+  await store.updateMealItems(target.blockId, restored);
   // 1品目でも推定できなければ、その品目には「（kcal不明）」が付く
   return estimated.items.every((i) => !/（kcal不明）\s*$/.test(i));
 }
@@ -424,10 +426,9 @@ async function backfillOne(token, pageId, target) {
 app.post('/api/backfill-calories', openaiRateLimit, async (req, res) => {
   try {
     if (!OPENAI_API_KEY) throw new Error(CALORIE_UNAVAILABLE);
-    const { token, pageId } = resolveNotionConfig(req);
-    if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
+    const store = await getStore(req);
 
-    const days = await fetchHistoryCached(token, pageId, 730);
+    const days = await store.history(730);
     const targets = collectBackfillTargets(days);
     const batch = targets.slice(0, BACKFILL_BATCH);
 
@@ -438,7 +439,7 @@ app.post('/api/backfill-calories', openaiRateLimit, async (req, res) => {
       try {
         // 推定できなかった記録には「（kcal不明）」が書き込まれるので、
         // 次回からは対象に入らない
-        if (await backfillOne(token, pageId, target)) updated++;
+        if (await backfillOne(store, target)) updated++;
         else unknown++;
       } catch (err) {
         // 1件失敗しても残りは続ける（次回の呼び出しで再度対象になる）
@@ -446,12 +447,11 @@ app.post('/api/backfill-calories', openaiRateLimit, async (req, res) => {
         failed++;
       }
     }
-    invalidateHistoryCache(pageId);
-    await syncObsidianIfConfigured(token, pageId);
+    await store.sync();
     // remaining は「今回まだ手を付けていない件数」。呼び出し側はこれが0になるまで繰り返す。
     res.json({ updated, unknown, failed, remaining: targets.length - batch.length, total: targets.length });
   } catch (err) {
-    res.status(500).json({ error: toUserMessage(err) });
+    sendError(res, err);
   }
 });
 
@@ -487,8 +487,8 @@ app.post('/api/entry', async (req, res) => {
   }
 
   // OBSIDIAN_FILE_PATH が無い環境（クラウドデプロイなど）では、Obsidianへの記録は
-  // スキップし、Notionへの記録のみ行う。
-  if (OBSIDIAN_FILE_PATH) {
+  // スキップし、保存先への記録のみ行う（Web版の自前DBモードでは常にスキップ）。
+  if (OBSIDIAN_FILE_PATH && STORAGE_MODE === 'notion') {
     try {
       result.obsidian = appendToObsidian(OBSIDIAN_FILE_PATH, category, payload, dateInfo);
     } catch (err) {
@@ -497,15 +497,12 @@ app.post('/api/entry', async (req, res) => {
   }
 
   try {
-    const { token, pageId } = resolveNotionConfig(req);
-    if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
-    const dbId = await resolveDbId(token, pageId);
-    if (dbId) await notionDb.dbAppendEntry(token, dbId, category, payload, dateInfo);
-    else await appendToNotion(token, pageId, category, payload, dateInfo);
-    invalidateHistoryCache(pageId);
+    const store = await getStore(req);
+    await store.append(category, payload, dateInfo);
     result.notion = 'ok';
   } catch (err) {
-    warnings.push(`Notionへの記録に失敗しました: ${toUserMessage(err)}`);
+    if (err.message === LOGIN_REQUIRED) return sendError(res, err);
+    warnings.push(`記録の保存に失敗しました: ${toUserMessage(err)}`);
   }
 
   if (warnings.length && !result.notion && !result.obsidian) {
@@ -518,20 +515,6 @@ app.post('/api/entry', async (req, res) => {
   res.json({ ok: true, result });
 });
 
-// 編集後、ローカル環境ならNotionの最新内容でObsidianファイルを追いつかせる。
-// Obsidianはサーバーのローカルファイルに書き込む都合上、OBSIDIAN_FILE_PATHが
-// 設定されているのは基本的にオーナー自身のローカル環境のみだが、念のため
-// この操作を起こしたリクエストと同じNotion設定（token/pageId）を使う
-// （オーナーの環境変数と、他の人のヘッダー指定を混同しないようにするため）。
-async function syncObsidianIfConfigured(token, pageId) {
-  if (!OBSIDIAN_FILE_PATH || !token || !pageId) return;
-  try {
-    await syncNotionToObsidian({ token, pageId, filePath: OBSIDIAN_FILE_PATH });
-  } catch (err) {
-    console.error('Obsidian同期に失敗しました:', err.message);
-  }
-}
-
 // ---- データベース形式への移行 --------------------------------------------
 // 1回の呼び出しで、まだ移行していない日付を古い方から最大5日ぶんコピーする。
 // フロント側は remaining が 0 になるまで繰り返し呼ぶ（カロリー整えと同じ方式）。
@@ -539,6 +522,7 @@ async function syncObsidianIfConfigured(token, pageId) {
 const MIGRATE_DAYS_PER_CALL = 5;
 
 app.post('/api/migrate-db', async (req, res) => {
+  if (STORAGE_MODE === 'pg') return res.status(400).json({ error: '自前DBでは移行は不要です' });
   try {
     const { token, pageId } = resolveNotionConfig(req);
     if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
@@ -546,7 +530,7 @@ app.post('/api/migrate-db', async (req, res) => {
     let dbId = await resolveDbId(token, pageId);
     if (!dbId) {
       dbId = await notionDb.createDatabase(token, pageId);
-      dbIdCache.set(pageId, { dbId, expiresAt: Date.now() + 5 * 60 * 1000 });
+      rememberDbId(pageId, dbId);
     }
 
     // 従来形式のページ本文から全期間を読む（キャッシュは通さない）
@@ -562,7 +546,7 @@ app.post('/api/migrate-db', async (req, res) => {
     for (const day of batch) {
       migratedRows += await notionDb.migrateDay(token, dbId, day);
     }
-    invalidateHistoryCache(pageId);
+    notionStore(token, pageId).invalidate();
     res.json({
       migratedDays: batch.length,
       migratedRows,
@@ -570,7 +554,7 @@ app.post('/api/migrate-db', async (req, res) => {
       total: legacyDays.filter(hasRecords).length,
     });
   } catch (err) {
-    res.status(500).json({ error: toUserMessage(err) });
+    sendError(res, err);
   }
 });
 
@@ -581,19 +565,15 @@ app.put('/api/entry/meta', async (req, res) => {
     return res.status(400).json({ error: 'blockId, category, payload は必須です' });
   }
   try {
-    const { token, pageId } = resolveNotionConfig(req);
-    if (!token) throw new Error(NOTION_NOT_CONFIGURED);
+    const store = await getStore(req);
     // 運動の内容を書き換えたら消費カロリーも合わなくなるので、推定し直してから保存する
     let burnedKcal = null;
     if (category === 'exercise') burnedKcal = await attachBurnedCalories(req, payload);
-    const dbId = await resolveDbId(token, pageId);
-    if (dbId) await notionDb.dbUpdateMeta(token, blockId, category, payload);
-    else await updateMetaBlock(token, blockId, category, payload);
-    invalidateHistoryCache(pageId);
-    await syncObsidianIfConfigured(token, pageId);
+    await store.updateMeta(blockId, category, payload);
+    await store.sync();
     res.json({ ok: true, burnedKcal });
   } catch (err) {
-    res.status(500).json({ error: `編集に失敗しました: ${toUserMessage(err)}` });
+    sendError(res, err, '編集に失敗しました');
   }
 });
 
@@ -604,54 +584,53 @@ app.put('/api/entry/meal', async (req, res) => {
     return res.status(400).json({ error: 'mealBlockId, items は必須です' });
   }
   try {
-    const { token, pageId } = resolveNotionConfig(req);
-    if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
+    const store = await getStore(req);
     // 品目を書き換えたらカロリーも合わなくなるので、推定し直してから保存する
     const edited = { items };
     const totalKcal = await attachCalories(req, mealType || null, edited);
-    const dbId = await resolveDbId(token, pageId);
-    if (dbId) await notionDb.dbUpdateMealItems(token, mealBlockId, edited.items);
-    else await updateMealItems(token, pageId, mealBlockId, edited.items);
-    invalidateHistoryCache(pageId);
-    await syncObsidianIfConfigured(token, pageId);
+    await store.updateMealItems(mealBlockId, edited.items);
+    await store.sync();
     res.json({ ok: true, totalKcal });
   } catch (err) {
-    res.status(500).json({ error: `編集に失敗しました: ${toUserMessage(err)}` });
+    sendError(res, err, '編集に失敗しました');
   }
 });
 
 // メタ系エントリを削除する
 app.delete('/api/entry/meta/:blockId', async (req, res) => {
   try {
-    const { token, pageId } = resolveNotionConfig(req);
-    if (!token) throw new Error(NOTION_NOT_CONFIGURED);
-    const dbId = await resolveDbId(token, pageId);
-    if (dbId) await notionDb.dbDeleteRow(token, req.params.blockId);
-    else await deleteBlock(token, req.params.blockId);
-    invalidateHistoryCache(pageId);
-    await syncObsidianIfConfigured(token, pageId);
+    const store = await getStore(req);
+    await store.removeMeta(req.params.blockId);
+    await store.sync();
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: `削除に失敗しました: ${toUserMessage(err)}` });
+    sendError(res, err, '削除に失敗しました');
   }
 });
 
 // 食事エントリ(見出し＋品目)を丸ごと削除する
 app.delete('/api/entry/meal/:mealBlockId', async (req, res) => {
   try {
-    const { token, pageId } = resolveNotionConfig(req);
-    if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
-    const dbId = await resolveDbId(token, pageId);
-    if (dbId) await notionDb.dbDeleteRow(token, req.params.mealBlockId);
-    else await deleteMealBlock(token, pageId, req.params.mealBlockId);
-    invalidateHistoryCache(pageId);
-    await syncObsidianIfConfigured(token, pageId);
+    const store = await getStore(req);
+    await store.removeMeal(req.params.mealBlockId);
+    await store.sync();
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: `削除に失敗しました: ${toUserMessage(err)}` });
+    sendError(res, err, '削除に失敗しました');
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`あいぼう手帳 server running: http://localhost:${PORT}`);
+async function start() {
+  if (STORAGE_MODE === 'pg') {
+    // 自前DBのモード: 起動時にスキーマを整え、認証の設定が無ければ注意を出す
+    await db.migrate();
+    if (!authConfigured()) console.warn('[aibou-techo] SUPABASE_JWT_SECRET も SUPABASE_JWKS_URL も無いため、ログインできません');
+  }
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`あいぼう手帳 server running: http://localhost:${PORT} (storage: ${STORAGE_MODE})`);
+  });
+}
+start().catch((err) => {
+  console.error('[aibou-techo] 起動に失敗しました:', err.message);
+  process.exit(1);
 });

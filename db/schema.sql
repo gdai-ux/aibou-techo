@@ -5,11 +5,15 @@
 -- 利用者。認証は外部（Supabase Auth など）に任せ、ここでは同一性と契約だけ持つ
 CREATE TABLE IF NOT EXISTS users (
   id          uuid PRIMARY KEY,
-  email       text UNIQUE NOT NULL,
+  email       text NOT NULL,
   plan        text NOT NULL DEFAULT 'free',   -- 'free' | 'premium'
   created_at  timestamptz NOT NULL DEFAULT now(),
   deleted_at  timestamptz
 );
+-- 同一性は id（認証側が発行）で決める。email は検索用で、一意にはしない
+-- （認証側でアカウントを作り直すと、同じ email に別の id が付くため）
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
+CREATE INDEX IF NOT EXISTS users_email ON users (email);
 
 -- 記録。1行 = 1件（Notionデータベース形式の1行と同じ粒度）。
 -- category ごとの中身は payload(jsonb) に入れる:

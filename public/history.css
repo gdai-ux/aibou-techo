@@ -1,0 +1,1114 @@
+/* 履歴表示（グラフ・日別リスト・編集モーダル）の共通スタイル。
+   index.html（ホーム画面埋め込み）と history.html（単独ページ）の両方から読み込む。
+   :root や body 等の基本トークンは各ページ側で定義済みなのでここには含めない。
+   .chip の基本見た目（フィル色・角丸・押下フィードバック）もここで一元管理し、
+   index.html 側は各グループのグリッド列数だけを定義する。 */
+
+:root {
+  --level-絶好調: #30d158;
+  --level-良い: #a6e22e;
+  --level-普通: #98989f;
+  --level-悪い: #ff9f0a;
+  --level-最悪: #ff453a;
+
+  /* 睡眠時間の段階。今週の運動リングの「単語＝色」の対応にそろえている
+     （NICE=青 / GOOD=水色 / GREAT!!=緑 / EXCELLENT!!=黄色）。
+     index.html / history.html のどちらから読んでも同じ色になるよう、
+     ページ側のトークンに依存せずここで持つ。 */
+  --sleep-more: #98989f;
+  --sleep-nice: #0a84ff;
+  --sleep-good: #64d2ff;
+  --sleep-great: #34c759;
+  --sleep-excellent: #ffd60a;
+}
+
+/* 睡眠時間・体調・毎日の記録を1枚のカードにまとめた時の、区画の仕切り */
+.record-section + .record-section {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+/* --- チップ（選択式ボタン）共通 --- */
+.chip {
+  padding: 11px 4px;
+  text-align: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 11px;
+  background: var(--fill);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 590;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.chip:active { transform: scale(0.96); }
+.chip.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+/* --- 月ナビゲーション --- */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+.month-nav button {
+  border: 1px solid var(--border);
+  background: var(--fill);
+  color: var(--accent);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .1s ease, opacity .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.month-nav button:active { transform: scale(0.92); }
+.month-nav button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.month-nav .month-label {
+  font-size: 15px;
+  font-weight: 700;
+  min-width: 100px;
+  text-align: center;
+  letter-spacing: -0.2px;
+}
+
+.card h2 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0 0 14px;
+  font-weight: 700;
+}
+
+/* --- 睡眠バーグラフ --- */
+.chart-row {
+  display: flex;
+  align-items: center;
+  /* 段階の言葉のぶん横幅を使うので、狭い端末でも棒が潰れないよう間隔を詰める */
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.chart-row:last-child { margin-bottom: 0; }
+.chart-row .date {
+  width: 68px;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-weight: 500;
+  /* 幅を詰めた時に「8/28」と「（金）」で折り返さないようにする */
+  white-space: nowrap;
+}
+.chart-row .bar-track {
+  flex: 1 1 auto;
+  background: var(--fill);
+  border-radius: 7px;
+  height: 16px;
+  overflow: hidden;
+  position: relative;
+}
+.chart-row .bar-fill {
+  height: 100%;
+  border-radius: 7px;
+  /* 色は睡眠時間の段階に応じてJS側から渡す */
+  background: var(--sleep-excellent);
+}
+.chart-row .value {
+  width: 68px;
+  flex: 0 0 auto;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.chart-row .grade {
+  /* 一番長い「EXCELLENT!!」が収まる幅。短い単語でも右端に寄らないよう
+     欄の中央に置く（単語ごとに長さが違うため） */
+  width: 68px;
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: wordBlink 1.6s ease-in-out infinite;
+}
+
+/* --- ポイントの推移（折れ線チャート） ------------------------------------
+   ホーム画面（index.html）とステータス画面（status.html）の両方から使う。
+   指でなぞって（マウスなら乗せて）その日の点数を確認できる、1本の折れ線。
+   1系列だけなので凡例は置かず、カードの見出しがそのまま系列名を兼ねる。 */
+/* 指でなぞる操作なので、iOSの「長押しで文字を選択・拡大鏡（ルーペ）」が
+   出ないようにする（テキスト選択・コールアウトメニューを止める） */
+.score-chart {
+  position: relative;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.score-chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.score-chart-svg .grid-line { stroke: var(--border); stroke-width: 1; }
+.score-chart-svg .axis-label { fill: var(--muted); font-size: 8.5px; }
+.score-chart-svg .score-area { fill: var(--accent); fill-opacity: 0.12; }
+.score-chart-svg .score-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.score-chart-svg .score-dot { stroke: var(--card); stroke-width: 2; }
+.score-chart-svg .score-crosshair { stroke: var(--border-strong); stroke-width: 1; opacity: 0; }
+.score-chart-svg .score-hit { fill: transparent; cursor: pointer; }
+/* 今日はまだ記録が増えるかもしれない「進行中」の値。確定した日々と区別するため、
+   最後の区間は点線にし、点は塗りつぶさず輪っかにして、静かに明滅させる
+   （点滅は睡眠グラフの段階の言葉と同じ animation: wordBlink を使い、
+   アプリ全体で「まだ確定していない・注目してほしい」の意味をそろえている）。 */
+.score-chart-svg .score-line-today { stroke-dasharray: 5 4; }
+.score-chart-svg .score-dot-today,
+.score-chart-svg .today-label { animation: wordBlink 1.6s ease-in-out infinite; }
+.score-chart-svg .today-label { fill: var(--muted); font-size: 8.5px; font-weight: 700; font-style: italic; }
+.score-chart-tip .tip-live { color: var(--muted); font-weight: 700; }
+.score-chart-tip {
+  position: absolute;
+  transform: translate(calc(-50% + var(--tip-shift, 0px)), calc(-100% - 10px));
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .1s ease;
+  z-index: 1;
+}
+.score-chart-tip.show { opacity: 1; }
+.score-chart-tip .tip-date { color: var(--muted); font-size: 11px; }
+.score-chart-tip .tip-score { font-weight: 900; font-variant-numeric: tabular-nums; }
+.score-chart-tip .tip-score small { font-weight: 700; font-size: 10px; opacity: 0.7; }
+.score-chart-tip .tip-word { font-weight: 700; margin-left: 6px; }
+
+/* 段階を表す単語の明滅。今週の運動リングの単語（index.html の .ring-word）と
+   睡眠グラフの言葉で共通に使うので、両方から読み込むこのファイルに置いている。
+   パッと消えると目に痛いので、ゆっくり薄くなるフェードにしている。 */
+@keyframes wordBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-row .grade,
+  .score-chart-svg .score-dot-today,
+  .score-chart-svg .today-label { animation: none; }
+}
+/* 画面が狭い端末では、棒が潰れないように日付・時間・言葉を少しずつ詰める */
+@media (max-width: 360px) {
+  .chart-row { font-size: 12px; }
+  .chart-row .date { width: 62px; }
+  .chart-row .value { width: 60px; }
+  .chart-row .grade { width: 60px; font-size: 9px; }
+}
+
+/* --- 体調ドット --- */
+.level-dots {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.level-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--muted);
+  width: 34px;
+}
+.level-dot .dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* --- 日別リスト --- */
+.day-card {
+  margin-bottom: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  /* カレンダーの日付タップ時のscrollIntoViewが、スティッキーヘッダーの
+     裏に見出しを隠してしまわないよう、ヘッダー高さ分の余白を確保する */
+  scroll-margin-top: calc(env(safe-area-inset-top) + 78px);
+}
+.day-card:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+.day-card:last-child { margin-bottom: 0; }
+.day-card .day-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -0.1px;
+}
+/* その日のトータルスコア（0〜68点）。日付の右に置く。
+   色は点数の段階に合わせてJS側（growth.jsのgohanDayScore）から入れる */
+.day-card .day-title .day-score {
+  margin-left: auto;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: -0.3px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.day-card .day-title .day-score small { font-size: 11px; font-weight: 700; opacity: 0.7; }
+.day-card .day-title .day-score b { font-size: 11px; font-weight: 900; letter-spacing: 0.02em; }
+/* スコアが入ると、編集ボタンはその右に少し離して置く */
+.day-title .day-score + .day-edit-btn { margin-left: 6px; }
+
+/* その日の摂取・消費カロリーと、今日の目安。日付の下の行に控えめに並べる
+   （日付と同じ行に入れると幅が足りず、単位を1つしか付けられなかった） */
+.day-kcal-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: -2px 0 8px;
+}
+.day-kcal {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* 1日の目安カロリー（からだの設定から計算）。摂取・消費と見分けが付くよう
+   少しだけ色を付けている */
+.day-kcal-target {
+  color: var(--accent);
+  opacity: 0.85;
+}
+.day-card .day-title .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.entry-row {
+  font-size: 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.entry-main { flex: 1 1 auto; min-width: 0; line-height: 1.45; }
+/* 運動・メモの本文。1回の入力で何行か書いたものは1件の記録のまま、
+   書いた行のとおりに改行して見せる（1行目はラベルの続きに置く） */
+.entry-text { white-space: pre-line; overflow-wrap: anywhere; }
+/* 記録1件ずつの編集・削除は、ふだんは隠しておく。日付の行の編集ボタンで
+   その日を編集モードにした時だけ出す（記録が読みやすいように） */
+.entry-actions {
+  flex: 0 0 auto;
+  display: none;
+  gap: 2px;
+}
+.day-card.editing .entry-actions { display: flex; }
+/* 日付の行の編集ボタン。押している間はアクセント色にして、
+   いまこの日が編集モードであることが分かるようにする */
+.day-title .day-edit-btn {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+}
+.day-title .day-edit-btn.active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  color: var(--muted);
+  border-radius: 50%;
+  transition: background .15s ease, transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn:hover { background: var(--fill); }
+.icon-btn:active { transform: scale(0.9); }
+/* 記録1行の頭（分類名・時刻・補足）。時刻の大きさはどの記録でもそろえ、
+   色だけで見分ける。就寝・起床のように自分で打ち込んだ時刻は本文と同じ白、
+   記録した時の時刻が自動で入る他の記録は分類名と同じ薄い灰色にする。
+   頭は必ずentryHead()で作る */
+.entry-head { margin-right: 6px; }
+.entry-label,
+.entry-meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.entry-time {
+  color: var(--muted);
+  font-size: 14px;
+}
+.entry-time.typed { color: var(--text); }
+.entry-label + .entry-time { margin-left: 6px; }
+/* 見出し(.day-title)の直後に来る最初の記録だけ、上の境界線を消す。
+   :first-child だと常に .day-title 自体が最初の子になってしまい判定できないため、
+   隣接セレクタで判定する。 */
+.day-title + .entry-row { border-top: none; }
+/* 体調カードは .level-dots が flex なので、幅を指定しないと中央に来ない */
+.empty { width: 100%; color: var(--muted); font-size: 14px; text-align: center; padding: 28px 0; }
+.loading { width: 100%; color: var(--muted); font-size: 14px; text-align: center; padding: 28px 0; }
+
+
+/* 過去の記録にまとめてカロリーを付けるボタン（対象がある時だけ出る） */
+.backfill-btn {
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform .1s ease, background .15s ease;
+}
+.backfill-btn:active { transform: scale(0.99); background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.backfill-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* --- からだの設定（身長・体重など） --- */
+.body-choice {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.body-choice button {
+  flex: 1 1 0;
+  padding: 10px 6px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--fill);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform .1s var(--ease), background .15s ease;
+}
+.body-choice button:active { transform: scale(0.97); }
+.body-choice button.selected {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+/* 数字の入力欄の右に置く単位 */
+.body-unit {
+  flex: 0 0 auto;
+  width: 34px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.body-result {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--fill);
+}
+.body-result-main { font-size: 15px; font-weight: 700; }
+.body-result-main b { color: var(--accent); font-size: 19px; font-weight: 900; }
+.body-result-sub { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* --- キャラクター（ドット絵）の共通の見た目 ---
+   トップ画面・ふりかえり・ステータス画面のどこに出しても同じに見えるよう、
+   輪郭と、レベルの節目で増える飾りはここにまとめている。
+   大きさは置く場所ごとに指定する（.app-icon .gohan-kun など）。 */
+.gohan-kun {
+  transform-origin: 50% 100%;
+  filter:
+    drop-shadow(1px 0 0 var(--sprite-outline))
+    drop-shadow(-1px 0 0 var(--sprite-outline))
+    drop-shadow(0 1px 0 var(--sprite-outline))
+    drop-shadow(0 -1px 0 var(--sprite-outline));
+}
+/* レベルの節目で増える飾り（ほっぺ→梅干し→海苔→金の茶碗） */
+.gohan-deco { display: none; }
+.gohan-stage-1 .gohan-deco-cheeks { display: block; }
+.gohan-stage-2 .gohan-deco-ume { display: block; }
+.gohan-stage-3 .gohan-deco-nori { display: block; }
+.gohan-kun.gohan-stage-4 {
+  filter:
+    drop-shadow(1px 0 0 var(--sprite-outline))
+    drop-shadow(-1px 0 0 var(--sprite-outline))
+    drop-shadow(0 1px 0 var(--sprite-outline))
+    drop-shadow(0 -1px 0 var(--sprite-outline))
+    drop-shadow(0 0 3px rgba(255, 214, 10, 0.85));
+}
+
+/* --- 引っ張って更新（pull-to-refresh）のインジケーター ---
+   リングだけだと今どの状態なのか分かりにくいので、リングと言葉を並べた
+   小さな帯（ピル）にしている。引っ張った距離に応じてリングが円状に満ち、
+   「引っぱって更新」→「離して更新」→「更新中…」→「更新しました」と変わる。
+   置き場所はヘッダーのすぐ下。ヘッダーの高さはキャラクターの大きさなどで
+   変わるので、位置はJS側（pull-refresh.js）で実測して合わせる
+   （下のtopはその前・ヘッダーが無いページのための控えの値）。
+   ヘッダー(z-index:20)に隠れないよう、こちらは上に重ねる。 */
+.pull-refresh-indicator {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 96px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 25;
+  pointer-events: none;
+}
+.pull-refresh-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 9px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--muted);
+  opacity: 0;
+  transform: scale(0.85);
+  will-change: transform, opacity;
+  transition: color .15s ease;
+}
+.pull-refresh-ring {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  transform: rotate(-90deg); /* 12時の位置から満ちていくように */
+  transform-origin: center;
+}
+.pull-refresh-track {
+  fill: none;
+  stroke: var(--fill);
+  stroke-width: 3.5;
+}
+.pull-refresh-progress {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .05s linear, stroke .15s ease;
+}
+/* 離せば更新される状態。言葉とリングをアクセント色にして「いける」と伝える */
+.pull-refresh-indicator.armed .pull-refresh-pill { color: var(--accent); }
+.pull-refresh-indicator.spinning .pull-refresh-ring {
+  animation: pull-refresh-spin 0.85s linear infinite;
+}
+@keyframes pull-refresh-spin {
+  from { transform: rotate(-90deg); }
+  to { transform: rotate(270deg); }
+}
+/* 更新し終わったら、チェックに変えて「更新しました」を少しだけ見せる */
+.pull-refresh-check {
+  flex: 0 0 auto;
+  display: none;
+  width: 20px;
+  height: 20px;
+  color: var(--ok);
+}
+.pull-refresh-indicator.done .pull-refresh-ring { display: none; }
+.pull-refresh-indicator.done .pull-refresh-check { display: block; }
+.pull-refresh-indicator.done .pull-refresh-pill { color: var(--ok); }
+@media (prefers-reduced-motion: reduce) {
+  .pull-refresh-indicator.spinning .pull-refresh-ring { animation: none; }
+}
+
+/* --- 編集モーダル（ボトムシート） --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+  animation: fadeIn .2s ease;
+}
+.modal-overlay.hidden { display: none; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetUp { from { transform: translateY(24px); opacity: .6; } to { transform: translateY(0); opacity: 1; } }
+.modal-panel {
+  background: var(--card);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 20px 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.25);
+  animation: sheetUp .28s cubic-bezier(.32, .72, 0, 1);
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+.modal-panel::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  margin: 6px auto 14px;
+}
+.modal-panel h3 {
+  margin: 0 0 14px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+.modal-panel label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 14px 0 6px;
+  font-weight: 500;
+}
+.modal-panel label:first-of-type { margin-top: 0; }
+.modal-panel input[type="time"],
+.modal-panel input[type="text"],
+.modal-panel textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--text);
+}
+.modal-panel input:focus,
+.modal-panel textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.modal-panel textarea { min-height: 90px; resize: vertical; font-family: inherit; }
+
+/* 自動リサイズする入力欄（トップ画面の内容欄・品目欄、編集シートの品目欄）。
+   1行分の高さから始まり、改行して行が増えるたびにその行数ぶん背が伸びる
+   （高さはhistory.jsのautoGrowTextareaが入れる）。自分でドラッグして
+   高さを変える必要が無くなるので、リサイズのつまみは消している。
+   モーダル内の textarea（min-height: 90px）にも効くよう詳細度を上げてある。 */
+.auto-grow,
+.modal-panel textarea.auto-grow {
+  min-height: 52px;
+  overflow-y: hidden;
+  resize: none;
+  /* 行送りを明示する。既定の line-height: normal はフォント任せで、
+     日本語では文字が行の中で下寄りに置かれるため、最終行が下の枠に
+     近づいて上下の余白が不揃いに見える（iOSで顕著）。1.5にすると
+     余白が各行の上下へ均等に分かれ、1行でも複数行でも上下が対称になる。
+     高さの計算（history.jsのautoGrowTextarea）もこの値を前提にしている。 */
+  line-height: 1.5;
+}
+.modal-panel .field-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.modal-panel .field-row input,
+.modal-panel .field-row .time-select-wrap {
+  flex: 1 1 auto;
+}
+.modal-panel .now-btn {
+  flex: 0 0 auto;
+  width: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--fill);
+  cursor: pointer;
+  color: var(--muted);
+  transition: transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-panel .now-btn:active { transform: scale(0.95); }
+
+/* --- 時刻入力（5分刻みselect） ---
+   iOS Safariのinput[type="time"]はホイールピッカーがstep属性を無視して1分刻みに
+   なってしまうため、「時」「分（5分刻み）」の2つのselect（ネイティブのホイール
+   ピッカーとして表示される）に置き換えている。元のinput自体は値の保持・フォーム送信・
+   既存コードとの互換のために残し、視覚的にのみ隠す（history.jsのenhanceTimeInputAsFiveMinuteSelects参照）。
+   display:noneにすると必須項目の入力チェックがスキップされてしまうため、
+   表示だけを消す手法（visually-hidden）を使う。 */
+/* input[type="time"] { width: 100% } の方がこのクラス単体より詳細度が高く、
+   width指定を上書きされてページ全体の横幅がはみ出す原因になっていたため、
+   ここだけは確実に効くよう!importantを付ける。 */
+.time-input-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+}
+.time-select-wrap {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  font-size: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--fill);
+}
+.time-tap {
+  /* 枠の半分ずつが「時」「分」のタップ領域。押すと画面中央のメニューが開く。
+     ボタン要素なのでブラウザ既定の枠・背景・フォントを打ち消しておく */
+  appearance: none;
+  -webkit-appearance: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: normal;
+  color: inherit;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.time-select-display {
+  /* 実際に見える数字。ボタンの中に置くだけなので、フォントサイズも
+     位置もこちら側で完全に制御できる */
+  width: 100%;
+  color: var(--text);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.time-tap-hour .time-select-display { text-align: right; }
+.time-tap-minute .time-select-display { text-align: left; }
+.time-select-wrap .time-select-colon {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  color: var(--muted);
+}
+.time-tap:active .time-select-display { opacity: .55; }
+.time-tap:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 11px;
+}
+
+/* --- 時刻メニュー（画面中央に出す、標準メニュー風のリスト） ---
+   iOSの標準selectのメニューは開く位置を制御できないため、見た目と操作感を
+   標準メニューに寄せた自前のリストをposition:fixedで画面の中央に出す。 */
+.timemenu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120; /* 編集モーダル（z-index:50）より前に出す */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  /* いきなり現れるとびっくりするので、背景の暗転はゆっくりめに入れる */
+  animation: fadeIn .28s ease;
+}
+.timemenu-overlay.hidden { display: none; }
+/* 閉じる時もすっと消える（JSがclosingを付け、終わってからhiddenにする） */
+.timemenu-overlay.closing { animation: fadeOut .18s ease forwards; }
+.timemenu-overlay.closing .timemenu-panel { animation: timeMenuOut .18s ease forwards; }
+@keyframes fadeOut { to { opacity: 0; } }
+@keyframes timeMenuOut { to { opacity: 0; transform: scale(0.94); } }
+body.timemenu-open { overflow: hidden; }
+.timemenu-panel {
+  width: 240px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--card) 90%, #ffffff 10%);
+  border-radius: 14px;
+  padding: 5px 0;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  /* 小さめの状態から、少し下からふわっと浮かび上がる */
+  animation: timeMenuIn .3s cubic-bezier(.32, .72, 0, 1);
+  transform-origin: 50% 60%;
+}
+@keyframes timeMenuIn {
+  from { opacity: 0; transform: scale(.85) translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.timemenu-item {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 20px;
+  background: none;
+  border: 0;
+  font-family: inherit;
+  font-size: 20px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.timemenu-item:active { background: var(--fill); }
+.timemenu-item + .timemenu-item { border-top: 0.5px solid var(--border); }
+.timemenu-item:focus-visible {
+  outline: none;
+  background: var(--fill);
+}
+.timemenu-check {
+  width: 18px;
+  font-size: 16px;
+  opacity: 0;
+}
+.timemenu-item.selected .timemenu-check { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .timemenu-overlay, .timemenu-panel,
+  .timemenu-overlay.closing, .timemenu-overlay.closing .timemenu-panel { animation: none; }
+}
+
+.chip-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* history.htmlには元々.icon-btn-circleの定義が無いため、Notion設定ボタンを
+   どちらのページでも同じ見た目で表示できるよう、共通CSSに用意しておく
+   （index.html側の同名クラスとは見た目を合わせてあるので重複定義でも問題ない） */
+.icon-btn-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--fill);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  font-size: 16px;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn-circle:active { transform: scale(0.92); }
+/* 設定メニュー（⚙️から開く一覧） */
+.settings-menu { display: flex; flex-direction: column; gap: 8px; }
+.settings-menu-item {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .1s ease;
+}
+.settings-menu-item:active { transform: scale(0.98); }
+.settings-menu-title { font-size: 14.5px; font-weight: 700; }
+/* 右端にON/OFFスイッチを置く設定項目（タップ音など） */
+.settings-switch-item {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: default;
+}
+.settings-switch-item:active { transform: none; }
+.settings-theme-item { cursor: default; }
+.settings-theme-item:active { transform: none; }
+.theme-choice { display: flex; gap: 8px; margin-top: 6px; }
+.tone-choice {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+.tone-choice button {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 9px 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tone-choice button.selected {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.theme-choice button {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1 1 0;
+  padding: 10px 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.theme-choice button.selected {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.settings-menu-desc { font-size: 12px; color: var(--muted); }
+
+/* ホーム画面の表示設定（index.html）。iOSの設定アプリ風のトグルスイッチ */
+.hs-note {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.hs-list { display: flex; flex-direction: column; }
+/* .modal-panel label の既定スタイル（block・muted色）に負けないよう
+   .modal-panel を付けて上書きする */
+.modal-panel .hs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-panel .hs-row:last-child { border-bottom: none; }
+.hs-label { font-size: 14.5px; font-weight: 600; }
+.hs-switch {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 51px;
+  height: 31px;
+}
+.hs-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.hs-knob {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  background: var(--fill);
+  transition: background 0.2s;
+  pointer-events: none;
+}
+.hs-knob::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s var(--ease);
+}
+.hs-switch input:checked + .hs-knob { background: var(--ok); }
+.hs-switch input:checked + .hs-knob::after { transform: translateX(20px); }
+
+/* 設定画面の「ポイントの説明」。ステータス画面（status.html）の .status-row と
+   同じ見せ方（項目名・説明・ポイント数を1行に並べる）を、history.css側でも用意する */
+.point-rules { display: flex; flex-direction: column; }
+.point-rule-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+.point-rule-row:first-child { border-top: none; }
+.point-rule-row .pr-label { flex: 0 0 auto; font-weight: 700; }
+.point-rule-row .pr-detail { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--muted); text-align: right; }
+.point-rule-row .pr-pts { flex: 0 0 auto; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; }
+
+/* キャラクター設定の画面に出す、いまの育成の様子（mascot.js） */
+.mascot-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--fill);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.mascot-status b { font-size: 14.5px; }
+.mascot-status-sub { color: var(--muted); font-size: 12px; }
+
+/* キャラクター選択のグリッド（mascot.js） */
+.mascot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.mascot-cell {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mascot-cell svg { width: 38px; height: 44px; }
+.mascot-cell-name { font-size: 10.5px; color: var(--muted); }
+.mascot-cell-meta { font-size: 9px; color: var(--muted); opacity: 0.85; }
+.mascot-cell.selected .mascot-cell-meta { color: var(--text); opacity: 0.9; }
+.mascot-cell.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.mascot-cell.selected .mascot-cell-name { color: var(--text); font-weight: 700; }
+
+.notion-settings-hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.notion-settings-steps {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0 0 16px;
+  padding-left: 18px;
+}
+.notion-settings-steps a { color: var(--accent); }
+.settings-privacy {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.settings-privacy summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 8px 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.settings-privacy ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+.settings-privacy li { margin-bottom: 6px; }
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.modal-actions button {
+  flex: 1;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: transform .1s ease, opacity .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-actions button:active { transform: scale(0.97); }
+.modal-actions .save-btn {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.modal-actions .cancel-btn {
+  background: var(--fill);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.modal-status {
+  font-size: 13px;
+  margin-top: 10px;
+  min-height: 18px;
+}
+.modal-status.err { color: var(--err); }

@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<script>
+try {
+  if (localStorage.getItem('themeSetting') === 'light') document.documentElement.classList.add('theme-light');
+} catch (e) { /* 既定のブラックのまま */ }
+</script>
+<title>あいぼう手帳 ステータス</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="stylesheet" href="history.css" />
+<script src="notion-client.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --bg-blur: rgba(0, 0, 0, 0.72);
+    --card: #1c1c1e;
+    --fill: rgba(140, 140, 150, 0.32);
+    --text: #f2f2f7;
+    --muted: #98989f;
+    --accent: #0a84ff;
+    --accent-2: #64d2ff;
+    --accent-text: #ffffff;
+    /* 境界線・影・角丸はホーム画面（index.html）と同じ値にそろえている */
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --ok: #34c759;
+    --err: #ff453a;
+    --sprite-outline: rgba(255, 255, 255, 0.32);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 36px -22px rgba(0, 0, 0, 0.9);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --ease: cubic-bezier(.32, .72, 0, 1);
+  }
+  /* ホワイトテーマ（トップ画面の設定 → テーマと連動） */
+  :root.theme-light {
+    --bg: #f2f2f7;
+    --bg-blur: rgba(242, 242, 247, 0.8);
+    --card: #ffffff;
+    --fill: rgba(120, 120, 128, 0.12);
+    --text: #1c1c1e;
+    --muted: #6e6e73;
+    --accent: #007aff;
+    --accent-2: #32ade6;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.16);
+    --err: #ff3b30;
+    --sprite-outline: rgba(40, 40, 44, 0.5);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 18px 36px -22px rgba(0, 0, 0, 0.25);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body {
+    margin: 0 auto;
+    max-width: 480px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 0 16px calc(60px + env(safe-area-inset-bottom));
+    overscroll-behavior-y: contain;
+  }
+  @media (min-width: 640px) { body { max-width: 600px; } }
+  @media (min-width: 900px) { body { max-width: 760px; } }
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    margin: 0;
+  }
+  .page-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 -16px 16px;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
+    background: var(--bg-blur);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+  .back-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 8px 13px;
+    border-radius: 20px;
+    background: var(--fill);
+    border: 1px solid var(--border);
+    transition: transform .1s var(--ease), background .15s ease;
+  }
+  .back-link:active { transform: scale(0.95); background: var(--border-strong); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 18px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow), var(--edge);
+  }
+  .card h2 {
+    margin: 0 0 14px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  /* --- いちばん上の「相棒カード」 --- */
+  .status-hero { text-align: center; padding-top: 22px; }
+  .status-avatar {
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 10px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .status-avatar .gohan-kun { width: 96px; height: 96px; }
+  .status-name { font-size: 22px; font-weight: 900; letter-spacing: -0.3px; }
+  .status-level {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 900;
+  }
+  .status-bio { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  /* 次のレベルまでの進み具合 */
+  .status-bar {
+    margin-top: 16px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--fill);
+    overflow: hidden;
+  }
+  .status-bar > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width .6s var(--ease);
+  }
+  .status-bar-label { margin-top: 8px; font-size: 13px; color: var(--muted); }
+
+  /* --- 数字を並べるタイル --- */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .stat-tile {
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--fill);
+    text-align: center;
+  }
+  .stat-tile b { display: block; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+  /* 直下のspan（＝ラベル）だけを行にする。数字の中の単位spanは同じ行に置く */
+  .stat-tile > span { display: block; margin-top: 3px; font-size: 12px; color: var(--muted); }
+  .stat-tile b span { font-size: 12px; font-weight: 700; color: var(--muted); }
+
+  /* --- 行の並び（性格・ポイント内訳・飾り） --- */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .status-row:first-child { border-top: none; }
+  .status-row .rl { flex: 0 0 auto; font-weight: 700; }
+  .status-row .rd { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--muted); text-align: right; }
+  .status-row .rp { flex: 0 0 auto; font-weight: 900; font-variant-numeric: tabular-nums; }
+  /* もらえた項目は色を付けて、まだの項目は控えめにする */
+  .status-row.got .rp { color: var(--ok); }
+  .status-row.miss .rp { color: var(--muted); opacity: 0.6; }
+  .status-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-strong);
+    font-weight: 900;
+  }
+  .status-total .tp { font-size: 20px; color: var(--accent); }
+
+  /* 飾りの解放状況 */
+  .deco-row .rl { display: flex; align-items: center; gap: 8px; }
+  .deco-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--fill);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 900;
+  }
+  .deco-row.open .deco-mark { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+  .deco-row.locked { opacity: 0.55; }
+
+  .status-link-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 11px;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    cursor: pointer;
+    transition: transform .1s var(--ease), background .15s ease;
+  }
+  .status-link-btn:active { transform: scale(0.98); background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  .status-note { margin: 10px 0 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .loading { color: var(--muted); font-size: 14px; text-align: center; padding: 24px 0; }
+  .err { color: var(--err); font-size: 14px; text-align: center; padding: 24px 0; }
+</style>
+</head>
+<body>
+  <div class="page-header">
+    <h1><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-7"></path><path d="M22 20H2"></path></svg>ステータス</h1>
+    <a href="index.html" class="back-link">‹ 記録に戻る</a>
+  </div>
+
+  <!-- 相棒の今の姿・名前・レベル・次のレベルまで -->
+  <div class="card status-hero">
+    <div class="status-avatar"><svg class="gohan-kun" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"></svg></div>
+    <div class="status-name" id="statusName">ごはんくん</div>
+    <div><span class="status-level" id="statusLevel">Lv.—</span></div>
+    <div class="status-bio" id="statusBio"></div>
+    <div class="status-bar"><span id="statusBarFill"></span></div>
+    <div class="status-bar-label" id="statusBarLabel">読み込み中…</div>
+  </div>
+
+  <div class="card">
+    <h2>相棒の性格</h2>
+    <div id="statusProfile"></div>
+    <button type="button" class="status-link-btn" id="openMascotBtn">相棒を変える・名前を付ける</button>
+    <p class="status-note">難易度は経験値の倍率です。きびしい相棒ほど鍛え方がうまく、同じ記録でもレベルが上がりやすくなります。口調は「今日の活動」のコメントの言葉づかいの既定値になります（⚙️ → キャラクター設定で変えられます）。</p>
+  </div>
+
+  <div class="card">
+    <h2>今日もらったポイント</h2>
+    <div id="statusToday"><div class="loading">読み込み中…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>ポイントの推移（直近14日）</h2>
+    <div id="statusScoreChart" class="score-chart"><div class="loading">読み込み中…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>これまでの積み上げ</h2>
+    <div class="stat-grid" id="statusStats"></div>
+    <p class="status-note" id="statusStatsNote"></p>
+  </div>
+
+  <div class="card">
+    <h2>姿の変化</h2>
+    <div id="statusDeco"></div>
+  </div>
+
+  <div class="card">
+    <h2>ポイントの決まり</h2>
+    <div id="statusRules"></div>
+    <p class="status-note">ポイントはどこにも保存せず、<b>直近1年の記録から毎回計算し直します</b>。だから端末が変わっても同じレベルになりますが、記録が途切れると1年の窓から古い実績が抜けて下がることもあります。</p>
+  </div>
+
+  <script src="mascot.js"></script>
+  <script src="growth.js"></script>
+  <script src="scoreChart.js"></script>
+  <script src="status.js"></script>
+  <script src="pull-refresh.js"></script>
+</body>
+</html>

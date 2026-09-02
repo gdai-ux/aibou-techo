@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>あいぼう手帳 ― 話すだけで記録が残り、相棒が育つ健康記録</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<meta name="theme-color" content="#000000" />
+<meta name="description" content="話すだけで記録が残り、相棒が育つ健康記録アプリ。運動・食事・睡眠・体調を、スマホからかんたんに記録できます。" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --bg-blur: rgba(0, 0, 0, 0.72);
+    --card: #1c1c1e;
+    --card-2: #242426;
+    --fill: rgba(140, 140, 150, 0.32);
+    --text: #f2f2f7;
+    --muted: #98989f;
+    --accent: #0a84ff;
+    --accent-2: #64d2ff;
+    --accent-text: #ffffff;
+    --border: rgba(120, 120, 128, 0.7);
+    --ok: #34c759;
+    --shadow: 0 1px 1px rgba(0, 0, 0, 0.3), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body {
+    margin: 0 auto;
+    max-width: 480px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 0 16px calc(48px + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 640px) { body { max-width: 600px; } }
+  @media (min-width: 900px) { body { max-width: 760px; } }
+
+  .page-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 -16px 0;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
+    background: var(--bg-blur);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+  .header-title { display: flex; align-items: center; gap: 10px; }
+  .app-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    font-size: 19px;
+    border-radius: 8px;
+    background: var(--fill);
+  }
+  .header-title h1 { font-size: 17px; font-weight: 700; margin: 0; }
+  .app-link { color: var(--muted); font-size: 14px; text-decoration: none; }
+
+  .hero {
+    text-align: center;
+    padding: 36px 4px 8px;
+  }
+  .hero .app-icon-lg {
+    width: 84px;
+    height: 84px;
+    margin: 0 auto 18px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    background: linear-gradient(135deg, #2c2c2e, #000000);
+    box-shadow: var(--shadow);
+  }
+  .hero h2 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    margin: 0 0 10px;
+    line-height: 1.4;
+  }
+  .hero p {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin: 0 auto;
+    max-width: 34em;
+  }
+
+  .cta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 24px 0 4px;
+  }
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); color: var(--accent-text); }
+  .btn-secondary { background: var(--fill); color: var(--text); }
+  .btn-sub { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
+
+  .section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    font-weight: 700;
+    margin: 32px 4px 12px;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .feature-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px 14px;
+    box-shadow: var(--shadow);
+  }
+  .feature-card .emoji { font-size: 24px; display: block; margin-bottom: 8px; }
+  .feature-card h3 { font-size: 14px; font-weight: 700; margin: 0 0 4px; }
+  .feature-card p { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+  .list-card {
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .list-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(120, 120, 128, 0.24);
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-row .emoji { font-size: 18px; line-height: 1.4; }
+  .list-row .body h4 { font-size: 14px; font-weight: 700; margin: 0 0 2px; }
+  .list-row .body p { font-size: 12.5px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+  .steps-card {
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 4px 0;
+  }
+  .steps-group { padding: 14px 16px; }
+  .steps-group + .steps-group { border-top: 1px solid rgba(120, 120, 128, 0.24); }
+  .steps-group h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  .steps-group ol {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .steps-group ol code {
+    background: var(--fill);
+    color: var(--text);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+
+  .install-note {
+    display: none;
+    margin: 10px 4px 0;
+    font-size: 12.5px;
+    color: var(--ok);
+  }
+  .install-note.show { display: block; }
+
+  footer {
+    margin-top: 36px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 11.5px;
+    line-height: 1.8;
+  }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="page-header">
+    <div class="header-title">
+      <span class="app-icon">🍚</span>
+      <h1>あいぼう手帳</h1>
+    </div>
+    <a href="index.html" class="app-link">アプリを開く →</a>
+  </div>
+
+  <div class="hero">
+    <div class="app-icon-lg">🍚</div>
+    <h2>運動・食事・睡眠・体調を、<br>かんたん記録。</h2>
+    <p>スマホでタップするだけの入力で、毎日の記録が<br class="br-mobile">Obsidian と Notion に自動でたまっていきます。</p>
+  </div>
+
+  <div class="cta-row">
+    <a href="index.html" class="btn btn-primary" id="openAppBtn">
+      <span>📝</span><span>アプリを開く（無料）</span>
+    </a>
+    <button type="button" class="btn btn-secondary" id="installBtn">
+      <span>📲</span><span>ホーム画面に追加する</span>
+    </button>
+    <p class="btn-sub">アプリストア不要。ブラウザからそのまま使えます</p>
+    <p class="install-note" id="installNote">✅ ホーム画面に追加しました。アイコンから起動できます</p>
+  </div>
+
+  <div class="section-title">できること</div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <span class="emoji">🏃</span>
+      <h3>運動記録</h3>
+      <p>種目・時間をサクッと入力。週間の運動リングで振り返り。</p>
+    </div>
+    <div class="feature-card">
+      <span class="emoji">🍚</span>
+      <h3>食事記録</h3>
+      <p>朝・昼・夜・間食を項目ごとに追記。同じ日は自動でまとまる。</p>
+    </div>
+    <div class="feature-card">
+      <span class="emoji">😴</span>
+      <h3>睡眠記録</h3>
+      <p>就寝・起床時刻を5分刻みでサッと選択。</p>
+    </div>
+    <div class="feature-card">
+      <span class="emoji">🩺</span>
+      <h3>体調記録</h3>
+      <p>調子やメモを記録。前日のふりかえりコメントも表示。</p>
+    </div>
+  </div>
+
+  <div class="section-title">特長</div>
+  <div class="list-card">
+    <div class="list-row">
+      <span class="emoji">🎙️</span>
+      <div class="body">
+        <h4>音声入力に対応</h4>
+        <p>話すだけで内容を解析し、フォームに自動で反映します。</p>
+      </div>
+    </div>
+    <div class="list-row">
+      <span class="emoji">🔄</span>
+      <div class="body">
+        <h4>Notion にリアルタイム反映</h4>
+        <p>外出先でもすぐにNotionページへ追記されます。</p>
+      </div>
+    </div>
+    <div class="list-row">
+      <span class="emoji">🗂️</span>
+      <div class="body">
+        <h4>Obsidian にも自動追記</h4>
+        <p>自宅PC起動時にNotionとの差分を自動で追いつかせます。</p>
+      </div>
+    </div>
+    <div class="list-row">
+      <span class="emoji">📊</span>
+      <div class="body">
+        <h4>履歴・グラフ表示</h4>
+        <p>これまでの記録を一覧やカレンダーで振り返れます。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">アプリの追加方法</div>
+  <div class="steps-card">
+    <div class="steps-group">
+      <h4>📱 iPhone（Safari）</h4>
+      <ol>
+        <li><code>index.html</code> をSafariで開く</li>
+        <li>下部の共有ボタン <code>⬆️</code> をタップ</li>
+        <li>「ホーム画面に追加」を選ぶ</li>
+      </ol>
+    </div>
+    <div class="steps-group">
+      <h4>🤖 Android（Chrome）</h4>
+      <ol>
+        <li>上の「ホーム画面に追加する」ボタンをタップ</li>
+        <li>表示された確認ダイアログで「インストール」を選ぶ</li>
+      </ol>
+    </div>
+    <div class="steps-group">
+      <h4>💻 PC（Chrome / Edge）</h4>
+      <ol>
+        <li>アドレスバー右側のインストールアイコンをクリック</li>
+        <li>「インストール」を選ぶとデスクトップアプリのように使えます</li>
+      </ol>
+    </div>
+  </div>
+
+  <footer>
+    あいぼう手帳は、話すだけで記録が残り、相棒が育つ健康記録アプリです。<br>
+    データは Notion / Obsidian に保存され、外部には共有されません。
+  </footer>
+
+  <script>
+    let deferredPrompt = null;
+    const installBtn = document.getElementById('installBtn');
+    const installNote = document.getElementById('installNote');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        if (outcome === 'accepted') {
+          installNote.classList.add('show');
+        }
+        return;
+      }
+      // beforeinstallprompt が発火しない環境（iOS Safari など）は手順までスクロール
+      document.querySelector('.steps-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    window.addEventListener('appinstalled', () => {
+      installNote.classList.add('show');
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

@@ -169,8 +169,6 @@
     transform: scale(0.92);
     background: var(--border-strong);
   }
-  /* ステータスボタンは、記号ではなく相棒そのものの姿にする（今の着せ替えが映る） */
-  .status-icon-btn .gohan-kun { width: 22px; height: 22px; }
   /* 設定ボタンは共通コード（history.js）が後から差し込むため先に置かれるが、
      ホーム画面ではステータスボタンを左、設定を右に出したいのでCSSで順序だけ入れ替える
      （.header-actionsの直下の子はこのラップ側なので、orderはこちらに付ける） */

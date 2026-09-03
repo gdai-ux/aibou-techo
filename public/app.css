@@ -1391,7 +1391,9 @@
     .ring-rain .rd { animation: none; opacity: 0.8; }
   }
 
-  /* 段階の言葉はこのカードの主役なので、下の「週5日を目標」より大きく出す */
+  /* このカードの主役の言葉。ゲージ・炎・曜日ドットは「週にどれだけ動けたか」を
+     表すが、この言葉だけは「今日の成果」を表すので、色は別の変数(--word-color)で
+     渡す（今日まだ動いていなければ、週の段階に関わらずLET'S MOVEの色になる） */
   .ring-word {
     font-size: 20px;
     font-weight: 800;
@@ -1399,12 +1401,11 @@
     line-height: 1.15;
     margin-bottom: 4px;
     white-space: nowrap;
-    color: var(--ring-color, var(--ok));
+    color: var(--word-color, var(--ring-color, var(--ok)));
     transition: color .35s ease;
   }
-  /* ゲージ・炎・段階の言葉・ねぎらいの一言は「今週どれだけ動けたか」を
-     表す一組なので、同じ拍でまとめて明滅させる。どれも同じ長さで、
-     ページを開いた時に一緒に始まるので拍がずれない。
+  /* ゲージ・炎・段階の言葉・ねぎらいの一言は同じ拍でまとめて明滅させる。
+     どれも同じ長さで、ページを開いた時に一緒に始まるので拍がずれない。
      明滅（wordBlink）は睡眠グラフの言葉と共通なので history.css に置いている */
   .ring-progress,
   .ring-flame-box,

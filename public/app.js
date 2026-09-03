@@ -278,8 +278,7 @@ async function loadExerciseRing() {
     ring.style.strokeDashoffset = `${circumference * (1 - progress)}`;
 
     const stage = ringStage(doneCount);
-    document.getElementById('exerciseRingWord').textContent = stage.word;
-    // リング・炎・言葉・曜日ドットが同じ色になるよう、カードにまとめて渡す
+    // リング・炎・曜日ドットは「週にどれだけ動けたか」を表すので、その色のまま
     const card = document.querySelector('.exercise-ring-card');
     card.style.setProperty('--ring-color', stage.color);
     card.style.setProperty('--flame-scale', flameScale(doneCount, EXERCISE_WEEKLY_TARGET, DAYS_IN_WEEK).toFixed(3));
@@ -290,6 +289,14 @@ async function loadExerciseRing() {
     const doneToday = exerciseDates.has(todayStr);
     // 今日まだ運動していない日は、リングの中の炎を消して雨を降らせる
     card.classList.toggle('ring-no-fire', !doneToday);
+
+    // 中の言葉だけは「今日の成果」を表す。週の段階が進んでいても、今日まだ
+    // 運動していなければ気の早い称賛にならないよう、まだ動いていない時の
+    // 言葉（LET'S MOVE）に留める。今日動けていれば、週の段階の言葉を見せる
+    const wordStage = doneToday ? stage : RING_STAGES[0];
+    document.getElementById('exerciseRingWord').textContent = wordStage.word;
+    card.style.setProperty('--word-color', wordStage.color);
+
     const main = document.getElementById('exerciseRingMain');
     main.textContent = doneToday ? todayDoneMessage(doneCount, todayStr) : `週${EXERCISE_WEEKLY_TARGET}日を目標`;
     main.classList.toggle('celebrate', doneToday);

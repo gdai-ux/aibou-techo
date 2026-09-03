@@ -1040,6 +1040,27 @@ segItems.forEach(t => t.addEventListener('click', () => setCategory(t.dataset.ca
 positionSegThumb(document.querySelector('.seg-item.active'));
 window.addEventListener('resize', () => positionSegThumb(document.querySelector('.seg-item.active')));
 
+// カテゴリのカードが左右にスワイプできることを、説明文なしで最初の数回だけ
+// 体で覚えてもらう（タップやスワイプで一度操作したら、以後は出さない）
+(function showSwipeHintOnce() {
+  const KEY = 'swipeHintShown';
+  let shown = 0;
+  try { shown = Number(localStorage.getItem(KEY) || 0); } catch (e) { /* プライベートモード等 */ }
+  if (shown >= 2) return;
+  const panel = document.querySelector('.input-panel');
+  if (!panel) return;
+  const stop = () => {
+    try { localStorage.setItem(KEY, String(shown + 2)); } catch (e) { /* 保存できなくても演出以外に影響なし */ }
+  };
+  panel.addEventListener('touchstart', stop, { once: true, passive: true });
+  segItems.forEach((t) => t.addEventListener('click', stop, { once: true }));
+  setTimeout(() => {
+    panel.classList.add('swipe-hint');
+    panel.addEventListener('animationend', () => panel.classList.remove('swipe-hint'), { once: true });
+    try { localStorage.setItem(KEY, String(shown + 1)); } catch (e) { /* 保存できなくても演出以外に影響なし */ }
+  }, 700);
+})();
+
 // --- 左右スワイプでのカテゴリ切り替え・月送り ---
 //
 // カテゴリの切り替えはタブ自体と入力フォームのカードの上でだけ受け付ける

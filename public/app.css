@@ -224,12 +224,25 @@
   .calendar-card.from-next .calendar-grid { animation: formFromNext .26s var(--ease); }
   .calendar-card.from-prev .calendar-header,
   .calendar-card.from-prev .calendar-grid { animation: formFromPrev .26s var(--ease); }
+
+  /* このカードが左右にスワイプできることを、説明文なしで一度だけ体で覚えてもらう。
+     初回だけ軽く左右に揺れて「押せる」ではなく「払える」ことを示す */
+  @keyframes swipeHint {
+    0%, 100% { transform: translateX(0); }
+    22% { transform: translateX(-16px); }
+    46% { transform: translateX(8px); }
+    68% { transform: translateX(-4px); }
+    86% { transform: translateX(2px); }
+  }
+  .input-panel.swipe-hint { animation: swipeHint 1s cubic-bezier(.32, .72, 0, 1); }
+
   @media (prefers-reduced-motion: reduce) {
     .form.from-next, .form.from-prev,
     .calendar-card.from-next .calendar-header,
     .calendar-card.from-next .calendar-grid,
     .calendar-card.from-prev .calendar-header,
-    .calendar-card.from-prev .calendar-grid { animation: none; }
+    .calendar-card.from-prev .calendar-grid,
+    .input-panel.swipe-hint { animation: none; }
   }
 
   .card {

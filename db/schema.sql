@@ -57,3 +57,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   current_period_end      timestamptz,
   updated_at              timestamptz NOT NULL DEFAULT now()
 );
+
+-- 端末をまたいだ小さな設定（選んだキャラクターなど）。ログインしている利用者に
+-- 紐づくので、PCでもスマホでも同じ内容になる
+ALTER TABLE users ADD COLUMN IF NOT EXISTS settings jsonb NOT NULL DEFAULT '{}'::jsonb;

@@ -276,6 +276,35 @@ function mascotSaveSettings(settings) {
   try { localStorage.setItem(MASCOT_STORAGE_KEY, JSON.stringify(settings)); } catch (e) { /* 保存できなくても表示は変わる */ }
 }
 
+// 選んだキャラクターをサーバーにも保存し、他の端末でも同じキャラで開けるようにする。
+// 送れなくても、この端末の表示はlocalStorageの値で成立する
+async function mascotPushToServer(settings) {
+  try {
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(typeof notionHeaders === 'function' ? notionHeaders() : {}) },
+      body: JSON.stringify({ mascot: settings }),
+    });
+  } catch (e) { /* オフライン等。次に保存できた時に上書きされる */ }
+}
+
+// 起動時に、サーバー側の設定と端末の設定を照らし合わせる。サーバーの方が
+// 新しければ（別の端末で選び直していたら）、この端末の表示も合わせ直す
+async function mascotSyncFromServer() {
+  try {
+    const resp = await fetch('/api/settings', { headers: typeof notionHeaders === 'function' ? notionHeaders() : {} });
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (!data || !data.mascot || !data.mascot.char) return;
+    const current = mascotLoadSettings();
+    if (data.mascot.char === current.char && (data.mascot.name || '') === current.name) return;
+    mascotSaveSettings({ char: data.mascot.char, name: data.mascot.name || '' });
+    mascotRenderAll();
+    if (window.syncGohanLevelSeen) syncGohanLevelSeen();
+    if (window.regenerateDailyReview) regenerateDailyReview();
+  } catch (e) { /* オフライン等。端末に保存済みのキャラで表示を続ける */ }
+}
+
 function mascotCurrentChar() {
   const s = mascotLoadSettings();
   return MASCOT_CHARS.find((c) => c.id === s.char) || MASCOT_CHARS[0];
@@ -356,10 +385,12 @@ function buildMascotModal() {
   document.getElementById('mascotCancel').addEventListener('click', () => overlay.classList.add('hidden'));
   document.getElementById('mascotSave').addEventListener('click', () => {
     const picked = overlay.querySelector('.mascot-cell.selected');
-    mascotSaveSettings({
+    const settings = {
       char: picked ? picked.dataset.char : 'gohan',
       name: document.getElementById('mascotNameInput').value.trim(),
-    });
+    };
+    mascotSaveSettings(settings);
+    mascotPushToServer(settings);
     overlay.classList.add('hidden');
     mascotRenderAll();
     // キャラの難易度でレベルの見え方が変わるため、偽のレベルアップ演出が
@@ -423,5 +454,9 @@ window.mascotName = mascotName;
 window.mascotProfile = mascotProfile;
 window.MASCOT_DIFFICULTY = MASCOT_DIFFICULTY;
 
-// 読み込み時に、保存されているキャラクターで描き替えておく
-document.addEventListener('DOMContentLoaded', mascotRenderAll);
+// 読み込み時に、保存されているキャラクターで描き替えておく（まずは端末の値で
+// 即座に表示し、サーバー側の設定が違えば追って合わせ直す）
+document.addEventListener('DOMContentLoaded', () => {
+  mascotRenderAll();
+  mascotSyncFromServer();
+});

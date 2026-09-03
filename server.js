@@ -232,6 +232,25 @@ app.get('/api/status', async (req, res) => {
   });
 });
 
+// 端末をまたいだ小さな設定（選んだキャラクターなど）。pgモードはログイン利用者に、
+// notionモードは連携ページに保存するので、どの端末で開いても同じ内容になる。
+// 未ログイン・未設定なら空オブジェクトを返す（表示は端末側の既定値のまま続ける）
+app.get('/api/settings', async (req, res) => {
+  try {
+    res.json(await (await getStore(req)).getSettings());
+  } catch (err) {
+    res.json({});
+  }
+});
+
+app.post('/api/settings', async (req, res) => {
+  try {
+    res.json(await (await getStore(req)).saveSettings(req.body || {}));
+  } catch (err) {
+    sendError(res, err, '設定の保存に失敗しました');
+  }
+});
+
 // 天気（地域ごとに15分キャッシュ、Open-Meteoは無料だが叩きすぎないように）。
 // 地域は?location=で指定できる（未指定なら大阪）。利用者ごとに異なる地域を
 // 見るため、キャッシュは地域名をキーにしたMapで持つ。

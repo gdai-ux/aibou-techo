@@ -1270,7 +1270,16 @@ function updateQueueNotice() {
   if (!el) return;
   const n = loadEntryQueue().length;
   el.hidden = n === 0;
-  if (n > 0) el.textContent = `未送信の記録が${n}件あります。接続が戻り次第、自動で記録します。`;
+  if (n > 0) {
+    el.innerHTML =
+      `<span class="queue-notice-text">未送信の記録が${n}件あります。接続が戻り次第、自動で記録します。</span>` +
+      `<button type="button" class="queue-notice-retry" id="queueRetryBtn">今すぐ送信</button>`;
+    document.getElementById('queueRetryBtn').addEventListener('click', (e) => {
+      e.target.disabled = true;
+      e.target.textContent = '送信中…';
+      flushEntryQueue();
+    });
+  }
 }
 function queueEntry(category, payload) {
   const queue = loadEntryQueue();
@@ -1327,11 +1336,18 @@ async function flushEntryQueue() {
     loadGohanGrowth();
   }
 }
-// 開いた時・回線が戻った時・その後は1分おきに再送を試みる
+// 開いた時・回線が戻った時・アプリに戻ってきた時・その後は15秒おきに再送を試みる。
+// 「online」イベントはスマホ回線では当てにならず（弱電波→復活を検知できないことが
+// 多い）、これだけに頼ると通知が実際より長く出続けて「固まっている」ように見える。
+// アプリへの復帰（タブ切り替え・他アプリから戻る）は確実に検知できるので、
+// そのたびにも試すことで、体感の待ち時間を大きく減らす。
+// 未送信が無い間は毎回すぐ抜けるだけ（通信は発生しない）ので、頻度を上げても軽い。
 updateQueueNotice();
 flushEntryQueue();
 window.addEventListener('online', flushEntryQueue);
-setInterval(flushEntryQueue, 60 * 1000);
+window.addEventListener('focus', flushEntryQueue);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) flushEntryQueue(); });
+setInterval(flushEntryQueue, 15 * 1000);
 
 // 記録成功・キュー保存の後に入力欄を空にする（共通処理）
 function clearFormAfterRecord(form) {

@@ -433,6 +433,10 @@
   /* 記録完了メッセージはカード最上部（各フォームの1つ目のラベルの上あたり）に
      オーバーレイ表示する。空の時は高さ0まで畳んで、ボタン下の余白を残さない。 */
   .queue-notice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     margin-bottom: 12px;
     padding: 10px 14px;
     border-radius: 12px;
@@ -442,6 +446,22 @@
     background: color-mix(in srgb, var(--warn) 10%, transparent);
     border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
   }
+  .queue-notice-text { flex: 1 1 auto; }
+  .queue-notice-retry {
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+    cursor: pointer;
+    transition: transform .1s var(--ease), opacity .15s ease;
+  }
+  .queue-notice-retry:active { transform: scale(0.95); }
+  .queue-notice-retry:disabled { opacity: 0.5; cursor: default; }
   #status {
     text-align: center;
     font-size: 14px;

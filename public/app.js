@@ -659,10 +659,10 @@ function applyGohanVisualState() {
   }
   const walker = document.querySelector('.app-icon');
   if (walker) walker.classList.toggle('gohan-sleepy', gohanState.sleepy);
-  // 頭上のバッジに「名前 Lv.○」を出す（名前は着せ替え設定に従う）
+  // 頭上のバッジに「名前 Lv.○・帯の色」を出す（名前は着せ替え設定に従う）
   const badge = document.getElementById('gohanLv');
   if (badge) {
-    badge.textContent = `${window.mascotName ? mascotName() : 'ごはんくん'} Lv.${level}`;
+    badge.textContent = `${window.mascotName ? mascotName() : 'ごはんくん'} Lv.${level}・${belt.name}`;
     badge.hidden = false;
   }
 }

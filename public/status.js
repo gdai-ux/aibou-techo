@@ -31,8 +31,9 @@ function streakDays(recorded, today) {
 }
 
 function renderHero(state) {
+  const belt = gohanBelt(state.level);
   document.getElementById('statusName').textContent = window.mascotName ? mascotName() : 'ごはんくん';
-  document.getElementById('statusLevel').textContent = `Lv.${state.level}`;
+  document.getElementById('statusLevel').textContent = `Lv.${state.level}・${belt.name}`;
   const profile = window.mascotProfile ? mascotProfile() : { bio: '' };
   document.getElementById('statusBio').textContent = profile.bio || '';
 
@@ -43,7 +44,6 @@ function renderHero(state) {
     for (let i = 1; i <= 4; i++) k.classList.toggle(`gohan-stage-${i}`, i <= stage);
   });
   // ヘッダーの帯（進化の色）も、姿の変化と同じ節目で切り替える
-  const belt = gohanBelt(state.level);
   const header = document.querySelector('.page-header');
   if (header) {
     header.style.setProperty('--belt-color', belt.color);

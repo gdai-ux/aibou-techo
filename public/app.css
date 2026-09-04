@@ -120,10 +120,13 @@
     align-items: center;
     margin: 0 -16px 14px;
     padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
-    background: var(--bg-blur);
+    /* キャラクターの進化（帯の色）が分かったら、この帯色をヘッダーに薄く重ねる。
+       分かるまで（--belt-colorが未設定の間）は今まで通りの見た目のまま */
+    background: color-mix(in srgb, var(--belt-color, transparent) 28%, var(--bg-blur));
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid transparent;
+    border-bottom: 1px solid var(--belt-trim, transparent);
+    transition: background .5s ease, border-color .5s ease;
   }
   .header-title {
     display: flex;

@@ -42,6 +42,13 @@ function renderHero(state) {
   document.querySelectorAll('.status-avatar .gohan-kun').forEach((k) => {
     for (let i = 1; i <= 4; i++) k.classList.toggle(`gohan-stage-${i}`, i <= stage);
   });
+  // ヘッダーの帯（進化の色）も、姿の変化と同じ節目で切り替える
+  const belt = gohanBelt(state.level);
+  const header = document.querySelector('.page-header');
+  if (header) {
+    header.style.setProperty('--belt-color', belt.color);
+    header.style.setProperty('--belt-trim', belt.trim || belt.color);
+  }
 
   // いまのレベルの入り口から次のレベルまでの、どのあたりにいるか
   const start = state.level > 1 ? gohanNextAt(state.level - 1) : 0;

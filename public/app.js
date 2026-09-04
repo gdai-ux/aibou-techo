@@ -650,6 +650,13 @@ function applyGohanVisualState() {
   document.querySelectorAll('.gohan-kun').forEach((k) => {
     for (let i = 1; i <= 4; i++) k.classList.toggle(`gohan-stage-${i}`, i <= stage);
   });
+  // ヘッダーの帯（進化の色）も、姿の変化と同じ節目で切り替える
+  const belt = gohanBelt(level);
+  const header = document.querySelector('.page-header');
+  if (header) {
+    header.style.setProperty('--belt-color', belt.color);
+    header.style.setProperty('--belt-trim', belt.trim || belt.color);
+  }
   const walker = document.querySelector('.app-icon');
   if (walker) walker.classList.toggle('gohan-sleepy', gohanState.sleepy);
   // 頭上のバッジに「名前 Lv.○」を出す（名前は着せ替え設定に従う）

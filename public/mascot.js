@@ -386,7 +386,7 @@ function mascotSvg(char) {
 // 選択中のものに描き替える
 function mascotRenderAll() {
   const char = mascotCurrentChar();
-  document.querySelectorAll('.app-icon .gohan-kun, .review-avatar .gohan-kun, .status-avatar .gohan-kun').forEach((el) => {
+  document.querySelectorAll('.app-icon .gohan-kun, .review-avatar .gohan-kun, .status-avatar .gohan-kun, .chat-intro-avatar .gohan-kun').forEach((el) => {
     el.outerHTML = mascotSvg(char);
   });
   // レベルの飾り・眠そう状態などを付け直す（index.html側で定義される）

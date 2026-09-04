@@ -18,6 +18,7 @@ delete process.env.NOTION_TOKEN;
 delete process.env.NOTION_PAGE_ID;
 process.env.PORT = '4890';
 process.env.AI_FREE_REVIEW_LIMIT = '2'; // ふりかえりは週2回まで（テストを短くするため）
+process.env.AI_FREE_CHAT_LIMIT = '2'; // チャットも週2回まで（テストを短くするため）
 
 const { signTestToken } = require(path.join(__dirname, '..', 'lib', 'auth'));
 const { todayInfo } = require(path.join(__dirname, '..', 'lib', 'format'));
@@ -148,6 +149,30 @@ async function api(method, p, { token, body } = {}) {
   r = await api('POST', '/api/transcribe');
   assert.strictEqual(r.status, 401);
   console.log('  quota OK');
+
+  // --- 相棒とのチャット ---
+  r = await api('POST', '/api/chat', { body: { message: 'こんにちは' } });
+  assert.strictEqual(r.status, 401, '未ログインは401');
+  const chatBefore = openaiCalls;
+  r = await api('POST', '/api/chat', { token: tokMe, body: { message: '', tone: 'normal' } });
+  assert.ok(/メッセージを入力してください/.test(r.data.error), r.data.error);
+  assert.strictEqual(openaiCalls, chatBefore, '空メッセージはOpenAIを呼ばない');
+  r = await api('POST', '/api/chat', { token: tokMe, body: { message: '今日はどんな運動がいい？', tone: 'normal' } });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(openaiCalls, chatBefore + 1, '1回目は生成する');
+  assert.ok(r.data.reply, '返信が返る');
+  r = await api('POST', '/api/chat', { token: tokMe, body: { message: '続けて', tone: 'normal', history: [{ role: 'user', content: '今日はどんな運動がいい？' }, { role: 'assistant', content: r.data.reply }] } });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  assert.strictEqual(openaiCalls, chatBefore + 2, '2回目もその都度生成する（保存しない）');
+  // 無料枠（2回）を使い切ったので、3回目は429
+  r = await api('POST', '/api/chat', { token: tokMe, body: { message: 'もう一つ', tone: 'normal' } });
+  assert.strictEqual(r.status, 429, JSON.stringify(r.data));
+  assert.deepStrictEqual(r.data.quota, { kind: 'chat', used: 2, limit: 2 });
+  assert.strictEqual(openaiCalls, chatBefore + 2, '枠を超えた時はOpenAIを呼ばない');
+  // 他人の会話には他人の記録が混ざらない（文脈読み取りに失敗してもチャット自体は続く）
+  r = await api('POST', '/api/chat', { token: tokOther, body: { message: 'よろしく', tone: 'normal' } });
+  assert.strictEqual(r.status, 200, JSON.stringify(r.data));
+  console.log('  chat OK');
 
   // --- 削除 ---
   r = await api('DELETE', `/api/entry/meta/${memoId}`, { token: tokMe });

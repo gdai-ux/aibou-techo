@@ -38,7 +38,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS entries_one_review_per_day
   ON entries (user_id, date) WHERE category = 'review';
 
 -- AI機能の利用履歴（1回=1行）。無料枠の判定と、利用者ごとのAI費用の把握に使う
---   kind: 'voice'（音声入力）| 'review'（ふりかえり）| 'calorie'（カロリー推定）
+--   kind: 'voice'（音声入力）| 'review'（ふりかえり）| 'calorie'（カロリー推定）| 'chat'（相棒とのチャット）
 CREATE TABLE IF NOT EXISTS ai_events (
   id          bigserial PRIMARY KEY,
   user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,

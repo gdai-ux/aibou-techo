@@ -17,6 +17,7 @@ const crypto = require('crypto');
 
 const { fetchWeather, DEFAULT_LOCATION } = require('./lib/weather');
 const { generateDailyReview, REVIEW_TONES, DEFAULT_TONE } = require('./lib/dailyReview');
+const { chatWithTrainer, buildChatContext } = require('./lib/trainerChat');
 const { yesterdayInfo, todayInfo, dateInfoFor } = require('./lib/format');
 
 const PORT = process.env.PORT || 3800;
@@ -141,6 +142,7 @@ async function getStore(req) {
 }
 const VOICE_UNAVAILABLE = '音声入力は現在ご利用いただけません。';
 const CALORIE_UNAVAILABLE = 'カロリーの推定は現在ご利用いただけません。';
+const CHAT_UNAVAILABLE = '相棒とのチャットは現在ご利用いただけません。';
 
 // このアプリが自分で投げた「そのまま利用者に見せてよい日本語メッセージ」かどうか。
 // OpenAIなど外部APIの生のエラー文をそのまま画面に出さないための判定に使う。
@@ -149,8 +151,10 @@ const USER_FACING_MESSAGES = new Set([
   LOGIN_REQUIRED,
   VOICE_UNAVAILABLE,
   CALORIE_UNAVAILABLE,
+  CHAT_UNAVAILABLE,
   '音声が録音できていないようです。もう一度お試しください。',
   '話した内容が読み取れませんでした。もう一度お試しください。',
+  'メッセージを入力してください。',
 ]);
 function isUserFacing(err) {
   return USER_FACING_MESSAGES.has(err.message);
@@ -344,6 +348,41 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
     res.json({ dateStr, weekday, comment, hasData: true });
   } catch (err) {
     sendError(res, err);
+  }
+});
+
+// 相棒とのチャット（専属パーソナルトレーナー役）。会話の履歴はサーバーに保存せず、
+// クライアントが持ち回す（history）。直近の記録は毎回読み直して文脈として渡す。
+app.post('/api/chat', openaiRateLimit, async (req, res) => {
+  try {
+    if (!OPENAI_API_KEY) throw new Error(CHAT_UNAVAILABLE);
+    // ログインの確認は先に（枠の消費より前に、未ログインをはっきり案内する）
+    if (STORAGE_MODE === 'pg' && !req.user) throw new Error(LOGIN_REQUIRED);
+    const message = String((req.body && req.body.message) || '').trim().slice(0, 1000);
+    if (!message) throw new Error('メッセージを入力してください。');
+    await consumeAiQuota(req, 'chat');
+
+    const tone = REVIEW_TONES[req.body.tone] ? req.body.tone : DEFAULT_TONE;
+    const name = String((req.body && req.body.name) || '').trim().slice(0, 20);
+    const bio = String((req.body && req.body.bio) || '').trim().slice(0, 100);
+    const rawHistory = Array.isArray(req.body && req.body.history) ? req.body.history : [];
+    const history = rawHistory
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .slice(-16)
+      .map((m) => ({ role: m.role, content: String(m.content).slice(0, 1000) }));
+
+    // 直近の記録を文脈として渡す。読めなくても（Notion未設定など）チャット自体は続ける
+    let context = '';
+    try {
+      const store = await getStore(req);
+      const days = await store.history(7);
+      context = buildChatContext(days, todayInfo().dateStr);
+    } catch (e) { /* 文脈なしで返す */ }
+
+    const reply = await chatWithTrainer(OPENAI_API_KEY, { tone, name, bio, context, history, message });
+    res.json({ reply });
+  } catch (err) {
+    sendError(res, err, '相棒とのチャットに失敗しました');
   }
 });
 

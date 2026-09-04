@@ -14,6 +14,8 @@ const CORE = [
   'index.html',
   'history.html',
   'status.html',
+  'chat.html',
+  'chat.js',
   'app.css',
   'app.js',
   'history.css',

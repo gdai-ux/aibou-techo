@@ -240,6 +240,7 @@ try {
     transition: transform .1s var(--ease), background .15s ease;
   }
   .status-link-btn:active { transform: scale(0.98); background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  a.status-link-btn { display: block; text-align: center; text-decoration: none; box-sizing: border-box; }
   .status-note { margin: 10px 0 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
   .loading { color: var(--muted); font-size: 14px; text-align: center; padding: 24px 0; }
   .err { color: var(--err); font-size: 14px; text-align: center; padding: 24px 0; }
@@ -259,6 +260,7 @@ try {
     <div class="status-bio" id="statusBio"></div>
     <div class="status-bar"><span id="statusBarFill"></span></div>
     <div class="status-bar-label" id="statusBarLabel">読み込み中…</div>
+    <a href="chat.html" class="status-link-btn status-chat-btn">💬 相棒とはなす</a>
   </div>
 
   <div class="card">

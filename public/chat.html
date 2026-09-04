@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<script>
+try {
+  if (localStorage.getItem('themeSetting') === 'light') document.documentElement.classList.add('theme-light');
+} catch (e) { /* 既定のブラックのまま */ }
+</script>
+<title>あいぼう手帳 チャット</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="stylesheet" href="history.css" />
+<script src="notion-client.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="auth-client.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --bg-blur: rgba(0, 0, 0, 0.72);
+    --card: #1c1c1e;
+    --fill: rgba(140, 140, 150, 0.32);
+    --text: #f2f2f7;
+    --muted: #98989f;
+    --accent: #0a84ff;
+    --accent-text: #ffffff;
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --err: #ff453a;
+    --sprite-outline: rgba(255, 255, 255, 0.32);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 36px -22px rgba(0, 0, 0, 0.9);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --ease: cubic-bezier(.32, .72, 0, 1);
+  }
+  :root.theme-light {
+    --bg: #f2f2f7;
+    --bg-blur: rgba(242, 242, 247, 0.8);
+    --card: #ffffff;
+    --fill: rgba(120, 120, 128, 0.12);
+    --text: #1c1c1e;
+    --muted: #6e6e73;
+    --accent: #007aff;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.16);
+    --err: #ff3b30;
+    --sprite-outline: rgba(40, 40, 44, 0.5);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 18px 36px -22px rgba(0, 0, 0, 0.25);
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body {
+    margin: 0 auto;
+    max-width: 480px;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: contain;
+  }
+  @media (min-width: 640px) { body { max-width: 600px; } }
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    margin: 0;
+  }
+  .page-header {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
+    background: var(--bg-blur);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+  .back-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 8px 13px;
+    border-radius: 20px;
+    background: var(--fill);
+    border: 1px solid var(--border);
+    transition: transform .1s var(--ease), background .15s ease;
+  }
+  .back-link:active { transform: scale(0.95); background: var(--border-strong); }
+
+  /* --- 相棒の紹介（一番上、会話が無い間だけ見える） --- */
+  .chat-intro {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 16px 14px;
+  }
+  .chat-intro-avatar { width: 44px; height: 44px; flex: 0 0 auto; }
+  .chat-intro-avatar .gohan-kun { width: 100%; height: 100%; }
+  .chat-intro-text { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .chat-intro-name { font-weight: 800; color: var(--text); }
+  .chat-intro.hidden { display: none; }
+
+  /* --- 会話 --- */
+  .chat-scroll { flex: 1 1 auto; overflow-y: auto; padding: 0 16px 16px; }
+  .chat-msg { display: flex; margin-bottom: 10px; }
+  .chat-msg.user { justify-content: flex-end; }
+  .chat-bubble {
+    max-width: 78%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 15px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .chat-msg.assistant .chat-bubble {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 6px;
+  }
+  .chat-msg.user .chat-bubble {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-bottom-right-radius: 6px;
+  }
+  .chat-msg.error .chat-bubble {
+    background: color-mix(in srgb, var(--err) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--err) 40%, transparent);
+    color: var(--err);
+    border-bottom-left-radius: 6px;
+  }
+  .chat-typing .chat-bubble { display: flex; gap: 4px; align-items: center; padding: 13px 16px; }
+  .chat-typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--muted);
+    animation: chatTyping 1s ease-in-out infinite;
+  }
+  .chat-typing span:nth-child(2) { animation-delay: .15s; }
+  .chat-typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes chatTyping { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .chat-typing span { animation: none; opacity: .7; } }
+
+  /* --- 入力欄 --- */
+  .chat-input-bar {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--bg-blur);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid var(--border);
+  }
+  .chat-input {
+    flex: 1 1 auto;
+    resize: none;
+    max-height: 96px;
+    padding: 11px 14px;
+    border-radius: 18px;
+    background: var(--fill);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  .chat-input:focus { outline: none; border-color: var(--accent); }
+  .chat-send-btn {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform .1s var(--ease), opacity .15s ease;
+  }
+  .chat-send-btn:active { transform: scale(0.92); }
+  .chat-send-btn:disabled { opacity: 0.4; cursor: default; }
+  .chat-note { font-size: 12px; color: var(--muted); text-align: center; padding: 8px 16px 0; }
+</style>
+</head>
+<body>
+  <div class="page-header">
+    <h1>💬 相棒とはなす</h1>
+    <a href="status.html" class="back-link">‹ ステータス</a>
+  </div>
+
+  <div class="chat-intro" id="chatIntro">
+    <div class="chat-intro-avatar"><svg class="gohan-kun" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"></svg></div>
+    <div class="chat-intro-text">
+      <span class="chat-intro-name" id="chatIntroName">あいぼう</span>が専属トレーナーとして相談に乗るよ。<br />
+      運動・食事・続け方のことなら何でも聞いてね。
+    </div>
+  </div>
+
+  <div class="chat-scroll" id="chatScroll"></div>
+
+  <div class="chat-input-bar">
+    <textarea class="chat-input" id="chatInput" rows="1" placeholder="相談してみよう…" maxlength="1000"></textarea>
+    <button type="button" class="chat-send-btn" id="chatSendBtn" aria-label="送信">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="M13 6l6 6-6 6"></path></svg>
+    </button>
+  </div>
+  <p class="chat-note" id="chatQuotaNote" hidden></p>
+
+  <script src="mascot.js"></script>
+  <script src="chat.js"></script>
+</body>
+</html>

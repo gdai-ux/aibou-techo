@@ -92,7 +92,7 @@ function renderStats(days, totals, today) {
   const tiles = [
     { value: totals.total.toLocaleString('ja-JP'), unit: 'pt', label: '累計ポイント' },
     { value: streak, unit: '日', label: '連続で記録' },
-    { value: recorded.size, unit: '日', label: '記録した日（1年）' },
+    { value: recorded.size, unit: '日', label: '記録した日' },
     { value: thisMonth, unit: '日', label: '今月の記録' },
     { value: weekExercise, unit: `/${weeklyTarget}日`, label: '今週の運動' },
     { value: totals.bonusWeeks, unit: '週', label: `運動${weeklyTarget}日を達成` },

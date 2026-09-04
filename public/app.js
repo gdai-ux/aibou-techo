@@ -645,7 +645,7 @@ function applyGohanVisualState() {
   const level = gohanLevel(gohanState.total);
   gohanState.level = level;
   gohanState.nextAt = gohanNextAt(level);
-  // レベルの節目で飾りが増える: Lv3ほっぺ / Lv5王冠 / Lv7きらきら / Lv9金のオーラ
+  // レベルの節目で飾りが増える（節目はgrowth.jsのGOHAN_DECO_STAGES）: Lv3ほっぺ / Lv8王冠 / Lv14きらきら / Lv20金のオーラ
   const stage = gohanDecoStage(level);
   document.querySelectorAll('.gohan-kun').forEach((k) => {
     for (let i = 1; i <= 4; i++) k.classList.toggle(`gohan-stage-${i}`, i <= stage);

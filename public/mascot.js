@@ -3,10 +3,11 @@
 // 選択はこの端末のlocalStorageに保存する（Notion設定と同じ方針）。
 //
 // スプライトは12x12のドット絵。viewBoxは上に2行ぶん余白を取ってあり
-// （"0 -2 12 14"）、レベル5の王冠は頭の上のその余白に描く。
-// レベル演出のクラス（gohan-stage-*）はどのキャラクターでも共通:
-//   Lv3 ほっぺ（gohan-deco-cheeks） / Lv5 王冠（gohan-deco-ume） /
-//   Lv7 きらきら（gohan-deco-nori） / Lv9 金のオーラ（CSS側のfilter）
+// （"0 -2 12 14"）、王冠は頭の上のその余白に描く。
+// レベル演出のクラス（gohan-stage-*）はどのキャラクターでも共通（節目はgrowth.jsの
+// GOHAN_DECO_STAGESが持つ。現在: Lv3 ほっぺ / Lv8 王冠 / Lv14 きらきら / Lv20 金のオーラ）:
+//   ほっぺ（gohan-deco-cheeks） / 王冠（gohan-deco-ume） /
+//   きらきら（gohan-deco-nori） / 金のオーラ（CSS側のfilter）
 
 const MASCOT_CHARS = [
   {

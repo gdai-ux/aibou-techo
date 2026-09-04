@@ -164,15 +164,17 @@ function gohanDayScore(day) {
   return { score, max, ratio, word: stage.word, color: stage.color };
 }
 
-// レベルの節目で増える飾り。ステータス画面で「次は何が増えるか」を出すのにも使う
+// レベルの節目で増える飾り。ステータス画面で「次は何が増えるか」を出すのにも使う。
+// ほっぺ以降（特に王冠）は「ちゃんと続けた人だけの見た目」になるよう、
+// 段階を追うごとに間隔を広げてある（王冠だけ早く着くと安っぽく見えるため）
 const GOHAN_DECO_STAGES = [
   { level: 3, name: 'ほっぺ', note: '顔にほんのり色がつく' },
-  { level: 5, name: '王冠', note: '頭に飾りがのる' },
-  { level: 7, name: 'きらきら', note: '飾りがもう一つ増える' },
-  { level: 9, name: '金のオーラ', note: 'まわりが金色に光る' },
+  { level: 8, name: '王冠', note: '頭に飾りがのる' },
+  { level: 14, name: 'きらきら', note: '飾りがもう一つ増える' },
+  { level: 20, name: '金のオーラ', note: 'まわりが金色に光る' },
 ];
 
 // レベルから飾りの段階（0〜4）を出す
 function gohanDecoStage(level) {
-  return level >= 9 ? 4 : level >= 7 ? 3 : level >= 5 ? 2 : level >= 3 ? 1 : 0;
+  return level >= 20 ? 4 : level >= 14 ? 3 : level >= 8 ? 2 : level >= 3 ? 1 : 0;
 }

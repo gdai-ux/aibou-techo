@@ -6,9 +6,13 @@
 // 端末が変わっても同じ結果になり、長く続けるほどレベルが積み上がる。
 // サボると1年の窓から古い実績が抜けていくので、維持の動機にもなる。
 
-// 週（月曜はじまり）の運動がこの日数に届くとボーナス
-const EXERCISE_WEEKLY_TARGET = 5;
+// 週（月曜はじまり）の運動がこの日数に届くとボーナス。設定画面で変えられる
+// （mascot.jsが端末・サーバーへの保存を持つ。未設定なら5日）
 const GOHAN_WEEK_BONUS = 35;
+
+function exerciseTarget() {
+  return window.exerciseWeeklyTarget ? exerciseWeeklyTarget() : 5;
+}
 
 // キャラの難易度は経験値の倍率（マックスは星5）。きびしい相棒ほど鍛え方が
 // うまいという設定で、難易度が高いほど同じ記録でもレベルが上がりやすい
@@ -107,15 +111,18 @@ function gohanMondayKey(dateStr) {
 // 内訳（日々のぶんと週ボーナス）も返すので、ステータス画面で分けて出せる
 // 「何をするとどれだけポイントがもらえるか」の一覧。ステータス画面（今日もらった
 // ポイントの下）と、設定画面の「ポイントの説明」で同じ文言を出すために共有する。
-const GOHAN_POINT_RULES = [
-  { label: '睡眠', detail: '7時間以上 / 6時間台 / 5時間台', pts: '25 / 15 / 8pt' },
-  { label: '運動', detail: '1種目15pt、2種目から+5pt（1行を1種目と数えます）', pts: '最大25pt' },
-  { label: '食事', detail: '朝・昼・夕 それぞれ記録すると', pts: '各10pt' },
-  { label: '体調', detail: '1日1回でも記録すれば', pts: '5pt' },
-  { label: 'メモ', detail: '1日1回でも記録すれば', pts: '5pt' },
-  { label: 'パーフェクトデー', detail: '睡眠・運動・3食・体調がそろった日', pts: '+10pt' },
-  { label: '週の運動ボーナス', detail: `月曜はじまりの週で運動${EXERCISE_WEEKLY_TARGET}日以上`, pts: `+${GOHAN_WEEK_BONUS}pt` },
-];
+// 運動の週目標は設定で変えられるので、呼ばれるたびに文言を組み立て直す
+function gohanPointRules() {
+  return [
+    { label: '睡眠', detail: '7時間以上 / 6時間台 / 5時間台', pts: '25 / 15 / 8pt' },
+    { label: '運動', detail: '1種目15pt、2種目から+5pt（1行を1種目と数えます）', pts: '最大25pt' },
+    { label: '食事', detail: '朝・昼・夕 それぞれ記録すると', pts: '各10pt' },
+    { label: '体調', detail: '1日1回でも記録すれば', pts: '5pt' },
+    { label: 'メモ', detail: '1日1回でも記録すれば', pts: '5pt' },
+    { label: 'パーフェクトデー', detail: '睡眠・運動・3食・体調がそろった日', pts: '+10pt' },
+    { label: '週の運動ボーナス', detail: `月曜はじまりの週で運動${exerciseTarget()}日以上`, pts: `+${GOHAN_WEEK_BONUS}pt` },
+  ];
+}
 
 function gohanTotalPoints(days) {
   let daily = 0;
@@ -128,7 +135,7 @@ function gohanTotalPoints(days) {
     }
   });
   let bonusWeeks = 0;
-  weekExercise.forEach((count) => { if (count >= EXERCISE_WEEKLY_TARGET) bonusWeeks++; });
+  weekExercise.forEach((count) => { if (count >= exerciseTarget()) bonusWeeks++; });
   return { total: daily + bonusWeeks * GOHAN_WEEK_BONUS, daily, bonusWeeks };
 }
 

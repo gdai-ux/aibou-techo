@@ -276,16 +276,41 @@ function mascotSaveSettings(settings) {
   try { localStorage.setItem(MASCOT_STORAGE_KEY, JSON.stringify(settings)); } catch (e) { /* 保存できなくても表示は変わる */ }
 }
 
-// 選んだキャラクターをサーバーにも保存し、他の端末でも同じキャラで開けるようにする。
-// 送れなくても、この端末の表示はlocalStorageの値で成立する
-async function mascotPushToServer(settings) {
+// 端末をまたぐ小さな設定（キャラクター・運動の週目標など）をサーバーに保存する
+// 共通口。送れなくても、この端末の表示はlocalStorageの値で成立する
+async function pushSettingsToServer(patch) {
   try {
     await fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(typeof notionHeaders === 'function' ? notionHeaders() : {}) },
-      body: JSON.stringify({ mascot: settings }),
+      body: JSON.stringify(patch),
     });
   } catch (e) { /* オフライン等。次に保存できた時に上書きされる */ }
+}
+
+// 選んだキャラクターをサーバーにも保存し、他の端末でも同じキャラで開けるようにする
+function mascotPushToServer(settings) {
+  pushSettingsToServer({ mascot: settings });
+}
+
+// --- 運動の週目標（週に何日運動したら達成扱いにするか） -----------------------
+const EXERCISE_TARGET_KEY = 'exerciseTargetSetting';
+const EXERCISE_TARGET_DEFAULT = 5;
+
+function exerciseWeeklyTarget() {
+  try {
+    const v = Number(localStorage.getItem(EXERCISE_TARGET_KEY));
+    return v >= 1 && v <= 7 ? v : EXERCISE_TARGET_DEFAULT;
+  } catch (e) {
+    return EXERCISE_TARGET_DEFAULT;
+  }
+}
+
+function saveExerciseWeeklyTarget(days) {
+  const v = Math.min(7, Math.max(1, Number(days) || EXERCISE_TARGET_DEFAULT));
+  try { localStorage.setItem(EXERCISE_TARGET_KEY, String(v)); } catch (e) { /* 保存できなくても表示は変わる */ }
+  pushSettingsToServer({ exerciseTarget: v });
+  return v;
 }
 
 // 起動時に、サーバー側の設定と端末の設定を照らし合わせる。サーバーの方が
@@ -295,14 +320,21 @@ async function mascotSyncFromServer() {
     const resp = await fetch('/api/settings', { headers: typeof notionHeaders === 'function' ? notionHeaders() : {} });
     if (!resp.ok) return;
     const data = await resp.json();
-    if (!data || !data.mascot || !data.mascot.char) return;
-    const current = mascotLoadSettings();
-    if (data.mascot.char === current.char && (data.mascot.name || '') === current.name) return;
-    mascotSaveSettings({ char: data.mascot.char, name: data.mascot.name || '' });
-    mascotRenderAll();
-    if (window.syncGohanLevelSeen) syncGohanLevelSeen();
-    if (window.regenerateDailyReview) regenerateDailyReview();
-  } catch (e) { /* オフライン等。端末に保存済みのキャラで表示を続ける */ }
+    if (!data) return;
+    if (data.mascot && data.mascot.char) {
+      const current = mascotLoadSettings();
+      if (data.mascot.char !== current.char || (data.mascot.name || '') !== current.name) {
+        mascotSaveSettings({ char: data.mascot.char, name: data.mascot.name || '' });
+        mascotRenderAll();
+        if (window.syncGohanLevelSeen) syncGohanLevelSeen();
+        if (window.regenerateDailyReview) regenerateDailyReview();
+      }
+    }
+    if (data.exerciseTarget && data.exerciseTarget !== exerciseWeeklyTarget()) {
+      try { localStorage.setItem(EXERCISE_TARGET_KEY, String(data.exerciseTarget)); } catch (e) { /* 保存できなくても表示は変わる */ }
+      if (window.loadExerciseRing) loadExerciseRing();
+    }
+  } catch (e) { /* オフライン等。端末に保存済みの設定で表示を続ける */ }
 }
 
 function mascotCurrentChar() {
@@ -453,6 +485,8 @@ window.openMascotSettings = openMascotSettings;
 window.mascotName = mascotName;
 window.mascotProfile = mascotProfile;
 window.MASCOT_DIFFICULTY = MASCOT_DIFFICULTY;
+window.exerciseWeeklyTarget = exerciseWeeklyTarget;
+window.saveExerciseWeeklyTarget = saveExerciseWeeklyTarget;
 
 // 読み込み時に、保存されているキャラクターで描き替えておく（まずは端末の値で
 // 即座に表示し、サーバー側の設定が違えば追って合わせ直す）

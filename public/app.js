@@ -245,6 +245,8 @@ async function loadExerciseRing() {
     const data = await resp.json();
     if (!resp.ok || !data.days) throw new Error('取得に失敗しました');
 
+    // 週に何日運動したら達成扱いにするか（設定画面で変えられる。既定は5日）
+    const weeklyTarget = window.exerciseWeeklyTarget ? exerciseWeeklyTarget() : 5;
     const now = new Date();
     // 週の始まりを月曜日にする（getDay()は日曜=0のため月曜起点に変換）
     const mondayOffset = (now.getDay() + 6) % 7;
@@ -281,7 +283,7 @@ async function loadExerciseRing() {
     // リング・炎・曜日ドットは「週にどれだけ動けたか」を表すので、その色のまま
     const card = document.querySelector('.exercise-ring-card');
     card.style.setProperty('--ring-color', stage.color);
-    card.style.setProperty('--flame-scale', flameScale(doneCount, EXERCISE_WEEKLY_TARGET, DAYS_IN_WEEK).toFixed(3));
+    card.style.setProperty('--flame-scale', flameScale(doneCount, weeklyTarget, DAYS_IN_WEEK).toFixed(3));
 
     // 今日すでに運動していれば、目標の案内よりねぎらいを優先して出す
     // （「週5日を目標」は下の行の「あと○日」からも分かるので、その日は譲る）
@@ -298,13 +300,13 @@ async function loadExerciseRing() {
     card.style.setProperty('--word-color', wordStage.color);
 
     const main = document.getElementById('exerciseRingMain');
-    main.textContent = doneToday ? todayDoneMessage(doneCount, todayStr) : `週${EXERCISE_WEEKLY_TARGET}日を目標`;
+    main.textContent = doneToday ? todayDoneMessage(doneCount, todayStr) : `週${weeklyTarget}日を目標`;
     main.classList.toggle('celebrate', doneToday);
 
     // 見出しが「今日の運動」なので、週の話であることはこの行で言い切る
-    document.getElementById('exerciseRingSub').textContent = doneCount >= EXERCISE_WEEKLY_TARGET
+    document.getElementById('exerciseRingSub').textContent = doneCount >= weeklyTarget
       ? `今週は${doneCount}日達成しました🎉`
-      : `今週あと${EXERCISE_WEEKLY_TARGET - doneCount}日で目標達成`;
+      : `今週あと${weeklyTarget - doneCount}日で目標達成`;
   } catch (e) {
     // 取得に失敗した場合は静かに諦める（カードは初期表示のまま）
   }

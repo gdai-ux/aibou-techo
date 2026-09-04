@@ -1404,13 +1404,14 @@
     color: var(--word-color, var(--ring-color, var(--ok)));
     transition: color .35s ease;
   }
-  /* ゲージ・炎・段階の言葉・ねぎらいの一言は同じ拍でまとめて明滅させる。
+  /* ゲージ・炎・段階の言葉は、今日すでに運動して「達成」を表している時だけ
+     まとめて明滅させる（今日まだ運動していない時に明滅しても紛らわしいため）。
      どれも同じ長さで、ページを開いた時に一緒に始まるので拍がずれない。
+     「週5日を目標」等のねぎらいの一言(.main)は常に明滅させない。
      明滅（wordBlink）は睡眠グラフの言葉と共通なので history.css に置いている */
-  .ring-progress,
-  .ring-flame-box,
-  .ring-word,
-  .exercise-ring-info .main {
+  .exercise-ring-card:not(.ring-no-fire) .ring-progress,
+  .exercise-ring-card:not(.ring-no-fire) .ring-flame-box,
+  .exercise-ring-card:not(.ring-no-fire) .ring-word {
     animation: wordBlink 1.6s ease-in-out infinite;
   }
   /* 320px級の狭い端末だけ、一番長い「EXCELLENT!!」が炎と並ぶと
@@ -1421,8 +1422,7 @@
   @media (prefers-reduced-motion: reduce) {
     .ring-progress,
     .ring-flame-box,
-    .ring-word,
-    .exercise-ring-info .main { animation: none; }
+    .ring-word { animation: none; }
   }
   .ring-track {
     fill: none;

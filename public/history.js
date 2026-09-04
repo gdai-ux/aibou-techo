@@ -1104,6 +1104,10 @@ function openSettingsMenu() {
             <span class="settings-menu-title">ポイントの説明</span>
             <span class="settings-menu-desc">何をするとどれだけポイントがもらえるか</span>
           </button>
+          <button type="button" class="settings-menu-item" id="settingsItemExerciseTarget">
+            <span class="settings-menu-title">運動の週目標</span>
+            <span class="settings-menu-desc">週に何日運動したら達成にするか</span>
+          </button>
           <button type="button" class="settings-menu-item" id="settingsItemMigrate" hidden>
             <span class="settings-menu-title">データベース形式へ移行</span>
             <span class="settings-menu-desc" id="migrateDesc">記録をNotionデータベースにコピーします（元のページは残ります）</span>
@@ -1153,6 +1157,10 @@ function openSettingsMenu() {
     document.getElementById('settingsItemPoints').addEventListener('click', () => {
       overlay.classList.add('hidden');
       openPointRulesModal();
+    });
+    document.getElementById('settingsItemExerciseTarget').addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      openExerciseTargetModal();
     });
     document.querySelectorAll('#themeChoice button').forEach((btn) => {
       btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
@@ -1235,7 +1243,7 @@ function openPointRulesModal() {
         <h3>ポイントの説明</h3>
         <p class="hs-note">1日の記録でもらえるポイントは、下の内訳を全部合わせて<b>最大100pt（満点）</b>です。</p>
         <div class="point-rules">` +
-      GOHAN_POINT_RULES.map((r) => `
+      gohanPointRules().map((r) => `
           <div class="point-rule-row">
             <span class="pr-label">${escapeHtml(r.label)}</span>
             <span class="pr-detail">${escapeHtml(r.detail)}</span>
@@ -1251,6 +1259,47 @@ function openPointRulesModal() {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
     document.getElementById('pointRulesClose').addEventListener('click', () => overlay.classList.add('hidden'));
   }
+  overlay.classList.remove('hidden');
+}
+
+// --- 運動の週目標（設定画面から） -------------------------------------------
+// 週に何日運動したら「今週の運動」を達成扱いにするか。「今日の運動」のリング・
+// 週の運動ボーナス（ポイント）の両方に使う値なので、端末とサーバーに保存して
+// どちらの画面でも同じ値になるようにしている（mascot.jsが保存を持つ）。
+function openExerciseTargetModal() {
+  let overlay = document.getElementById('exerciseTargetModal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'modal-overlay hidden';
+    overlay.id = 'exerciseTargetModal';
+    overlay.innerHTML = `
+      <div class="modal-panel">
+        <h3>運動の週目標</h3>
+        <p class="hs-note">週に何日運動したら「今週の運動」を達成にするか。育成ポイントの週ボーナスにも使います。</p>
+        <div class="body-choice" id="exerciseTargetChoice">` +
+      [1, 2, 3, 4, 5, 6, 7].map((n) => `<button type="button" data-days="${n}">${n}</button>`).join('') + `
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" id="exerciseTargetClose">閉じる</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
+    document.getElementById('exerciseTargetClose').addEventListener('click', () => overlay.classList.add('hidden'));
+    overlay.querySelectorAll('#exerciseTargetChoice button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        overlay.querySelectorAll('#exerciseTargetChoice button').forEach((b) => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        saveExerciseWeeklyTarget(Number(btn.dataset.days));
+        // 今開いている画面のリング・ポイントの見え方もその場で更新する
+        if (window.loadExerciseRing) loadExerciseRing();
+        if (window.loadStatus) loadStatus();
+        if (typeof loadHistory === 'function') loadHistory();
+      });
+    });
+  }
+  const current = window.exerciseWeeklyTarget ? exerciseWeeklyTarget() : 5;
+  overlay.querySelectorAll('#exerciseTargetChoice button').forEach((b) => b.classList.toggle('selected', Number(b.dataset.days) === current));
   overlay.classList.remove('hidden');
 }
 

@@ -87,14 +87,15 @@ function renderStats(days, totals, today) {
   const thisMonth = [...recorded].filter((d) => d.startsWith(monthPrefix)).length;
   const weekKey = gohanMondayKey(dateKey(today));
   const weekExercise = days.filter((d) => (d.exercise || []).length && gohanMondayKey(d.dateStr) === weekKey).length;
+  const weeklyTarget = window.exerciseWeeklyTarget ? exerciseWeeklyTarget() : 5;
 
   const tiles = [
     { value: totals.total.toLocaleString('ja-JP'), unit: 'pt', label: '累計ポイント' },
     { value: streak, unit: '日', label: '連続で記録' },
     { value: recorded.size, unit: '日', label: '記録した日（1年）' },
     { value: thisMonth, unit: '日', label: '今月の記録' },
-    { value: weekExercise, unit: `/${EXERCISE_WEEKLY_TARGET}日`, label: '今週の運動' },
-    { value: totals.bonusWeeks, unit: '週', label: `運動${EXERCISE_WEEKLY_TARGET}日を達成` },
+    { value: weekExercise, unit: `/${weeklyTarget}日`, label: '今週の運動' },
+    { value: totals.bonusWeeks, unit: '週', label: `運動${weeklyTarget}日を達成` },
   ];
   document.getElementById('statusStats').innerHTML = tiles.map((t) =>
     `<div class="stat-tile"><b>${esc(t.value)}<span style="font-size:12px;font-weight:700;color:var(--muted)">${esc(t.unit)}</span></b>`
@@ -117,7 +118,7 @@ function renderDeco(level) {
 
 function renderRules() {
   // 一覧そのものはgrowth.js（設定画面の「ポイントの説明」と共通）にある
-  document.getElementById('statusRules').innerHTML = GOHAN_POINT_RULES.map((r) =>
+  document.getElementById('statusRules').innerHTML = gohanPointRules().map((r) =>
     `<div class="status-row"><span class="rl">${esc(r.label)}</span>`
     + `<span class="rd">${esc(r.detail)}</span>`
     + `<span class="rp">${esc(r.pts)}</span></div>`).join('');

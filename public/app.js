@@ -1268,16 +1268,34 @@ function saveEntryQueue(queue) {
 function updateQueueNotice() {
   const el = document.getElementById('queueNotice');
   if (!el) return;
-  const n = loadEntryQueue().length;
+  const queue = loadEntryQueue();
+  const n = queue.length;
   el.hidden = n === 0;
-  if (n > 0) {
-    el.innerHTML =
-      `<span class="queue-notice-text">未送信の記録が${n}件あります。接続が戻り次第、自動で記録します。</span>` +
-      `<button type="button" class="queue-notice-retry" id="queueRetryBtn">今すぐ送信</button>`;
-    document.getElementById('queueRetryBtn').addEventListener('click', (e) => {
-      e.target.disabled = true;
-      e.target.textContent = '送信中…';
-      flushEntryQueue();
+  if (n === 0) return;
+  // 何度送っても失敗する記録（サーバー側の問題等）は、他の記録を巻き込んで
+  // 詰まらせないよう自動再送を止めている。その状態を利用者に伝え、
+  // 「今すぐ送信」で改めて試すか、諦めて削除するかを選べるようにする
+  const stuckCount = queue.filter((item) => item.stuck).length;
+  const text = stuckCount > 0
+    ? `送信できない記録が${stuckCount}件あります。もう一度試すか、諦めて削除できます。`
+    : `未送信の記録が${n}件あります。接続が戻り次第、自動で記録します。`;
+  el.innerHTML =
+    `<span class="queue-notice-text">${text}</span>` +
+    `<span class="queue-notice-actions">` +
+    `<button type="button" class="queue-notice-retry" id="queueRetryBtn">今すぐ送信</button>` +
+    (stuckCount > 0 ? `<button type="button" class="queue-notice-discard" id="queueDiscardBtn">削除</button>` : '') +
+    `</span>`;
+  document.getElementById('queueRetryBtn').addEventListener('click', (e) => {
+    e.target.disabled = true;
+    e.target.textContent = '送信中…';
+    flushEntryQueue({ force: true });
+  });
+  const discardBtn = document.getElementById('queueDiscardBtn');
+  if (discardBtn) {
+    discardBtn.addEventListener('click', () => {
+      if (!window.confirm(`送信できない記録${stuckCount}件を削除します。内容は失われます。よろしいですか？`)) return;
+      saveEntryQueue(loadEntryQueue().filter((item) => !item.stuck));
+      updateQueueNotice();
     });
   }
 }
@@ -1288,16 +1306,23 @@ function queueEntry(category, payload) {
   updateQueueNotice();
 }
 
+// この回数だけ5xxが続いた記録は「詰まった」ものとして扱い、以後は自動で再送しない
+// （毎回失敗する記録が先頭に居座ると、後ろの記録まで一緒に送れなくなっていたため）
+const ENTRY_QUEUE_MAX_ATTEMPTS = 5;
+
 let entryQueueFlushing = false;
-async function flushEntryQueue() {
+// opts.force: true の間は、詰まった記録も含めて全件もう一度試す（「今すぐ送信」用）
+async function flushEntryQueue(opts = {}) {
   if (entryQueueFlushing) return;
   const queue = loadEntryQueue();
   if (!queue.length) return;
   entryQueueFlushing = true;
   let sent = 0;
+  let offline = false; // 一度検知したら、それ以降はどの記録も試すだけ無駄
   try {
-    while (queue.length) {
-      const item = queue[0];
+    const remaining = [];
+    for (const item of queue) {
+      if (offline || (item.stuck && !opts.force)) { remaining.push(item); continue; }
       let resp;
       try {
         resp = await fetch('/api/entry', {
@@ -1306,22 +1331,24 @@ async function flushEntryQueue() {
           body: JSON.stringify({ category: item.category, payload: item.payload, dateStr: item.dateStr }),
         });
       } catch (e) {
-        break; // まだオフライン。次の機会に
+        offline = true; // まだオフライン。この記録も、後ろの記録も次の機会に
+        remaining.push(item);
+        continue;
       }
       if (resp.ok || resp.status === 207) {
-        queue.shift();
-        saveEntryQueue(queue);
         sent++;
-        continue;
+        continue; // 送れたのでキューから外す（remainingに積まない）
       }
       if (resp.status >= 400 && resp.status < 500) {
-        // 再送しても直らない記録（3日以上前になった等）。詰まりの原因になるので捨てる
-        queue.shift();
-        saveEntryQueue(queue);
-        continue;
+        continue; // 再送しても直らない記録（3日以上前になった等）。捨てる
       }
-      break; // 5xx: サーバーが落ちている。次の機会に
+      // 5xx: サーバー側の問題。何度も同じ記録で失敗するなら、他の記録を
+      // 巻き込まないよう自動再送を止め、利用者の判断（今すぐ送信・削除）を待つ
+      item.attempts = (item.attempts || 0) + 1;
+      if (item.attempts >= ENTRY_QUEUE_MAX_ATTEMPTS) item.stuck = true;
+      remaining.push(item);
     }
+    saveEntryQueue(remaining);
   } finally {
     entryQueueFlushing = false;
   }

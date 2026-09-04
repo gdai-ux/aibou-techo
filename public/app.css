@@ -764,12 +764,6 @@
     0%, 100% { transform: translateY(0); }
     50%      { transform: translateY(-4px); }
   }
-  /* 飛んでいる間は左右に傾けて、勢いよく進んでいるように見せる */
-  .gohan-flying .gohan-kun { animation: gohanFlyWobble 0.7s ease-in-out infinite; }
-  @keyframes gohanFlyWobble {
-    0%, 100% { transform: translateY(0) rotate(-7deg); }
-    50%      { transform: translateY(-3px) rotate(7deg); }
-  }
   @keyframes gohanWalkBob {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-2px); }

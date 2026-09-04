@@ -854,11 +854,12 @@ function playGohanLevelUp(fromLevel = 0, deltaPts = 0) {
   }, 1900);
 }
 
-// ヘッダーの中を自由に動き回る。歩く・止まる・宙に浮いてふわふわする・
-// 勢いよく飛ぶ、を気まぐれに繰り返し、端まで来たら引き返す。
-// 顔が左右対称なので向きの反転は不要。
-// 横位置(x)と高さ(y)はJSが .app-icon のtransformで動かし、
-// ふわふわ・傾きといった細かい揺れはCSSのアニメーションが担当する。
+// ヘッダーの中で、キャラクターが「今日ここまでの進み具合」ぶんだけ
+// ステージを進んでいく。記録するたびに少しずつ右へ歩いて進み、日が変わると
+// また左（タイトルのすぐ右＝スタート地点）から。ランダムに歩き回るのではなく、
+// 今日の記録（gohanState.todayScore）が実際に横位置を決める。
+// 顔が左右対称なので向きの反転は不要。横位置(x)はJSが.app-iconの
+// transformで動かし、体の傾き・浮遊はCSSのアニメーションが担当する。
 function startGohanRoam() {
   const header = document.querySelector('.page-header');
   const walker = header && header.querySelector('.app-icon');
@@ -868,93 +869,66 @@ function startGohanRoam() {
   const currentKun = () => walker.querySelector('.gohan-kun');
   const title = header.querySelector('h1');
 
-  let x = null;
-  let y = 0;        // 0が地上。マイナスで浮き上がる
-  let targetY = 0;
-  let dir = 1;
-  let phase = 'pause';
-  let phaseUntil = performance.now() + 1500;
-  let last = null;
-
   function bounds() {
-    const w = header.clientWidth;
     // 右側のボタン群（設定・履歴）にかぶらない範囲で動く
     const btns = header.querySelector('.header-actions') || header.lastElementChild;
-    // 頭上のバッジ（中心から左右に40pxほど張り出す）が画面端や
-    // 右上のボタンにかぶらないよう、動ける範囲は内側に狭めておく
-    const right = btns && btns !== walker ? btns.getBoundingClientRect().left - header.getBoundingClientRect().left - 62 : w - 140;
-    return { min: 24, max: Math.max(60, right) };
+    const right = btns && btns !== walker ? btns.getBoundingClientRect().left - header.getBoundingClientRect().left - 62 : header.clientWidth - 140;
+    // スタート地点はタイトルのすぐ右（頭上のバッジが文字にかぶらないように）
+    const min = title ? title.getBoundingClientRect().right - header.getBoundingClientRect().left + 6 : 24;
+    return { min, max: Math.max(min + 40, right) };
   }
 
-  // 浮き上がれる高さ。頭上のバッジがヘッダーの外へ出ない範囲にとどめる
-  function maxRise() {
-    const room = header.clientHeight - walker.offsetHeight - 6 - 20;
-    return Math.max(6, Math.min(34, room));
+  // 今日ここまでの進み具合（0〜1）。今日の合計ポイントが無ければ0（スタート地点）
+  function progressRatio() {
+    const s = gohanState && gohanState.todayScore;
+    return s && s.max ? Math.max(0, Math.min(1, s.ratio)) : 0;
+  }
+
+  function targetX() {
+    const b = bounds();
+    return b.min + (b.max - b.min) * progressRatio();
   }
 
   const sleepy = () => walker.classList.contains('gohan-sleepy');
 
-  function setPhase(next, t) {
-    phase = next;
-    walker.classList.toggle('gohan-walking', next === 'walk');
-    walker.classList.toggle('gohan-floating', next === 'float');
-    walker.classList.toggle('gohan-flying', next === 'fly');
-    const rise = maxRise();
-    if (next === 'float') targetY = -rise * (0.55 + Math.random() * 0.45);
-    else if (next === 'fly') targetY = -rise;
-    else targetY = 0;
-    if (next === 'walk' || next === 'fly') {
-      if (Math.random() < 0.5) dir = -dir;
-    }
-    const durations = {
-      pause: 1200 + Math.random() * 2400,
-      walk: 1500 + Math.random() * 2500,
-      float: 2200 + Math.random() * 2600,
-      fly: 1400 + Math.random() * 1600,
-    };
-    phaseUntil = t + durations[next];
-    // 立ち止まった時、たまに芸をする
-    if (next === 'pause' && Math.random() < 0.3) {
-      const kun = currentKun();
-      if (kun) playGohanTrick(kun);
-    }
-  }
-
-  // 次に何をするかを気まぐれに決める。眠い時は地上でゆっくりするだけ
-  function nextPhase() {
-    if (sleepy()) return phase === 'walk' ? 'pause' : 'walk';
-    const r = Math.random();
-    // 浮いた後・飛んだ後は、いったん地上に戻る
-    if (phase === 'float' || phase === 'fly') return r < 0.5 ? 'pause' : 'walk';
-    if (phase === 'walk') return r < 0.35 ? 'pause' : (r < 0.7 ? 'float' : 'fly');
-    return r < 0.5 ? 'walk' : (r < 0.8 ? 'float' : 'fly'); // pauseの次
-  }
+  let x = null;
+  let idleUntil = 0;
+  let last = null;
 
   function tick(t) {
     if (last === null) last = t;
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
-    const b = bounds();
-    if (x === null) {
-      // 最初はタイトルのすぐ右から歩き始める
-      x = Math.min(b.max, title ? title.getBoundingClientRect().right - header.getBoundingClientRect().left + 6 : b.min);
-    }
-    if (t >= phaseUntil) setPhase(nextPhase(), t);
+    if (x === null) x = targetX(); // 開いた時点の進み具合の位置から（歩みは見せない）
 
     const kun = currentKun();
     const playing = !!kun && [...kun.classList].some((c) => c.startsWith('gohan-play-'));
-    // 芸をしている間は、地上に降りてその場で見せる
-    const goingTo = playing ? 0 : targetY;
+    const goal = targetX();
+    const dist = goal - x;
 
-    if (!playing && phase !== 'pause') {
-      const speed = phase === 'fly' ? 62 : phase === 'float' ? 12 : (sleepy() ? 8 : 26);
-      x += dir * speed * dt;
-      if (x <= b.min) { x = b.min; dir = 1; }
-      if (x >= b.max) { x = b.max; dir = -1; }
+    if (!playing && Math.abs(dist) > 1.5) {
+      // 記録して進み具合が増えた（＝目標地点が先にある）ぶんだけ歩いて進む
+      walker.classList.add('gohan-walking');
+      walker.classList.remove('gohan-floating');
+      const dir = dist > 0 ? 1 : -1;
+      x += dir * (sleepy() ? 10 : 34) * dt;
+      if ((dir > 0 && x > goal) || (dir < 0 && x < goal)) x = goal;
+      idleUntil = 0;
+    } else if (!playing) {
+      // 目標地点に着いたら、そこでたまに一息ついたり芸をしたりする
+      walker.classList.remove('gohan-walking');
+      if (t >= idleUntil) {
+        idleUntil = t + 2000 + Math.random() * 3000;
+        const r = Math.random();
+        if (!sleepy() && r < 0.3) {
+          walker.classList.add('gohan-floating');
+          setTimeout(() => walker.classList.remove('gohan-floating'), 1600);
+        } else if (!sleepy() && r < 0.5) {
+          if (kun) playGohanTrick(kun);
+        }
+      }
     }
-    // 高さはゆっくり近づける（ふわっと上がって、ふわっと降りる）
-    y += (goingTo - y) * Math.min(1, dt * 4);
-    walker.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    walker.style.transform = `translate(${x.toFixed(1)}px, 0px)`;
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);

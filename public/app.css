@@ -449,6 +449,10 @@
     background: color-mix(in srgb, var(--warn) 10%, transparent);
     border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
   }
+  /* display:flexがついたことで、hidden属性の既定（display:none）が
+     打ち消されてしまっていた（未送信が無い時も空の帯が見えていたのはこれが原因）。
+     明示的に上書きしてhiddenの時はちゃんと消えるようにする */
+  .queue-notice[hidden] { display: none; }
   .queue-notice-text { flex: 1 1 auto; }
   .queue-notice-actions { display: flex; flex: 0 0 auto; gap: 6px; }
   .queue-notice-retry, .queue-notice-discard {

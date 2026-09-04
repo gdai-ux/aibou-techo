@@ -252,7 +252,7 @@ const MASCOT_CHARS = [
   },
 ];
 
-// 難易度（経験値の倍率。高いほどレベルが上がりやすい。マックスは星5）の表示用ラベルと星
+// 難易度（相棒の性格のきびしさを表す目安。マックスは星5。レベルには影響しない）の表示用ラベルと星
 const MASCOT_DIFFICULTY = {
   easy: { label: 'やさしい', stars: '★' },
   normal: { label: 'ふつう', stars: '★★' },
@@ -327,7 +327,6 @@ async function mascotSyncFromServer() {
       if (data.mascot.char !== current.char || (data.mascot.name || '') !== current.name) {
         mascotSaveSettings({ char: data.mascot.char, name: data.mascot.name || '' });
         mascotRenderAll();
-        if (window.syncGohanLevelSeen) syncGohanLevelSeen();
         if (window.regenerateDailyReview) regenerateDailyReview();
       }
     }
@@ -426,9 +425,6 @@ function buildMascotModal() {
     mascotPushToServer(settings);
     overlay.classList.add('hidden');
     mascotRenderAll();
-    // キャラの難易度でレベルの見え方が変わるため、偽のレベルアップ演出が
-    // 出ないように「最後に見たレベル」を黙って合わせ直す
-    if (window.syncGohanLevelSeen) syncGohanLevelSeen();
     // ふりかえりの口調はキャラの性格に従うので、新しいキャラの口調で書き直す
     if (window.regenerateDailyReview) regenerateDailyReview();
   });

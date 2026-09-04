@@ -14,14 +14,11 @@ function exerciseTarget() {
   return window.exerciseWeeklyTarget ? exerciseWeeklyTarget() : 5;
 }
 
-// キャラの難易度は経験値の倍率（マックスは星5）。きびしい相棒ほど鍛え方が
-// うまいという設定で、難易度が高いほど同じ記録でもレベルが上がりやすい
-const GOHAN_DIFFICULTY_MULT = { easy: 0.8, normal: 1.0, hard: 1.2, extreme: 1.45, oni: 1.7 };
-
-function gohanDifficultyMult() {
-  const d = window.mascotProfile ? mascotProfile().difficulty : 'normal';
-  return GOHAN_DIFFICULTY_MULT[d] || 1;
-}
+// レベルは累計ポイントだけで決まる（キャラクターや難易度では変わらない）。
+// キャラクターを変えても、それまでのポイント・レベルがそのまま引き継がれる。
+// 以前は難易度（きびしい相棒ほど大きい）が経験値の倍率になっていたが、
+// 着せ替えるたびにレベルの見え方が上下して分かりにくいのでやめた。
+// 「難易度」はキャラクターの性格（きびしさ）を表す表示だけに使う。
 
 // レベルのカーブの目盛り。1日の満点を68→100にした時、これも同じ比率
 // （100/68≒1.47）で広げて、それまでのレベルが変わらないようにしている
@@ -29,12 +26,12 @@ const GOHAN_LEVEL_STEP = 44;
 
 // 累計ポイントからレベルを出す（44ptごとに間隔が広がる二乗のカーブ）
 function gohanLevel(points) {
-  return 1 + Math.floor(Math.sqrt((points * gohanDifficultyMult()) / GOHAN_LEVEL_STEP));
+  return 1 + Math.floor(Math.sqrt(points / GOHAN_LEVEL_STEP));
 }
 
-// そのレベルの次に上がるのに必要な累計pt（レベル式の逆算。倍率が高いほど少なくて済む）
+// そのレベルの次に上がるのに必要な累計pt（レベル式の逆算）
 function gohanNextAt(level) {
-  return Math.ceil((GOHAN_LEVEL_STEP * level * level) / gohanDifficultyMult());
+  return Math.ceil(GOHAN_LEVEL_STEP * level * level);
 }
 
 // 運動の記録から種目の数を出す。1件の記録に複数行あれば、1行を1種目として数える

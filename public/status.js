@@ -64,9 +64,8 @@ function renderProfile() {
   const profile = window.mascotProfile ? mascotProfile() : { difficulty: 'normal', tone: 'normal' };
   const diff = (window.MASCOT_DIFFICULTY || {})[profile.difficulty];
   const toneLabels = { oni: '超スパルタ', strict: 'スパルタ', normal: 'ふつう', gentle: 'やさしい', sweet: '超やさしい' };
-  const mult = GOHAN_DIFFICULTY_MULT[profile.difficulty] || 1;
   document.getElementById('statusProfile').innerHTML = [
-    { label: '難易度', detail: diff ? `${diff.stars} ${diff.label}` : '—', value: `×${mult}` },
+    { label: '難易度', detail: diff ? diff.label : '—', value: diff ? diff.stars : '' },
     { label: '口調', detail: toneLabels[profile.tone] || 'ふつう', value: '' },
   ].map((r) => `<div class="status-row"><span class="rl">${esc(r.label)}</span>`
     + `<span class="rd">${esc(r.detail)}</span>`

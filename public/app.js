@@ -854,14 +854,6 @@ function playGohanLevelUp(fromLevel = 0, deltaPts = 0) {
   }, 1900);
 }
 
-// 着せ替えで難易度が変わった直後に呼ばれる。レベルの見え方が変わるので、
-// 「最後に見たレベル」を黙って合わせ、次回の読み込みで偽のレベルアップ演出が
-// 出ないようにする
-function syncGohanLevelSeen() {
-  if (!gohanState) return;
-  try { localStorage.setItem('gohanLevelSeen', String(gohanState.level)); } catch (e) { /* 保存できなくても致命的ではない */ }
-}
-
 // ヘッダーの中を自由に動き回る。歩く・止まる・宙に浮いてふわふわする・
 // 勢いよく飛ぶ、を気まぐれに繰り返し、端まで来たら引き返す。
 // 顔が左右対称なので向きの反転は不要。

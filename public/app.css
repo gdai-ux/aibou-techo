@@ -712,22 +712,55 @@
     z-index: 2;
     will-change: transform;
   }
-  /* 歩き回っている間だけ、足元に地面のラインと空を流れる雲を出す
-     （レトロな横スクロールゲームの雰囲気を出す演出。文字やボタンより
-     必ず奥に描くよう、いずれもマイナスのz-indexにしている） */
-  .gohan-ground, .gohan-cloud { display: none; pointer-events: none; }
+  /* 歩き回っている間だけ、足元にレンガのステージと空を流れる雲、
+     ところどころに土管を出す（マリオのような横スクロールゲームの
+     雰囲気を出す演出。文字やボタンより必ず奥に描くよう、
+     いずれもマイナスのz-indexにしている） */
+  .gohan-ground, .gohan-cloud, .gohan-pipe { display: none; pointer-events: none; }
   .page-header.gohan-roam .gohan-ground {
     display: block;
     position: absolute;
     left: 16px;
     right: 16px;
     bottom: 6px;
-    height: 2px;
-    /* 帯の色があれば、地面の色もそれに合わせる（無ければ地の境界線の色） */
-    background: linear-gradient(90deg, transparent, var(--belt-trim, var(--border-strong)) 12%, var(--belt-trim, var(--border-strong)) 88%, transparent);
-    opacity: 0.6;
+    height: 6px;
+    /* レンガのブロックが並んでいるように見せる：目地（縦線）を等間隔に、
+       上端にハイライトを1本。帯の色があればレンガの色もそれに合わせる
+       （無ければ地の境界線の色） */
+    background-color: var(--belt-trim, var(--border-strong));
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35) 1px, transparent 1px),
+      repeating-linear-gradient(90deg, transparent 0 13px, rgba(0, 0, 0, 0.25) 13px 14px);
+    background-size: 100% 100%, 14px 100%;
+    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    opacity: 0.7;
     z-index: -1;
   }
+  /* 地面に立つ土管。動かず固定位置に置くことで、キャラクターが
+     進むほど「土管を追い越していく」＝ステージを進んでいる感じを出す */
+  .page-header.gohan-roam .gohan-pipe {
+    display: block;
+    position: absolute;
+    bottom: 11px;
+    width: 12px;
+    border-radius: 2px 2px 0 0;
+    background: linear-gradient(90deg, #2f9e44 0 3px, #51cf66 3px 9px, #2f9e44 9px 12px);
+    opacity: 0.55;
+    z-index: -1;
+  }
+  .page-header.gohan-roam .gohan-pipe::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -2px;
+    right: -2px;
+    height: 4px;
+    border-radius: 2px;
+    background: inherit;
+  }
+  .gohan-pipe-1 { left: 58%; height: 16px; }
+  .gohan-pipe-2 { left: 79%; height: 22px; }
   .page-header.gohan-roam .gohan-cloud {
     display: block;
     position: absolute;
@@ -755,7 +788,7 @@
     to   { left: 112%; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .gohan-ground, .gohan-cloud { display: none !important; }
+    .gohan-ground, .gohan-cloud, .gohan-pipe { display: none !important; }
   }
   .gohan-walking .gohan-kun { animation: gohanWalkBob 0.4s ease-in-out infinite; }
   /* 宙に浮いている間は、ゆっくり上下にふわふわする */

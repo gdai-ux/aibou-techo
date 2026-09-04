@@ -704,13 +704,58 @@
   @keyframes gohanBeat { 0%, 100% { transform: none; } 20% { transform: scale(1.22); } 45% { transform: scale(1); } 65% { transform: scale(1.14); } }
   /* --- ごはんくんの育成 --- */
   /* ヘッダーの中をてくてく歩き回る（位置はJSがtranslateXで動かす） */
-  .page-header.gohan-roam { position: sticky; }
+  .page-header.gohan-roam { position: sticky; overflow: hidden; }
   .page-header.gohan-roam .app-icon {
     position: absolute;
     left: 0;
     bottom: 6px;
     z-index: 2;
     will-change: transform;
+  }
+  /* 歩き回っている間だけ、足元に地面のラインと空を流れる雲を出す
+     （レトロな横スクロールゲームの雰囲気を出す演出。文字やボタンより
+     必ず奥に描くよう、いずれもマイナスのz-indexにしている） */
+  .gohan-ground, .gohan-cloud { display: none; pointer-events: none; }
+  .page-header.gohan-roam .gohan-ground {
+    display: block;
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 6px;
+    height: 2px;
+    /* 帯の色があれば、地面の色もそれに合わせる（無ければ地の境界線の色） */
+    background: linear-gradient(90deg, transparent, var(--belt-trim, var(--border-strong)) 12%, var(--belt-trim, var(--border-strong)) 88%, transparent);
+    opacity: 0.6;
+    z-index: -1;
+  }
+  .page-header.gohan-roam .gohan-cloud {
+    display: block;
+    position: absolute;
+    top: 12px;
+    width: 30px;
+    height: 12px;
+    background: var(--muted);
+    opacity: 0.28;
+    border-radius: 999px;
+    z-index: -1;
+  }
+  .page-header.gohan-roam .gohan-cloud::before,
+  .page-header.gohan-roam .gohan-cloud::after {
+    content: '';
+    position: absolute;
+    background: inherit;
+    border-radius: 999px;
+  }
+  .page-header.gohan-roam .gohan-cloud::before { width: 14px; height: 14px; top: -6px; left: 3px; }
+  .page-header.gohan-roam .gohan-cloud::after { width: 18px; height: 16px; top: -8px; left: 14px; }
+  .gohan-cloud-1 { animation: cloudDrift 20s linear infinite; }
+  .gohan-cloud-2 { top: 28px; animation: cloudDrift 27s linear infinite -10s; }
+  @keyframes cloudDrift {
+    from { left: -12%; }
+    to   { left: 112%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gohan-ground, .gohan-cloud { display: none !important; }
   }
   .gohan-walking .gohan-kun { animation: gohanWalkBob 0.4s ease-in-out infinite; }
   /* 宙に浮いている間は、ゆっくり上下にふわふわする */

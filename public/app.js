@@ -854,10 +854,12 @@ function playGohanLevelUp(fromLevel = 0, deltaPts = 0) {
   }, 1900);
 }
 
-// ヘッダーの中で、キャラクターが「今日ここまでの進み具合」ぶんだけ
-// ステージを進んでいく。記録するたびに少しずつ右へ歩いて進み、日が変わると
-// また左（タイトルのすぐ右＝スタート地点）から。ランダムに歩き回るのではなく、
-// 今日の記録（gohanState.todayScore）が実際に横位置を決める。
+// ヘッダーの中で、キャラクターが「次のレベルまでの進み具合」ぶんだけ
+// ステージを進んでいく。記録するたびに少しずつ右へ歩いて進み、レベルが
+// 上がると新しいステージに切り替わったように、また左（タイトルのすぐ右＝
+// スタート地点）から。ランダムに歩き回るのではなく、累計ポイント
+// （gohanState.total）が実際に横位置を決める。1日でリセットされず、
+// 何日かかけてじわじわ右へ進んでいく。
 // 顔が左右対称なので向きの反転は不要。横位置(x)はJSが.app-iconの
 // transformで動かし、体の傾き・浮遊はCSSのアニメーションが担当する。
 function startGohanRoam() {
@@ -878,10 +880,16 @@ function startGohanRoam() {
     return { min, max: Math.max(min + 40, right) };
   }
 
-  // 今日ここまでの進み具合（0〜1）。今日の合計ポイントが無ければ0（スタート地点）
+  // 今のレベルの中で、次のレベルまでどれだけ進んだか（0〜1）。
+  // 累計ポイントで見るので、1日の中では小さくても記録を重ねるほど
+  // じわじわ進み、レベルアップした瞬間また0（スタート地点）に戻る
   function progressRatio() {
-    const s = gohanState && gohanState.todayScore;
-    return s && s.max ? Math.max(0, Math.min(1, s.ratio)) : 0;
+    if (!gohanState || !gohanState.level) return 0;
+    const prevAt = GOHAN_LEVEL_STEP * (gohanState.level - 1) * (gohanState.level - 1);
+    const nextAt = gohanState.nextAt || prevAt + 1;
+    const span = nextAt - prevAt;
+    if (span <= 0) return 0;
+    return Math.max(0, Math.min(1, (gohanState.total - prevAt) / span));
   }
 
   function targetX() {

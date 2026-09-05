@@ -716,7 +716,7 @@
      ところどころに土管を出す（マリオのような横スクロールゲームの
      雰囲気を出す演出。文字やボタンより必ず奥に描くよう、
      いずれもマイナスのz-indexにしている） */
-  .gohan-ground, .gohan-cloud, .gohan-pipe { display: none; pointer-events: none; }
+  .gohan-ground, .gohan-cloud, .gohan-pipe, .gohan-hill, .gohan-block { display: none; pointer-events: none; }
   .page-header.gohan-roam .gohan-ground {
     display: block;
     position: absolute;
@@ -787,6 +787,55 @@
     from { left: -12%; }
     to   { left: 112%; }
   }
+  /* 背景に見える丘（固定位置・地面より奥）。草原のテーマだけで使う */
+  .page-header.gohan-roam[data-stage="grass"] .gohan-hill {
+    display: block;
+    position: absolute;
+    bottom: 6px;
+    width: 34px;
+    height: 16px;
+    border-radius: 50% 50% 0 0;
+    background: #4a9b3f;
+    opacity: 0.55;
+    z-index: -2;
+  }
+  .gohan-hill-1 { left: 8%; }
+  .gohan-hill-2 { left: 40%; width: 26px; height: 12px; }
+  /* 頭上に浮かぶ「？」ブロック。土管と同じく固定位置で、
+     キャラクターがその下を通り抜けていく */
+  .page-header.gohan-roam .gohan-block {
+    display: block;
+    position: absolute;
+    bottom: 34px;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #f4b942, #d98e04);
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25), inset 0 2px 0 rgba(255, 255, 255, 0.35);
+    opacity: 0.7;
+    z-index: -1;
+  }
+  .page-header.gohan-roam .gohan-block::after {
+    content: '?';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 8px/1 system-ui, sans-serif;
+    color: rgba(0, 0, 0, 0.55);
+  }
+  .gohan-block-1 { left: 52%; }
+  .gohan-block-2 { left: 66%; }
+  /* 草原のテーマは、マリオ1-1のような明るい青空にする
+     （帯の色による色付けより優先。他のテーマはこれまで通りの色合い） */
+  .page-header.gohan-roam[data-stage="grass"] {
+    background: linear-gradient(180deg, #5c94fc 0%, #7fb2ff 55%, #a7dcff 100%);
+  }
+  .page-header.gohan-roam[data-stage="grass"] .gohan-cloud {
+    background: #fff;
+    opacity: 0.9;
+  }
   /* ステージのテーマ（growth.jsのGOHAN_STAGE_THEMES、レベルで自動切り替え）。
      草原（既定・上のスタイルのまま）→森→海→砂漠→雪山→洞窟→宇宙、と
      地面・土管・空の飾りの色や形だけを差し替える。歩く・浮くといった
@@ -807,6 +856,9 @@
     background: #3d7a3d;
   }
   .page-header.gohan-roam[data-stage="forest"] .gohan-cloud { background: #5b7a5b; }
+  .page-header.gohan-roam[data-stage="forest"] .gohan-block {
+    background: linear-gradient(180deg, #8a6b3d, #5e4526);
+  }
 
   .page-header.gohan-roam[data-stage="sea"] .gohan-ground {
     background-color: #1f6f8b;
@@ -821,6 +873,11 @@
   }
   .page-header.gohan-roam[data-stage="sea"] .gohan-pipe::before { display: none; }
   .page-header.gohan-roam[data-stage="sea"] .gohan-cloud { background: #eef6f9; opacity: 0.4; }
+  .page-header.gohan-roam[data-stage="sea"] .gohan-block {
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #bdeeff, #4dd0e1);
+  }
+  .page-header.gohan-roam[data-stage="sea"] .gohan-block::after { content: none; }
 
   .page-header.gohan-roam[data-stage="desert"] .gohan-ground {
     background-color: #d9a066;
@@ -845,6 +902,9 @@
   .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-1::before,
   .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-1::after { display: none; }
   .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-2 { background: #f4e3c1; opacity: 0.3; }
+  .page-header.gohan-roam[data-stage="desert"] .gohan-block {
+    background: linear-gradient(180deg, #e8c27a, #c89a4e);
+  }
 
   .page-header.gohan-roam[data-stage="snow"] .gohan-ground {
     background-color: #cfe8f3;
@@ -860,6 +920,10 @@
   }
   .page-header.gohan-roam[data-stage="snow"] .gohan-pipe::before { display: none; }
   .page-header.gohan-roam[data-stage="snow"] .gohan-cloud { background: #f4fbfd; opacity: 0.5; }
+  .page-header.gohan-roam[data-stage="snow"] .gohan-block {
+    background: linear-gradient(180deg, #eaf7fb, #b9dcec);
+  }
+  .page-header.gohan-roam[data-stage="snow"] .gohan-block::after { color: rgba(30, 60, 90, 0.55); }
 
   .page-header.gohan-roam[data-stage="cave"] .gohan-ground {
     background-color: #4a4550;
@@ -886,6 +950,11 @@
   .page-header.gohan-roam[data-stage="cave"] .gohan-cloud::after { display: none; }
   .page-header.gohan-roam[data-stage="cave"] .gohan-cloud-1 { left: 22%; top: -4px; }
   .page-header.gohan-roam[data-stage="cave"] .gohan-cloud-2 { left: 68%; top: -4px; }
+  .page-header.gohan-roam[data-stage="cave"] .gohan-block {
+    border-radius: 3px;
+    background: linear-gradient(180deg, #9a9aa6, #6b6b78);
+  }
+  .page-header.gohan-roam[data-stage="cave"] .gohan-block::after { content: none; }
 
   .page-header.gohan-roam[data-stage="space"] .gohan-ground {
     background-color: #2b2d6b;
@@ -908,12 +977,17 @@
   .page-header.gohan-roam[data-stage="space"] .gohan-cloud::after { display: none; }
   .page-header.gohan-roam[data-stage="space"] .gohan-cloud-1 { left: 20%; top: 10px; animation-delay: 0s; }
   .page-header.gohan-roam[data-stage="space"] .gohan-cloud-2 { left: 70%; top: 22px; animation-delay: -1.2s; }
+  .page-header.gohan-roam[data-stage="space"] .gohan-block {
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #d9b3ff, #7b2cbf);
+  }
+  .page-header.gohan-roam[data-stage="space"] .gohan-block::after { content: '✦'; color: rgba(255, 255, 255, 0.7); }
   @keyframes gohanTwinkle {
     0%, 100% { opacity: 0.25; }
     50%      { opacity: 0.9; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .gohan-ground, .gohan-cloud, .gohan-pipe { display: none !important; }
+    .gohan-ground, .gohan-cloud, .gohan-pipe, .gohan-hill, .gohan-block { display: none !important; }
   }
   .gohan-walking .gohan-kun { animation: gohanWalkBob 0.4s ease-in-out infinite; }
   /* 宙に浮いている間は、ゆっくり上下にふわふわする */

@@ -856,14 +856,15 @@ function playGohanLevelUp(fromLevel = 0, deltaPts = 0) {
   }, 1900);
 }
 
-// ヘッダーの中で、キャラクターが「次のレベルまでの進み具合」ぶんだけ
-// ステージを進んでいく。記録するたびに少しずつ右へ歩いて進み、レベルが
-// 上がると新しいステージに切り替わったように、また左（タイトルのすぐ右＝
-// スタート地点）から。ランダムに歩き回るのではなく、累計ポイント
-// （gohanState.total）が実際に横位置を決める。1日でリセットされず、
-// 何日かかけてじわじわ右へ進んでいく。
+// ヘッダーを横スクロールゲームのステージに見立てる。キャラクターはその場で
+// 走り続け、地面・土管・ブロック・丘・雲のほうが左へ流れていく（遠いものほど
+// ゆっくり流れて奥行きを出す。速さの比率はCSSの--par）。
+// 「次のレベルまでの進み具合」は、キャラクターの立ち位置で表す：タイトルの
+// すぐ右がスタート地点で、累計ポイントが増えるほど右へ寄り、レベルが上がると
+// 新しいステージに切り替わったようにまた左から。ランダムに歩き回るのではなく、
+// 累計ポイント（gohanState.total）が実際に立ち位置を決める。
 // 顔が左右対称なので向きの反転は不要。横位置(x)はJSが.app-iconの
-// transformで動かし、体の傾き・浮遊はCSSのアニメーションが担当する。
+// transformで動かし、体の弾み・跳びはCSSのアニメーションが担当する。
 function startGohanRoam() {
   const header = document.querySelector('.page-header');
   const walker = header && header.querySelector('.app-icon');
@@ -872,6 +873,9 @@ function startGohanRoam() {
   // 着せ替えでSVGは別のノードに差し替わるので、掴んだままにせず毎回探す
   const currentKun = () => walker.querySelector('.gohan-kun');
   const title = header.querySelector('h1');
+  const ground = header.querySelector('.gohan-ground');
+  // 流れていく景色。テーマで表示/非表示や速さ（--par）が変わる
+  const scenery = [...header.querySelectorAll('.gohan-cloud, .gohan-hill, .gohan-pipe, .gohan-block')];
 
   function bounds() {
     // 右側のボタン群（設定・履歴）にかぶらない範囲で動く
@@ -901,6 +905,38 @@ function startGohanRoam() {
 
   const sleepy = () => walker.classList.contains('gohan-sleepy');
 
+  // 景色が流れる速さ（px/秒）。走っている時と、眠くてとぼとぼ歩く時
+  const RUN_SPEED = 40;
+  const SLEEPY_SPEED = 10;
+  let scroll = 0;
+  // 景色それぞれの元の位置（CSSのleft）・幅・速さの比率。テーマ切り替えや
+  // 画面の回転で変わるので、時々測り直す
+  let layout = null;
+  let layoutAt = 0;
+  function measure() {
+    layout = {
+      W: header.clientWidth,
+      items: scenery.map((el) => {
+        const cs = getComputedStyle(el);
+        const par = parseFloat(cs.getPropertyValue('--par'));
+        return { el, base: el.offsetLeft, w: el.offsetWidth, par: Number.isFinite(par) ? par : 1, shown: cs.display !== 'none' };
+      }),
+    };
+  }
+  function placeScenery() {
+    const { W, items } = layout;
+    items.forEach((it) => {
+      if (!it.shown || !it.w || !it.par) { it.el.style.transform = ''; return; }
+      // 左端で消えたら右端からまた入ってくる（1周＝ヘッダーの幅＋自分の幅）
+      const T = W + it.w;
+      let pos = (it.base + it.w - scroll * it.par) % T;
+      if (pos < 0) pos += T;
+      it.el.style.transform = `translateX(${(pos - it.w - it.base).toFixed(1)}px)`;
+    });
+    // 地面のレンガ模様も同じ速さで流す
+    if (ground) ground.style.backgroundPositionX = `${(-scroll).toFixed(1)}px`;
+  }
+
   let x = null;
   let idleUntil = 0;
   let last = null;
@@ -910,30 +946,37 @@ function startGohanRoam() {
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
     if (x === null) x = targetX(); // 開いた時点の進み具合の位置から（歩みは見せない）
+    if (!layout || t - layoutAt > 500) { measure(); layoutAt = t; }
 
     const kun = currentKun();
     const playing = !!kun && [...kun.classList].some((c) => c.startsWith('gohan-play-'));
+    const tired = sleepy();
     const goal = targetX();
     const dist = goal - x;
 
+    // 景色を左へ流す（＝キャラクターが右へ走っているように見える）。
+    // 芸をしている間は立ち止まる
+    if (!playing) scroll += (tired ? SLEEPY_SPEED : RUN_SPEED) * dt;
+    placeScenery();
+    // 走っている見せ方（弾む体と土ぼこり）。眠い時と芸の間は止める
+    walker.classList.toggle('gohan-walking', !playing && !tired);
+
     if (!playing && Math.abs(dist) > 1.5) {
-      // 記録して進み具合が増えた（＝目標地点が先にある）ぶんだけ歩いて進む
-      walker.classList.add('gohan-walking');
+      // 記録して進み具合が増えたぶんだけ、立ち位置を右へ寄せる
       walker.classList.remove('gohan-floating');
       const dir = dist > 0 ? 1 : -1;
-      x += dir * (sleepy() ? 10 : 34) * dt;
+      x += dir * (tired ? 10 : 34) * dt;
       if ((dir > 0 && x > goal) || (dir < 0 && x < goal)) x = goal;
       idleUntil = 0;
     } else if (!playing) {
-      // 目標地点に着いたら、そこでたまに一息ついたり芸をしたりする
-      walker.classList.remove('gohan-walking');
+      // 走りながら、たまにぽんと跳んだり芸をしたりする
       if (t >= idleUntil) {
         idleUntil = t + 2000 + Math.random() * 3000;
         const r = Math.random();
-        if (!sleepy() && r < 0.3) {
+        if (!tired && r < 0.3) {
           walker.classList.add('gohan-floating');
           setTimeout(() => walker.classList.remove('gohan-floating'), 1600);
-        } else if (!sleepy() && r < 0.5) {
+        } else if (!tired && r < 0.5) {
           if (kun) playGohanTrick(kun);
         }
       }

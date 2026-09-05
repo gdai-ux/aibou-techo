@@ -717,6 +717,11 @@
      雰囲気を出す演出。文字やボタンより必ず奥に描くよう、
      いずれもマイナスのz-indexにしている） */
   .gohan-ground, .gohan-cloud, .gohan-pipe, .gohan-hill, .gohan-block { display: none; pointer-events: none; }
+  /* 景色はキャラクターが走っているように見せるため、JS（startGohanRoam）が
+     左へ流し続ける。--par は流れる速さの比率（1＝地面と同じ、0.5＝遠くの丘、
+     0.25＝もっと遠くの雲、0＝動かない太陽や星） */
+  .gohan-pipe, .gohan-block { --par: 1; }
+  .gohan-hill { --par: 0.5; }
   .page-header.gohan-roam .gohan-ground {
     display: block;
     position: absolute;
@@ -781,12 +786,8 @@
   }
   .page-header.gohan-roam .gohan-cloud::before { width: 14px; height: 14px; top: -6px; left: 3px; }
   .page-header.gohan-roam .gohan-cloud::after { width: 18px; height: 16px; top: -8px; left: 14px; }
-  .gohan-cloud-1 { animation: cloudDrift 20s linear infinite; }
-  .gohan-cloud-2 { top: 28px; animation: cloudDrift 27s linear infinite -10s; }
-  @keyframes cloudDrift {
-    from { left: -12%; }
-    to   { left: 112%; }
-  }
+  .gohan-cloud-1 { left: 18%; --par: 0.25; }
+  .gohan-cloud-2 { left: 62%; top: 28px; --par: 0.25; }
   /* 背景に見える丘（固定位置・地面より奥）。草原のテーマだけで使う */
   .page-header.gohan-roam[data-stage="grass"] .gohan-hill {
     display: block;
@@ -898,6 +899,7 @@
     opacity: 0.55;
     border-radius: 50%;
     animation: none;
+    --par: 0;
   }
   .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-1::before,
   .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-1::after { display: none; }
@@ -945,6 +947,7 @@
     border-radius: 0;
     clip-path: polygon(50% 100%, 100% 0%, 0% 0%);
     animation: none;
+    --par: 1;
   }
   .page-header.gohan-roam[data-stage="cave"] .gohan-cloud::before,
   .page-header.gohan-roam[data-stage="cave"] .gohan-cloud::after { display: none; }
@@ -972,6 +975,7 @@
     opacity: 0.7;
     border-radius: 50%;
     animation: gohanTwinkle 2.4s ease-in-out infinite;
+    --par: 0;
   }
   .page-header.gohan-roam[data-stage="space"] .gohan-cloud::before,
   .page-header.gohan-roam[data-stage="space"] .gohan-cloud::after { display: none; }
@@ -991,11 +995,11 @@
   }
   /* 走っている感じを出すため、素早い上下＋左右の傾きで弾む */
   .gohan-walking .gohan-kun { animation: gohanWalkBob 0.26s ease-in-out infinite; transform-origin: bottom center; }
-  /* 宙に浮いている間は、ゆっくり上下にふわふわする */
-  .gohan-floating .gohan-kun { animation: gohanHoverBob 2.2s ease-in-out infinite; }
-  @keyframes gohanHoverBob {
+  /* 走りながら、たまにぽんと跳ぶ（土管を飛び越えるイメージ） */
+  .gohan-floating .gohan-kun { animation: gohanRunHop 0.8s ease-in-out infinite; }
+  @keyframes gohanRunHop {
     0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-4px); }
+    50%      { transform: translateY(-14px); }
   }
   @keyframes gohanWalkBob {
     0%, 100%  { transform: translateY(0) rotate(0deg); }

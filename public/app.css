@@ -787,6 +787,131 @@
     from { left: -12%; }
     to   { left: 112%; }
   }
+  /* ステージのテーマ（growth.jsのGOHAN_STAGE_THEMES、レベルで自動切り替え）。
+     草原（既定・上のスタイルのまま）→森→海→砂漠→雪山→洞窟→宇宙、と
+     地面・土管・空の飾りの色や形だけを差し替える。歩く・浮くといった
+     キャラクター側の動きはテーマに関わらず共通 */
+  .page-header.gohan-roam[data-stage="forest"] .gohan-ground {
+    background-color: #2f5233;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+      repeating-linear-gradient(90deg, transparent 0 13px, rgba(0, 0, 0, 0.3) 13px 14px);
+  }
+  .page-header.gohan-roam[data-stage="forest"] .gohan-pipe {
+    width: 10px;
+    background: linear-gradient(90deg, #6b4226 0 3px, #8a5a34 3px 7px, #6b4226 7px 10px);
+  }
+  .page-header.gohan-roam[data-stage="forest"] .gohan-pipe::before {
+    top: -7px; left: -4px; right: -4px; height: 10px;
+    border-radius: 50%;
+    background: #3d7a3d;
+  }
+  .page-header.gohan-roam[data-stage="forest"] .gohan-cloud { background: #5b7a5b; }
+
+  .page-header.gohan-roam[data-stage="sea"] .gohan-ground {
+    background-color: #1f6f8b;
+    background-image:
+      radial-gradient(circle at 4px 2px, rgba(255, 255, 255, 0.35) 1px, transparent 1.5px),
+      repeating-linear-gradient(90deg, transparent 0 13px, rgba(0, 0, 0, 0.15) 13px 14px);
+    background-size: 14px 100%, 14px 100%;
+  }
+  .page-header.gohan-roam[data-stage="sea"] .gohan-pipe {
+    border-radius: 50% 50% 2px 2px / 70% 70% 2px 2px;
+    background: linear-gradient(180deg, #4dd0e1, #1f6f8b);
+  }
+  .page-header.gohan-roam[data-stage="sea"] .gohan-pipe::before { display: none; }
+  .page-header.gohan-roam[data-stage="sea"] .gohan-cloud { background: #eef6f9; opacity: 0.4; }
+
+  .page-header.gohan-roam[data-stage="desert"] .gohan-ground {
+    background-color: #d9a066;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+      repeating-linear-gradient(90deg, transparent 0 22px, rgba(150, 90, 40, 0.25) 22px 23px);
+    background-size: 100% 100%, 22px 100%;
+  }
+  .page-header.gohan-roam[data-stage="desert"] .gohan-pipe {
+    border-radius: 6px 6px 2px 2px;
+    background: linear-gradient(90deg, #2f9e44 0 4px, #4caf50 4px 8px, #2f9e44 8px 12px);
+  }
+  .page-header.gohan-roam[data-stage="desert"] .gohan-pipe::before { display: none; }
+  /* 一つ目の雲を、流れずそこに留まる太陽に置き換える */
+  .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-1 {
+    width: 20px; height: 20px; top: 10px;
+    background: radial-gradient(circle, #ffd166, #f4a300);
+    opacity: 0.55;
+    border-radius: 50%;
+    animation: none;
+  }
+  .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-1::before,
+  .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-1::after { display: none; }
+  .page-header.gohan-roam[data-stage="desert"] .gohan-cloud-2 { background: #f4e3c1; opacity: 0.3; }
+
+  .page-header.gohan-roam[data-stage="snow"] .gohan-ground {
+    background-color: #cfe8f3;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.6) 1px, transparent 1px),
+      repeating-linear-gradient(90deg, transparent 0 16px, rgba(120, 160, 180, 0.3) 16px 17px);
+    background-size: 100% 100%, 16px 100%;
+  }
+  .page-header.gohan-roam[data-stage="snow"] .gohan-pipe {
+    background: linear-gradient(180deg, #eaf7fb, #9fd3e8);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    border-radius: 0;
+  }
+  .page-header.gohan-roam[data-stage="snow"] .gohan-pipe::before { display: none; }
+  .page-header.gohan-roam[data-stage="snow"] .gohan-cloud { background: #f4fbfd; opacity: 0.5; }
+
+  .page-header.gohan-roam[data-stage="cave"] .gohan-ground {
+    background-color: #4a4550;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15) 1px, transparent 1px),
+      repeating-linear-gradient(90deg, transparent 0 13px, rgba(0, 0, 0, 0.4) 13px 14px);
+  }
+  .page-header.gohan-roam[data-stage="cave"] .gohan-pipe {
+    background: linear-gradient(180deg, #8d8d99, #5a5a66);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    border-radius: 0;
+  }
+  .page-header.gohan-roam[data-stage="cave"] .gohan-pipe::before { display: none; }
+  /* 雲を天井から下がる鍾乳石に置き換える（流れず静止したまま） */
+  .page-header.gohan-roam[data-stage="cave"] .gohan-cloud {
+    width: 10px; height: 16px;
+    background: #6b6b78;
+    opacity: 0.5;
+    border-radius: 0;
+    clip-path: polygon(50% 100%, 100% 0%, 0% 0%);
+    animation: none;
+  }
+  .page-header.gohan-roam[data-stage="cave"] .gohan-cloud::before,
+  .page-header.gohan-roam[data-stage="cave"] .gohan-cloud::after { display: none; }
+  .page-header.gohan-roam[data-stage="cave"] .gohan-cloud-1 { left: 22%; top: -4px; }
+  .page-header.gohan-roam[data-stage="cave"] .gohan-cloud-2 { left: 68%; top: -4px; }
+
+  .page-header.gohan-roam[data-stage="space"] .gohan-ground {
+    background-color: #2b2d6b;
+    background-image: linear-gradient(rgba(255, 214, 10, 0.5), rgba(255, 214, 10, 0.5) 1px, transparent 1px);
+  }
+  .page-header.gohan-roam[data-stage="space"] .gohan-pipe {
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #c77dff, #7b2cbf);
+  }
+  .page-header.gohan-roam[data-stage="space"] .gohan-pipe::before { display: none; }
+  /* 雲を、静かにまたたく星に置き換える */
+  .page-header.gohan-roam[data-stage="space"] .gohan-cloud {
+    width: 4px; height: 4px;
+    background: #ffe066;
+    opacity: 0.7;
+    border-radius: 50%;
+    animation: gohanTwinkle 2.4s ease-in-out infinite;
+  }
+  .page-header.gohan-roam[data-stage="space"] .gohan-cloud::before,
+  .page-header.gohan-roam[data-stage="space"] .gohan-cloud::after { display: none; }
+  .page-header.gohan-roam[data-stage="space"] .gohan-cloud-1 { left: 20%; top: 10px; animation-delay: 0s; }
+  .page-header.gohan-roam[data-stage="space"] .gohan-cloud-2 { left: 70%; top: 22px; animation-delay: -1.2s; }
+  @keyframes gohanTwinkle {
+    0%, 100% { opacity: 0.25; }
+    50%      { opacity: 0.9; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .gohan-ground, .gohan-cloud, .gohan-pipe { display: none !important; }
   }

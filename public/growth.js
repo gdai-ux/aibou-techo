@@ -191,3 +191,26 @@ const GOHAN_BELT_COLORS = [
 function gohanBelt(level) {
   return GOHAN_BELT_COLORS[gohanDecoStage(level)];
 }
+
+// ヘッダーの足元の「ステージ」演出（背景のテーマ）。帯より細かく切り替わり、
+// レベルが上がるほど景色が草原→森→海→砂漠→雪山→洞窟→宇宙と移り変わっていく。
+// 茶帯のあたりで洞窟（土の中）に、黒帯のあたりで宇宙（夜空に金色の星）に
+// なるよう、帯の色のイメージに合わせて境目を選んである
+const GOHAN_STAGE_THEMES = [
+  { level: 1, key: 'grass', name: '草原' },
+  { level: 3, key: 'forest', name: '森' },
+  { level: 5, key: 'sea', name: '海' },
+  { level: 8, key: 'desert', name: '砂漠' },
+  { level: 11, key: 'snow', name: '雪山' },
+  { level: 14, key: 'cave', name: '洞窟' },
+  { level: 20, key: 'space', name: '宇宙' },
+];
+
+// レベルから、いまのステージのテーマを出す
+function gohanStageTheme(level) {
+  let theme = GOHAN_STAGE_THEMES[0];
+  for (const t of GOHAN_STAGE_THEMES) {
+    if (level >= t.level) theme = t;
+  }
+  return theme;
+}

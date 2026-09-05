@@ -656,6 +656,8 @@ function applyGohanVisualState() {
   if (header) {
     header.style.setProperty('--belt-color', belt.color);
     header.style.setProperty('--belt-trim', belt.trim || belt.color);
+    // ヘッダー足元のステージ演出（草原→森→海→砂漠→雪山→洞窟→宇宙）も、レベルに応じて切り替える
+    header.dataset.stage = gohanStageTheme(level).key;
   }
   const walker = document.querySelector('.app-icon');
   if (walker) walker.classList.toggle('gohan-sleepy', gohanState.sleepy);

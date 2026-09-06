@@ -4,8 +4,11 @@
 // 画面か A ボタンを押すとジャンプ。障害物にぶつかったら終わりで、走った距離が点数。
 // ステージは5つ（そうげん→もり→うみ→さばく→うちゅう）。それぞれ決まった距離を
 // 走るとゴールの旗が見えてきて、触れるとクリア。次のステージは少し速く、障害物も多い。
-// 画面はゲームボーイのような携帯機の見た目にし、ヘッダーのステージのテーマ
-// （草原・森・海・砂漠・雪山・洞窟・宇宙）に合わせて空・地面・障害物の色と形が変わる。
+//
+// 5つ目をクリアするとボス戦。相手は「サボリ魔王 ダラーン」（記録をサボらせようとする
+// 眠そうな魔王）。ボス戦だけ十字キーと B ボタンが増え、B で「ほのおだま」を撃てる。
+// 十字キーの ◀▶ で前後に動き、▼ でしゃがみ、▲ か A でジャンプ。魔王が投げてくる
+// まくら（低い＝ジャンプ、顔の高さ＝しゃがむ）をよけながら、ほのおだまを当てて倒す。
 //
 // 依存：ページに .page-header .gohan-kun（相棒のSVG）があること。音は app 側の
 // ensureAudio / beep / tapSoundEnabled があれば使い、無ければ鳴らさない。
@@ -14,6 +17,7 @@
   'use strict';
 
   const BEST_KEY = 'gohanRunBest';
+  const STAGE_KEY = 'gohanRunBestStage';
   // 画面の論理サイズ（px）。端末の幅に合わせて CSS の transform で拡大縮小する
   const W = 320;
   const H = 240;          // 4:3。縦にも余裕を持たせて、スマホで大きく見せる
@@ -22,8 +26,6 @@
   const RUNNER_X = 40;    // 相棒の立ち位置（左から）
   const GRAVITY = 1700;   // px/s^2
   const JUMP_V = -620;    // 跳んだ瞬間の速さ（px/s、上向きが負）
-  const BASE_SPEED = 250; // 走り始めの速さ（px/s）
-  const STAGE_KEY = 'gohanRunBestStage';
   // 5つのステージ。length はゴールまでの距離（px）、speed は走り始めの速さ、
   // gapMin/gapMax は障害物が出る間隔（秒）。後のステージほど長く、速く、詰まる
   const STAGES = [
@@ -33,8 +35,17 @@
     { key: 'desert', name: 'さばく',   length: 7400, speed: 330, gapMin: 0.7,  gapMax: 1.3 },
     { key: 'space',  name: 'うちゅう', length: 8400, speed: 350, gapMin: 0.65, gapMax: 1.2 },
   ];
+  // ボス戦
+  const BOSS_NAME = 'サボリ魔王 ダラーン';
+  const BOSS_HP = 12;         // ほのおだまを当てる回数
+  const BOSS_SIZE = 72;
+  const PLAYER_HEARTS = 3;
+  const MOVE_SPEED = 150;     // ◀▶ で動く速さ（px/s）
+  const FIRE_SPEED = 430;     // ほのおだまの速さ
+  const FIRE_COOLDOWN = 0.45; // 連射の間隔（秒）
+  const HURT_TIME = 1.5;      // やられた後の無敵時間（秒）
 
-  // テーマごとの色と障害物の形（ヘッダーの data-stage と同じキー）
+  // テーマごとの色と障害物の形（ヘッダーの data-stage と同じキー。castle はボス戦だけ）
   const THEMES = {
     grass:  { sky: 'linear-gradient(180deg,#5c94fc,#a7dcff)', ground: '#8b5e34', line: '#4a9b3f', ob1: '#2f9e44', ob2: '#51cf66', cloud: '#ffffff', ink: '#1c1c1e', shape: 'pipe' },
     // 障害物は空や地面と色がかぶらないように（森は明るい空に濃い木、海は青い海にサンゴ色）
@@ -44,7 +55,28 @@
     snow:   { sky: 'linear-gradient(180deg,#9fc5e8,#e8f4fb)', ground: '#cfe8f3', line: '#9fd3e8', ob1: '#2f7fb8', ob2: '#8ccbe8', cloud: '#ffffff', ink: '#1c1c1e', shape: 'spike' },
     cave:   { sky: 'linear-gradient(180deg,#1b1a20,#33313a)', ground: '#4a4550', line: '#6b6b78', ob1: '#7a7a88', ob2: '#c4c4d4', cloud: '#6b6b78', ink: '#f2f2f7', shape: 'spike' },
     space:  { sky: 'linear-gradient(180deg,#05051a,#1a1b4a)', ground: '#2b2d6b', line: '#ffd60a', ob1: '#9d4edd', ob2: '#e6c4ff', cloud: '#ffe066', ink: '#f2f2f7', shape: 'ball' },
+    castle: { sky: 'linear-gradient(180deg,#2b0a3d,#5a1a5e 70%,#7a2a5a)', ground: '#3a2a3f', line: '#ff5e7a', ob1: '#9d4edd', ob2: '#e6c4ff', cloud: '#5a3d6e', ink: '#f2f2f7', shape: 'ball' },
   };
+
+  // サボリ魔王 ダラーン（16×16のドット絵）。紫のかたまりに金の王冠、半分閉じた目、よだれ
+  const BOSS_SVG = (() => {
+    const px = [];
+    const rect = (x, y, w, h, c) => px.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`);
+    const G = '#ffd60a', B = '#9b5de5', D = '#6a3fb5', K = '#2a1f4a', Wt = '#ffffff', L = '#4a2f80', S = '#8fe3ff';
+    rect(4, 0, 1, 1, G); rect(7, 0, 1, 1, G); rect(10, 0, 1, 1, G);
+    rect(4, 1, 7, 2, G);
+    rect(3, 3, 9, 1, B); rect(2, 4, 11, 1, B); rect(1, 5, 13, 7, B);
+    rect(2, 12, 11, 1, D); rect(3, 13, 9, 1, D);
+    rect(4, 14, 2, 1, D); rect(9, 14, 2, 1, D);
+    // 目（まぶたが半分下りている）
+    rect(3, 6, 3, 1, L); rect(9, 6, 3, 1, L);
+    rect(3, 7, 3, 1, Wt); rect(9, 7, 3, 1, Wt);
+    rect(5, 7, 1, 1, K); rect(9, 7, 1, 1, K);
+    // 口とよだれ
+    rect(6, 10, 4, 1, K); rect(5, 9, 1, 1, K); rect(10, 9, 1, 1, K);
+    rect(10, 11, 1, 2, S);
+    return `<svg class="gr-boss-svg" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">${px.join('')}</svg>`;
+  })();
 
   const CSS = `
   .gr-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
@@ -68,9 +100,12 @@
   .gr-cloud::before, .gr-cloud::after { content: ''; position: absolute; background: inherit; border-radius: 999px; }
   .gr-cloud::before { width: 14px; height: 14px; top: -6px; left: 3px; }
   .gr-cloud::after { width: 18px; height: 16px; top: -8px; left: 14px; }
-  .gr-runner { position: absolute; left: ${RUNNER_X}px; bottom: ${GROUND}px; width: ${RUNNER}px; height: ${RUNNER}px; will-change: transform; }
+  .gr-runner { position: absolute; left: ${RUNNER_X}px; bottom: ${GROUND}px; width: ${RUNNER}px; height: ${RUNNER}px; will-change: transform; z-index: 2; }
   .gr-runner .gohan-kun { display: block; width: ${RUNNER}px; height: ${RUNNER}px; }
   .gr-runner.gr-hit .gohan-kun { animation: none; transform: rotate(-18deg); }
+  .gr-runner.gr-duck .gohan-kun { animation: none !important; transform: scaleY(0.55); transform-origin: 50% 100%; }
+  .gr-runner.gr-hurt { animation: grBlink .15s steps(2) infinite; }
+  @keyframes grBlink { to { opacity: 0.25; } }
   .gr-ob { position: absolute; bottom: ${GROUND}px; left: 0; will-change: transform;
     filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)); }
   .gr-ob-pipe, .gr-ob-cactus { border-radius: 3px 3px 0 0; background: linear-gradient(90deg, var(--gr-ob1) 0 25%, var(--gr-ob2) 25% 75%, var(--gr-ob1) 75%); }
@@ -93,6 +128,7 @@
   .gr-prog { position: relative; margin-top: 5px; width: 110px; height: 5px; border-radius: 999px; background: rgba(127, 127, 127, 0.35); overflow: visible; }
   .gr-prog i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--gr-ink); opacity: 0.8; }
   .gr-prog::after { content: '⚑'; position: absolute; right: -14px; top: -8px; font-size: 12px; line-height: 1; color: var(--gr-ink); }
+  .gr-screen.boss .gr-prog { display: none; }
   /* ゴールの旗（ポールの先に赤い旗） */
   .gr-goal { position: absolute; left: 0; bottom: ${GROUND}px; width: 5px; height: 118px; border-radius: 3px 3px 0 0;
     background: linear-gradient(90deg, #cfd3da, #f4f5f7 50%, #9aa0aa); will-change: transform; }
@@ -101,17 +137,55 @@
   .gr-goal::after { content: ''; position: absolute; top: -8px; left: -4px; width: 13px; height: 13px; border-radius: 50%; background: #ffd60a; box-shadow: 0 0 8px rgba(255, 214, 10, 0.7); }
   .gr-runner.gr-clear .gohan-kun { animation: grClearHop .5s ease-in-out infinite !important; }
   @keyframes grClearHop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
+  /* ボス戦：ハート、ボスのHP、ボス本体、まくら、ほのおだま */
+  .gr-hearts { position: absolute; top: 24px; left: 10px; font-size: 13px; letter-spacing: 2px; color: #ff5e7a; display: none; }
+  .gr-screen.boss .gr-hearts { display: block; }
+  .gr-boss-hp { position: absolute; top: 26px; right: 10px; width: 132px; display: none; color: var(--gr-ink); }
+  .gr-screen.boss .gr-boss-hp { display: block; }
+  .gr-boss-hp b { display: block; font-size: 10px; font-weight: 800; text-align: right; margin-bottom: 3px; }
+  .gr-boss-hp i { display: block; height: 7px; border-radius: 999px; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.35); overflow: hidden; }
+  .gr-boss-hp i span { display: block; height: 100%; width: 100%; background: #34c759; transition: width .2s, background .2s; }
+  .gr-boss { position: absolute; left: 0; bottom: ${GROUND}px; width: ${BOSS_SIZE}px; height: ${BOSS_SIZE}px; will-change: transform; z-index: 2;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5)); }
+  .gr-boss .gr-boss-svg { display: block; width: 100%; height: 100%; animation: grBossBreath 1.6s ease-in-out infinite; transform-origin: 50% 100%; }
+  @keyframes grBossBreath { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.04, 0.96); } }
+  .gr-boss.gr-flash .gr-boss-svg { filter: brightness(3) drop-shadow(0 0 8px #fff); }
+  .gr-boss.gr-dash .gr-boss-svg { animation: none; transform: rotate(-12deg); }
+  .gr-boss.gr-dead .gr-boss-svg { animation: grBossOut .9s ease-in forwards; }
+  @keyframes grBossOut { 40% { transform: scale(1.2) rotate(20deg); filter: brightness(2); } 100% { transform: scale(0) rotate(400deg); opacity: 0; } }
+  .gr-pillow { position: absolute; left: 0; bottom: ${GROUND}px; width: 24px; height: 14px; border-radius: 6px; will-change: transform;
+    background: linear-gradient(180deg, #fff6e5, #e9d8ff); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.25); }
+  .gr-pillow::before { content: 'z'; position: absolute; right: -2px; top: -12px; font: 800 11px/1 sans-serif; color: #8fe3ff; }
+  .gr-fire { position: absolute; left: 0; bottom: ${GROUND}px; width: 14px; height: 14px; border-radius: 50%; will-change: transform;
+    background: radial-gradient(circle at 40% 40%, #fff6a8, #ff9f1c 55%, #ff3d00); box-shadow: 0 0 10px rgba(255, 140, 0, 0.9); animation: grFireSpin .25s linear infinite; }
+  @keyframes grFireSpin { to { transform: rotate(360deg); } }
   /* ボタン類 */
   .gr-controls { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-top: 20px; padding: 0 8px; }
   .gr-left { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  .gr-right { display: flex; align-items: flex-end; gap: 10px; }
   .gr-tip { font-size: 12px; opacity: 0.85; line-height: 1.5; }
   .gr-close { appearance: none; border: 0; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
     color: #f2f2f7; background: rgba(0, 0, 0, 0.35); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15); }
-  .gr-jump { appearance: none; border: 0; width: 96px; height: 96px; border-radius: 50%; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent;
-    background: radial-gradient(circle at 35% 30%, #4a4550, #1c1a20); color: #f2f2f7; font-size: 28px; font-weight: 800;
+  .gr-jump, .gr-b { appearance: none; border: 0; border-radius: 50%; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent;
+    background: radial-gradient(circle at 35% 30%, #4a4550, #1c1a20); color: #f2f2f7; font-weight: 800;
     box-shadow: 0 6px 0 #0e0d10, 0 10px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15); transform: translateY(0); transition: transform .06s, box-shadow .06s; }
-  .gr-jump small { display: block; font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: 0.75; }
-  .gr-jump:active, .gr-jump.pressed { transform: translateY(4px); box-shadow: 0 2px 0 #0e0d10, 0 6px 12px rgba(0, 0, 0, 0.45); }
+  .gr-jump { width: 96px; height: 96px; font-size: 28px; }
+  .gr-b { width: 74px; height: 74px; font-size: 22px; margin-bottom: 4px; }
+  .gr-jump small, .gr-b small { display: block; font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: 0.75; }
+  .gr-jump:active, .gr-jump.pressed, .gr-b:active, .gr-b.pressed { transform: translateY(4px); box-shadow: 0 2px 0 #0e0d10, 0 6px 12px rgba(0, 0, 0, 0.45); }
+  /* 十字キー（ボス戦だけ） */
+  .gr-dpad { display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap: 0; }
+  .gr-dpad button { appearance: none; border: 0; padding: 0; margin: 0; background: #1c1a20; color: #f2f2f7; font-size: 14px; cursor: pointer; touch-action: none;
+    -webkit-tap-highlight-color: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+  .gr-dpad button.pressed { background: #0e0d10; }
+  .gr-dpad .gr-up { grid-column: 2; grid-row: 1; border-radius: 8px 8px 0 0; }
+  .gr-dpad .gr-left-btn { grid-column: 1; grid-row: 2; border-radius: 8px 0 0 8px; }
+  .gr-dpad .gr-mid { grid-column: 2; grid-row: 2; background: #1c1a20; }
+  .gr-dpad .gr-mid::after { content: ''; display: block; width: 14px; height: 14px; margin: 11px auto; border-radius: 50%; background: #2a2530; }
+  .gr-dpad .gr-right-btn { grid-column: 3; grid-row: 2; border-radius: 0 8px 8px 0; }
+  .gr-dpad .gr-down { grid-column: 2; grid-row: 3; border-radius: 0 0 8px 8px; }
+  .gr-device:not(.boss) .gr-dpad, .gr-device:not(.boss) .gr-b { display: none; }
+  .gr-device.boss .gr-tip { display: none; }
   .gr-lamp { position: absolute; left: 22px; bottom: 26px; width: 8px; height: 8px; border-radius: 50%; background: #7CFC00; box-shadow: 0 0 8px #7CFC00; }
   @media (prefers-reduced-motion: reduce) { .gr-runner .gohan-kun { animation: none !important; } }
   /* 開く時の演出：背景がふわっと暗くなり、本体が下からせり上がり、画面に電源が入る */
@@ -147,9 +221,13 @@
   let inviteTimer = 0;
   const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // ゲームの状態。'idle'（スタート待ち）→ 'run' → 'over'（もう一度待ち）
-  const g = { state: 'idle', y: 0, vy: 0, speed: BASE_SPEED, dist: 0, score: 0, best: 0, spawnIn: 0, groundX: 0, obstacles: [], clouds: [], overAt: 0,
-    stage: 0, stageDist: 0, goal: null, bestStage: 0 };
+  // ゲームの状態。'idle'（スタート待ち）→ 'run' → 'clear' → 'intro' → … → 'boss' → 'bosswin' / 'over'
+  const g = {
+    state: 'idle', y: 0, vy: 0, rx: RUNNER_X, speed: 0, dist: 0, score: 0, best: 0, spawnIn: 0, groundX: 0,
+    obstacles: [], clouds: [], overAt: 0, stage: 0, stageDist: 0, goal: null, bestStage: 0,
+    held: { left: false, right: false, down: false },
+    boss: null, pillows: [], fires: [], hearts: PLAYER_HEARTS, hurt: 0, fireCd: 0,
+  };
 
   function readBest() {
     try { return Number(localStorage.getItem(BEST_KEY) || 0) || 0; } catch (e) { return 0; }
@@ -175,6 +253,11 @@
       else if (kind === 'over') { beep(ctx, 220, 0, 0.16, 'square', 0.06); beep(ctx, 165, 0.14, 0.24, 'square', 0.06); }
       else if (kind === 'best') { beep(ctx, 784, 0, 0.08); beep(ctx, 988, 0.08, 0.08); beep(ctx, 1319, 0.16, 0.16); }
       else if (kind === 'boot') { beep(ctx, 1047, 0, 0.06, 'square', 0.05); beep(ctx, 2093, 0.07, 0.16, 'square', 0.05); }
+      else if (kind === 'fire') { beep(ctx, 880, 0, 0.05, 'sawtooth', 0.05); beep(ctx, 1320, 0.03, 0.06, 'sawtooth', 0.04); }
+      else if (kind === 'hit') { beep(ctx, 330, 0, 0.06, 'square', 0.06); beep(ctx, 494, 0.05, 0.08, 'square', 0.05); }
+      else if (kind === 'hurt') { beep(ctx, 196, 0, 0.12, 'square', 0.07); beep(ctx, 147, 0.1, 0.16, 'square', 0.06); }
+      else if (kind === 'roar') { beep(ctx, 110, 0, 0.3, 'sawtooth', 0.06); beep(ctx, 92, 0.25, 0.4, 'sawtooth', 0.06); }
+      else if (kind === 'win') { [523, 659, 784, 1047, 1319].forEach((f, i) => beep(ctx, f, i * 0.09, 0.12)); beep(ctx, 1568, 0.5, 0.4); }
     } catch (e) { /* 音は無くても困らない */ }
   }
 
@@ -198,6 +281,8 @@
               <div class="gr-runner gohan-walking"></div>
               <div class="gr-hud"><span class="gr-hi">HI 00000</span><span class="gr-score">00000</span></div>
               <div class="gr-stage"><span class="gr-stage-name">STAGE 1/5</span><div class="gr-prog"><i></i></div></div>
+              <div class="gr-hearts"></div>
+              <div class="gr-boss-hp"><b></b><i><span></span></i></div>
               <div class="gr-msg"></div>
             </div>
           </div>
@@ -206,8 +291,18 @@
           <div class="gr-left">
             <button type="button" class="gr-close">とじる</button>
             <div class="gr-tip">画面か <b>A</b> を押すとジャンプ。<br>障害物をよけて、どこまで走れるか。</div>
+            <div class="gr-dpad" aria-label="十字キー">
+              <button type="button" class="gr-up" data-dir="up" aria-label="ジャンプ">▲</button>
+              <button type="button" class="gr-left-btn" data-dir="left" aria-label="左へ">◀</button>
+              <div class="gr-mid"></div>
+              <button type="button" class="gr-right-btn" data-dir="right" aria-label="右へ">▶</button>
+              <button type="button" class="gr-down" data-dir="down" aria-label="しゃがむ">▼</button>
+            </div>
           </div>
-          <button type="button" class="gr-jump" aria-label="ジャンプ">A<small>JUMP</small></button>
+          <div class="gr-right">
+            <button type="button" class="gr-b" aria-label="ほのおだま">B<small>FIRE</small></button>
+            <button type="button" class="gr-jump" aria-label="ジャンプ">A<small>JUMP</small></button>
+          </div>
         </div>
       </div>`;
     document.body.appendChild(overlay);
@@ -222,29 +317,57 @@
       msg: overlay.querySelector('.gr-msg'),
       stageName: overlay.querySelector('.gr-stage-name'),
       prog: overlay.querySelector('.gr-prog i'),
+      hearts: overlay.querySelector('.gr-hearts'),
+      bossName: overlay.querySelector('.gr-boss-hp b'),
+      bossBar: overlay.querySelector('.gr-boss-hp i span'),
       jump: overlay.querySelector('.gr-jump'),
+      fire: overlay.querySelector('.gr-b'),
       close: overlay.querySelector('.gr-close'),
+      dpad: overlay.querySelector('.gr-dpad'),
     };
     g.clouds = [...overlay.querySelectorAll('.gr-cloud')].map((el, i) => ({ el, x: 60 + i * 170, y: 14 + i * 22 }));
 
-    // 入力：画面のどこか・Aボタン・スペース/↑キー
+    // 入力：画面のどこか・Aボタン・スペース/↑キー。ボス戦は十字キーと B も
     const press = (e) => { e.preventDefault(); jump(); };
     els.screen.addEventListener('pointerdown', press);
     els.jump.addEventListener('pointerdown', (e) => { els.jump.classList.add('pressed'); press(e); });
-    // iOSでは touchstart を止めないと、連打や長押しで文字の選択・コピーの吹き出しが出る
-    const stopTouch = (e) => e.preventDefault();
-    els.screen.addEventListener('touchstart', stopTouch, { passive: false });
-    els.jump.addEventListener('touchstart', stopTouch, { passive: false });
-    els.jump.addEventListener('contextmenu', stopTouch);
-    els.screen.addEventListener('contextmenu', stopTouch);
     els.jump.addEventListener('pointerup', () => els.jump.classList.remove('pressed'));
     els.jump.addEventListener('pointercancel', () => els.jump.classList.remove('pressed'));
+    els.fire.addEventListener('pointerdown', (e) => { e.preventDefault(); els.fire.classList.add('pressed'); fire(); });
+    els.fire.addEventListener('pointerup', () => els.fire.classList.remove('pressed'));
+    els.fire.addEventListener('pointercancel', () => els.fire.classList.remove('pressed'));
+    els.dpad.querySelectorAll('button').forEach((b) => {
+      const dir = b.dataset.dir;
+      const down = (e) => { e.preventDefault(); b.classList.add('pressed'); if (dir === 'up') jump(); else g.held[dir] = true; };
+      const up = () => { b.classList.remove('pressed'); if (dir !== 'up') g.held[dir] = false; };
+      b.addEventListener('pointerdown', down);
+      b.addEventListener('pointerup', up);
+      b.addEventListener('pointercancel', up);
+      b.addEventListener('pointerleave', up);
+      b.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+      b.addEventListener('contextmenu', (e) => e.preventDefault());
+    });
+    // iOSでは touchstart を止めないと、連打や長押しで文字の選択・コピーの吹き出しが出る
+    const stopTouch = (e) => e.preventDefault();
+    [els.screen, els.jump, els.fire].forEach((el) => {
+      el.addEventListener('touchstart', stopTouch, { passive: false });
+      el.addEventListener('contextmenu', stopTouch);
+    });
     els.close.addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', (e) => {
       if (!open) return;
       if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); jump(); }
-      if (e.code === 'Escape') close();
+      else if (e.code === 'ArrowLeft') { e.preventDefault(); g.held.left = true; }
+      else if (e.code === 'ArrowRight') { e.preventDefault(); g.held.right = true; }
+      else if (e.code === 'ArrowDown') { e.preventDefault(); g.held.down = true; }
+      else if (e.code === 'KeyX' || e.code === 'KeyZ' || e.code === 'KeyB') { e.preventDefault(); fire(); }
+      else if (e.code === 'Escape') close();
+    });
+    document.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowLeft') g.held.left = false;
+      if (e.code === 'ArrowRight') g.held.right = false;
+      if (e.code === 'ArrowDown') g.held.down = false;
     });
     window.addEventListener('resize', fit);
   }
@@ -288,24 +411,39 @@
     g.shape = t.shape;
   }
 
+  function clearField() {
+    g.obstacles.forEach((o) => o.el.remove());
+    g.obstacles = [];
+    if (g.goal) { g.goal.el.remove(); g.goal = null; }
+    g.pillows.forEach((p) => p.el.remove());
+    g.pillows = [];
+    g.fires.forEach((f) => f.el.remove());
+    g.fires = [];
+    if (g.boss) { g.boss.el.remove(); g.boss = null; }
+    els.screen.classList.remove('boss');
+    els.device.classList.remove('boss');
+    els.runner.classList.remove('gr-duck', 'gr-hurt');
+    g.held.left = g.held.right = g.held.down = false;
+  }
+
+  function placeRunner() {
+    els.runner.style.transform = `translate(${(g.rx - RUNNER_X).toFixed(1)}px, ${(-g.y).toFixed(1)}px)`;
+  }
+
   function reset() {
     g.state = 'idle';
-    g.y = 0; g.vy = 0; g.dist = 0; g.score = 0; g.groundX = 0;
+    g.y = 0; g.vy = 0; g.rx = RUNNER_X; g.dist = 0; g.score = 0; g.groundX = 0;
     g.best = readBest();
     g.bestStage = readBestStage();
     els.hi.textContent = `HI ${pad(g.best)}`;
     els.score.textContent = pad(0);
-    els.runner.style.transform = 'translateY(0)';
+    clearField();
+    placeRunner();
     els.runner.classList.remove('gr-hit', 'gr-clear');
     els.runner.classList.add('gohan-walking');
     setStage(0);
-    showIdleMsg();
-  }
-
-  // スタート待ちの案内（電源が入った直後にも同じものを出す）
-  function showIdleMsg() {
-    const bestNote = g.bestStage >= STAGES.length ? 'ぜんぶクリア済み！' : (g.bestStage > 0 ? `ベスト: STAGE ${g.bestStage} クリア` : '');
-    showMsg('タップでスタート', `全5ステージ。ゴールの旗をめざそう${bestNote ? '\n' + bestNote : ''}`);
+    const bestNote = g.bestStage > STAGES.length ? 'サボリ魔王を撃破済み！' : (g.bestStage >= STAGES.length ? '5ステージクリア済み。次はボス！' : (g.bestStage > 0 ? `ベスト: STAGE ${g.bestStage} クリア` : ''));
+    showMsg('タップでスタート', `全5ステージ＋ボス。ゴールの旗をめざそう${bestNote ? '\n' + bestNote : ''}`);
   }
 
   // ステージを切り替える（テーマ・速さ・障害物をそのステージのものに）
@@ -328,7 +466,7 @@
     setStage(i);
     g.state = 'intro';
     g.y = 0; g.vy = 0;
-    els.runner.style.transform = 'translateY(0)';
+    placeRunner();
     els.runner.classList.remove('gr-clear');
     els.runner.classList.add('gohan-walking');
     showMsg(`STAGE ${i + 1}  ${STAGES[i].name}`, 'いくよ！');
@@ -346,9 +484,23 @@
   function jump() {
     if (g.state === 'boot' || g.state === 'intro') return; // 電源が入る・ステージ名を見せている間は待つ
     if (g.state === 'idle') { g.state = 'run'; els.msg.classList.add('hidden'); sound('jump'); g.vy = JUMP_V; return; }
-    if (g.state === 'clear') { if (performance.now() - g.overAt > 400) startStage(g.stage + 1); return; }
-    if (g.state === 'over' || g.state === 'allclear') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
-    if (g.y <= 0) { g.vy = JUMP_V; sound('jump'); }
+    if (g.state === 'clear') { if (performance.now() - g.overAt > 400) { if (g.stage + 1 >= STAGES.length) startBoss(); else startStage(g.stage + 1); } return; }
+    if (g.state === 'over' || g.state === 'bosswin') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
+    if (g.y <= 0 && !g.held.down) { g.vy = JUMP_V; sound('jump'); }
+  }
+
+  // ほのおだま（ボス戦だけ）
+  function fire() {
+    if (g.state !== 'boss') { if (g.state === 'clear' || g.state === 'over' || g.state === 'bosswin' || g.state === 'idle') jump(); return; }
+    if (g.fireCd > 0 || g.fires.length >= 2) return;
+    g.fireCd = FIRE_COOLDOWN;
+    const el = document.createElement('div');
+    el.className = 'gr-fire';
+    els.screen.appendChild(el);
+    const f = { el, x: g.rx + RUNNER - 6, y: g.y + (g.held.down ? 8 : 20) };
+    el.style.transform = `translate(${f.x}px, ${-f.y}px)`;
+    g.fires.push(f);
+    sound('fire');
   }
 
   function spawn() {
@@ -387,25 +539,194 @@
     els.runner.classList.add('gr-clear');
     const cleared = g.stage + 1;
     if (cleared > g.bestStage) { g.bestStage = cleared; saveBestStage(cleared); }
-    const newBest = updateBest();
-    if (cleared >= STAGES.length) {
-      g.state = 'allclear';
-      showMsg(`ぜんぶクリア！  ${g.score} 点`, newBest ? 'ベスト記録！ タップでもう一度' : 'タップでもう一度');
-    } else {
-      g.state = 'clear';
-      showMsg(`STAGE ${cleared} クリア！`, `タップで次のステージ（${STAGES[cleared].name}）へ`);
-    }
+    updateBest();
+    g.state = 'clear';
+    if (cleared >= STAGES.length) showMsg(`STAGE ${cleared} クリア！`, 'タップで…ボスがあらわれる');
+    else showMsg(`STAGE ${cleared} クリア！`, `タップで次のステージ（${STAGES[cleared].name}）へ`);
     sound('best');
   }
 
-  function gameOver() {
+  function gameOver(reason) {
     g.state = 'over';
     g.overAt = performance.now();
-    els.runner.classList.remove('gohan-walking');
+    els.runner.classList.remove('gohan-walking', 'gr-duck', 'gr-hurt');
     els.runner.classList.add('gr-hit');
     const newBest = updateBest();
     if (!newBest) sound('over'); else sound('best');
-    showMsg(`おわり  STAGE ${g.stage + 1} で ${g.score} 点`, newBest ? 'ベスト記録！ タップでもう一度' : 'タップでもう一度');
+    const where = reason === 'boss' ? 'サボリ魔王にやられた' : `STAGE ${g.stage + 1} で`;
+    showMsg(`おわり  ${where} ${g.score} 点`, newBest ? 'ベスト記録！ タップでもう一度' : 'タップでもう一度');
+  }
+
+  // ---- ボス戦 ---------------------------------------------------------------
+  function startBoss() {
+    clearField();
+    applyTheme('castle');
+    els.screen.classList.add('boss');
+    els.device.classList.add('boss');
+    els.stageName.textContent = 'BOSS';
+    g.state = 'intro';
+    g.y = 0; g.vy = 0; g.rx = RUNNER_X; g.speed = 120; g.hearts = PLAYER_HEARTS; g.hurt = 0; g.fireCd = 0;
+    placeRunner();
+    els.runner.classList.remove('gr-clear');
+    els.runner.classList.add('gohan-walking');
+    renderHearts();
+    const el = document.createElement('div');
+    el.className = 'gr-boss';
+    el.innerHTML = BOSS_SVG;
+    els.screen.appendChild(el);
+    g.boss = { el, hp: BOSS_HP, x: W - BOSS_SIZE - 24, y: 30, t: 0, attackIn: 2.2, dashIn: 7, dash: null, flash: 0 };
+    placeBoss();
+    els.bossName.textContent = BOSS_NAME;
+    els.bossBar.style.width = '100%';
+    els.bossBar.style.background = '#34c759';
+    showMsg(`BOSS  ${BOSS_NAME}`, '「ねむい…記録なんてサボっちゃえ…」\nB：ほのおだま　▼：しゃがむ　A：ジャンプ');
+    sound('roar');
+    setTimeout(() => { if (open && g.state === 'intro') { g.state = 'boss'; els.msg.classList.add('hidden'); } }, 2600);
+  }
+
+  function placeBoss() {
+    const b = g.boss;
+    b.el.style.transform = `translate(${b.x.toFixed(1)}px, ${(-b.y).toFixed(1)}px)`;
+  }
+
+  function renderHearts() {
+    els.hearts.textContent = '♥'.repeat(g.hearts) + '♡'.repeat(Math.max(0, PLAYER_HEARTS - g.hearts));
+  }
+
+  function throwPillow(kind) {
+    const el = document.createElement('div');
+    el.className = 'gr-pillow';
+    els.screen.appendChild(el);
+    // low: 足もと（ジャンプでよける） / head: 顔の高さ（しゃがんでよける）
+    const y = kind === 'head' ? 30 : 2;
+    const p = { el, x: g.boss.x - 10, y, w: 24, h: 14, speed: 180 + (BOSS_HP - g.boss.hp) * 8 + Math.random() * 30 };
+    el.style.transform = `translate(${p.x}px, ${-p.y}px)`;
+    g.pillows.push(p);
+  }
+
+  function hurtPlayer() {
+    if (g.hurt > 0) return;
+    g.hearts -= 1;
+    renderHearts();
+    sound('hurt');
+    if (g.hearts <= 0) { gameOver('boss'); return; }
+    g.hurt = HURT_TIME;
+    els.runner.classList.add('gr-hurt');
+  }
+
+  function bossHit() {
+    const b = g.boss;
+    b.hp -= 1;
+    b.flash = 0.12;
+    b.el.classList.add('gr-flash');
+    g.score += 50;
+    els.score.textContent = pad(g.score);
+    const ratio = Math.max(0, b.hp / BOSS_HP);
+    els.bossBar.style.width = `${(ratio * 100).toFixed(0)}%`;
+    els.bossBar.style.background = ratio > 0.5 ? '#34c759' : (ratio > 0.2 ? '#ffd60a' : '#ff453a');
+    sound('hit');
+    if (b.hp <= 0) bossWin();
+  }
+
+  function bossWin() {
+    g.state = 'bosswin';
+    g.overAt = performance.now();
+    g.score += 500;
+    els.score.textContent = pad(g.score);
+    g.boss.el.classList.add('gr-dead');
+    g.pillows.forEach((p) => p.el.remove()); g.pillows = [];
+    els.runner.classList.remove('gohan-walking', 'gr-duck', 'gr-hurt');
+    els.runner.classList.add('gr-clear');
+    if (STAGES.length + 1 > g.bestStage) { g.bestStage = STAGES.length + 1; saveBestStage(g.bestStage); }
+    const newBest = updateBest();
+    showMsg(`サボリ魔王をたおした！  ${g.score} 点`, `${newBest ? 'ベスト記録！ ' : ''}ぜんぶクリア！ タップでもう一度`);
+    sound('win');
+  }
+
+  function bossUpdate(dt) {
+    const b = g.boss;
+    b.t += dt;
+    // 相棒：◀▶ で動く、▼ でしゃがむ、重力
+    const duck = g.held.down && g.y <= 0;
+    els.runner.classList.toggle('gr-duck', duck);
+    if (!duck) {
+      if (g.held.left) g.rx -= MOVE_SPEED * dt;
+      if (g.held.right) g.rx += MOVE_SPEED * dt;
+      g.rx = Math.max(6, Math.min(W * 0.55 - RUNNER, g.rx));
+    }
+    g.vy += GRAVITY * dt;
+    g.y = Math.max(0, g.y - g.vy * dt);
+    if (g.y === 0 && g.vy > 0) g.vy = 0;
+    els.runner.classList.toggle('gohan-walking', g.y === 0 && !duck);
+    placeRunner();
+    if (g.hurt > 0) { g.hurt -= dt; if (g.hurt <= 0) els.runner.classList.remove('gr-hurt'); }
+    if (g.fireCd > 0) g.fireCd -= dt;
+    // 地面と雲はゆっくり流す（にらみ合っている感じ）
+    g.groundX -= 40 * dt;
+    els.ground.style.backgroundPositionX = `${g.groundX.toFixed(1)}px`;
+    g.clouds.forEach((c) => { c.x -= 10 * dt; if (c.x < -40) c.x = W + 20; c.el.style.transform = `translate(${c.x.toFixed(1)}px, ${c.y}px)`; });
+
+    // ボス：ふわふわ浮く。HPが減るほど攻撃が速い。ときどき突進してくる（ジャンプでよける）
+    const phase = 1 + (BOSS_HP - b.hp) / BOSS_HP; // 1 → 2
+    if (b.dash) {
+      b.dash.t += dt;
+      const d = b.dash;
+      if (d.t < d.out) b.x = d.from + (d.to - d.from) * (d.t / d.out);
+      else if (d.t < d.out + d.wait) b.x = d.to;
+      else if (d.t < d.out + d.wait + d.back) b.x = d.to + (d.from - d.to) * ((d.t - d.out - d.wait) / d.back);
+      else { b.x = d.from; b.dash = null; b.el.classList.remove('gr-dash'); }
+      b.y = b.dash ? Math.max(0, 30 - 30 * Math.min(1, d.t / 0.15)) : 30;
+    } else {
+      b.y = 30 + Math.sin(b.t * 2.2) * 14;
+      b.attackIn -= dt;
+      if (b.attackIn <= 0) {
+        const r = Math.random();
+        if (r < 0.5) throwPillow('low');
+        else if (r < 0.85) throwPillow('head');
+        else { throwPillow('low'); setTimeout(() => { if (open && g.state === 'boss' && g.boss) throwPillow('head'); }, 350); }
+        b.attackIn = (1.7 + Math.random() * 0.9) / phase;
+      }
+      b.dashIn -= dt;
+      if (b.dashIn <= 0) {
+        b.dash = { t: 0, from: b.x, to: g.rx - 30, out: 0.45, wait: 0.15, back: 0.9 };
+        b.dashIn = 6 + Math.random() * 3;
+        b.el.classList.add('gr-dash');
+        sound('roar');
+      }
+    }
+    if (b.flash > 0) { b.flash -= dt; if (b.flash <= 0) b.el.classList.remove('gr-flash'); }
+    placeBoss();
+
+    // 当たり判定用の相棒の箱
+    const rh = duck ? 26 : RUNNER - 6;
+    const rx1 = g.rx + 10, rx2 = g.rx + RUNNER - 10, ry1 = g.y, ry2 = g.y + rh;
+    // 突進中のボスに触れたらダメージ
+    if (b.dash && b.x < rx2 && b.x + BOSS_SIZE > rx1 && b.y < ry2 && b.y + BOSS_SIZE - 10 > ry1) hurtPlayer();
+
+    // ほのおだま：右へ飛んでボスに当たる。まくらも消せる
+    for (let i = g.fires.length - 1; i >= 0; i--) {
+      const f = g.fires[i];
+      f.x += FIRE_SPEED * dt;
+      f.el.style.transform = `translate(${f.x.toFixed(1)}px, ${-f.y}px)`;
+      let gone = f.x > W + 20;
+      if (!gone && f.x + 14 > b.x + 8 && f.x < b.x + BOSS_SIZE - 8 && f.y + 14 > b.y && f.y < b.y + BOSS_SIZE) { bossHit(); gone = true; }
+      if (!gone) {
+        for (let j = g.pillows.length - 1; j >= 0; j--) {
+          const p = g.pillows[j];
+          if (f.x + 14 > p.x && f.x < p.x + p.w && f.y + 14 > p.y && f.y < p.y + p.h) { p.el.remove(); g.pillows.splice(j, 1); gone = true; g.score += 10; els.score.textContent = pad(g.score); break; }
+        }
+      }
+      if (gone) { f.el.remove(); g.fires.splice(i, 1); }
+      if (g.state !== 'boss') return;
+    }
+    // まくら：左へ飛んでくる
+    for (let i = g.pillows.length - 1; i >= 0; i--) {
+      const p = g.pillows[i];
+      p.x -= p.speed * dt;
+      p.el.style.transform = `translate(${p.x.toFixed(1)}px, ${-p.y}px)`;
+      if (p.x + p.w < -10) { p.el.remove(); g.pillows.splice(i, 1); continue; }
+      if (p.x < rx2 && p.x + p.w > rx1 && p.y < ry2 && p.y + p.h > ry1) { p.el.remove(); g.pillows.splice(i, 1); hurtPlayer(); if (g.state !== 'boss') return; }
+    }
   }
 
   function tick(t) {
@@ -414,7 +735,9 @@
     const dt = Math.min(0.033, (t - last) / 1000);
     last = t;
 
-    if (g.state === 'run') {
+    if (g.state === 'boss') {
+      bossUpdate(dt);
+    } else if (g.state === 'run') {
       const st = STAGES[g.stage];
       g.dist += g.speed * dt;
       g.stageDist += g.speed * dt;
@@ -429,7 +752,7 @@
       g.y = Math.max(0, g.y - g.vy * dt);
       if (g.y === 0 && g.vy > 0) g.vy = 0;
       els.runner.classList.toggle('gohan-walking', g.y === 0);
-      els.runner.style.transform = `translateY(${(-g.y).toFixed(1)}px)`;
+      placeRunner();
 
       // 地面と雲を流す
       g.groundX -= g.speed * dt;
@@ -529,7 +852,7 @@
       setTimeout(() => boot.classList.add('done'), 800);
       setTimeout(() => {
         boot.remove();
-        if (open && g.state === 'boot') { g.state = 'idle'; showIdleMsg(); }
+        if (open && g.state === 'boot') { g.state = 'idle'; els.msg.classList.remove('hidden'); }
       }, 1150);
     }
     last = 0;
@@ -544,11 +867,13 @@
       overlay.classList.add('hidden');
       overlay.classList.remove('gr-enter');
       [...overlay.querySelectorAll('.gr-boot')].forEach((b) => b.remove());
-      if (g.goal) { g.goal.el.remove(); g.goal = null; }
+      clearField();
     }
     document.body.style.overflow = '';
   }
 
   window.openGohanRun = askToPlay;
   window.closeGohanRun = close;
+  // 動作確認用：開いている時に呼ぶとすぐボス戦になる
+  window.gohanRunSkipToBoss = () => { if (open && els) startBoss(); };
 })();

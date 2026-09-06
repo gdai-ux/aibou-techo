@@ -14,13 +14,13 @@
   const BEST_KEY = 'gohanRunBest';
   // 画面の論理サイズ（px）。端末の幅に合わせて CSS の transform で拡大縮小する
   const W = 320;
-  const H = 180;
-  const GROUND = 24;      // 地面の厚み
-  const RUNNER = 40;      // 相棒の大きさ
-  const RUNNER_X = 36;    // 相棒の立ち位置（左から）
-  const GRAVITY = 1500;   // px/s^2
-  const JUMP_V = -540;    // 跳んだ瞬間の速さ（px/s、上向きが負）
-  const BASE_SPEED = 230; // 走り始めの速さ（px/s）
+  const H = 240;          // 4:3。縦にも余裕を持たせて、スマホで大きく見せる
+  const GROUND = 30;      // 地面の厚み
+  const RUNNER = 52;      // 相棒の大きさ
+  const RUNNER_X = 40;    // 相棒の立ち位置（左から）
+  const GRAVITY = 1700;   // px/s^2
+  const JUMP_V = -620;    // 跳んだ瞬間の速さ（px/s、上向きが負）
+  const BASE_SPEED = 250; // 走り始めの速さ（px/s）
 
   // テーマごとの色と障害物の形（ヘッダーの data-stage と同じキー）
   const THEMES = {
@@ -38,10 +38,10 @@
     background: rgba(0, 0, 0, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); touch-action: none; }
   .gr-overlay.hidden { display: none; }
   /* 携帯ゲーム機の本体 */
-  .gr-device { width: min(100vw - 24px, 400px); padding: 14px 14px 18px; border-radius: 22px 22px 40px 22px;
+  .gr-device { width: min(100vw - 12px, 460px); padding: 12px 12px 18px; border-radius: 24px 24px 44px 24px;
     background: linear-gradient(180deg, #6d55e6, #4b35b8); box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.25);
     color: #f2f2f7; font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; }
-  .gr-bezel { background: #2a2530; border-radius: 14px 14px 40px 14px; padding: 14px 18px 18px; }
+  .gr-bezel { background: #2a2530; border-radius: 16px 16px 44px 16px; padding: 12px 12px 16px; }
   .gr-screen-wrap { position: relative; margin: 0 auto; overflow: hidden; border-radius: 6px; }
   .gr-screen { position: absolute; left: 0; top: 0; width: ${W}px; height: ${H}px; overflow: hidden; transform-origin: 0 0;
     background: var(--gr-sky); image-rendering: pixelated; user-select: none; -webkit-user-select: none; }
@@ -65,22 +65,22 @@
   .gr-ob-hump { border-radius: 50% 50% 3px 3px / 70% 70% 3px 3px; background: linear-gradient(180deg, var(--gr-ob2), var(--gr-ob1)); }
   .gr-ob-spike { background: linear-gradient(180deg, var(--gr-ob2), var(--gr-ob1)); clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
   .gr-ob-ball { border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--gr-ob2), var(--gr-ob1)); }
-  .gr-hud { position: absolute; top: 6px; right: 8px; font: 700 11px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 1px; color: var(--gr-ink); opacity: 0.85; }
+  .gr-hud { position: absolute; top: 8px; right: 10px; font: 700 13px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 1px; color: var(--gr-ink); opacity: 0.85; }
   .gr-hud .gr-hi { opacity: 0.6; margin-right: 8px; }
   .gr-msg { position: absolute; left: 0; right: 0; top: 46%; transform: translateY(-50%); text-align: center; color: var(--gr-ink);
-    font-size: 13px; font-weight: 700; line-height: 1.6; white-space: pre-line; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25); pointer-events: none; }
+    font-size: 16px; font-weight: 800; line-height: 1.6; white-space: pre-line; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25); pointer-events: none; }
   .gr-msg.hidden { display: none; }
-  .gr-msg small { display: block; font-size: 10px; font-weight: 600; opacity: 0.8; }
+  .gr-msg small { display: block; font-size: 11px; font-weight: 600; opacity: 0.8; }
   /* ボタン類 */
-  .gr-controls { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-top: 18px; padding: 0 6px; }
+  .gr-controls { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-top: 20px; padding: 0 8px; }
   .gr-left { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-  .gr-tip { font-size: 11px; opacity: 0.85; line-height: 1.5; }
-  .gr-close { appearance: none; border: 0; border-radius: 999px; padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer;
+  .gr-tip { font-size: 12px; opacity: 0.85; line-height: 1.5; }
+  .gr-close { appearance: none; border: 0; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
     color: #f2f2f7; background: rgba(0, 0, 0, 0.35); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15); }
-  .gr-jump { appearance: none; border: 0; width: 76px; height: 76px; border-radius: 50%; cursor: pointer; touch-action: none;
-    background: radial-gradient(circle at 35% 30%, #4a4550, #1c1a20); color: #f2f2f7; font-size: 22px; font-weight: 800;
+  .gr-jump { appearance: none; border: 0; width: 96px; height: 96px; border-radius: 50%; cursor: pointer; touch-action: none;
+    background: radial-gradient(circle at 35% 30%, #4a4550, #1c1a20); color: #f2f2f7; font-size: 28px; font-weight: 800;
     box-shadow: 0 6px 0 #0e0d10, 0 10px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15); transform: translateY(0); transition: transform .06s, box-shadow .06s; }
-  .gr-jump small { display: block; font-size: 9px; font-weight: 700; letter-spacing: 1px; opacity: 0.75; }
+  .gr-jump small { display: block; font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: 0.75; }
   .gr-jump:active, .gr-jump.pressed { transform: translateY(4px); box-shadow: 0 2px 0 #0e0d10, 0 6px 12px rgba(0, 0, 0, 0.45); }
   .gr-lamp { position: absolute; left: 22px; bottom: 26px; width: 8px; height: 8px; border-radius: 50%; background: #7CFC00; box-shadow: 0 0 8px #7CFC00; }
   @media (prefers-reduced-motion: reduce) { .gr-runner .gohan-kun { animation: none !important; } }
@@ -210,7 +210,9 @@
     const bezel = els.wrap.parentElement;
     const cs = getComputedStyle(bezel);
     const inner = (bezel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) || W;
-    const s = Math.max(0.6, Math.min(1.6, inner / W));
+    // 縦は、ボタン類（およそ190px）を除いた高さに収める
+    const availH = Math.max(H * 0.6, window.innerHeight - 190 - 60);
+    const s = Math.max(0.6, Math.min(1.6, inner / W, availH / H));
     els.wrap.style.width = `${Math.round(W * s)}px`;
     els.wrap.style.height = `${Math.round(H * s)}px`;
     els.screen.style.transform = `scale(${s})`;
@@ -274,13 +276,13 @@
     // 高さ・幅は少しずつ違う。ときどき2本並べる
     const tall = Math.random() < 0.35;
     const twin = Math.random() < 0.22;
-    const w = twin ? 34 : (12 + Math.floor(Math.random() * 10));
-    const h = tall ? 40 + Math.floor(Math.random() * 10) : 24 + Math.floor(Math.random() * 12);
+    const w = twin ? 44 : (16 + Math.floor(Math.random() * 12));
+    const h = tall ? 50 + Math.floor(Math.random() * 12) : 30 + Math.floor(Math.random() * 14);
     const el = document.createElement('div');
     el.className = `gr-ob gr-ob-${g.shape}`;
     el.style.width = `${w}px`;
     el.style.height = `${h}px`;
-    if (g.shape === 'ball') { el.style.height = `${Math.min(h, 34)}px`; el.style.width = el.style.height; }
+    if (g.shape === 'ball') { el.style.height = `${Math.min(h, 42)}px`; el.style.width = el.style.height; }
     els.screen.appendChild(el);
     const ob = { el, x: W + 20, w: parseFloat(el.style.width), h: parseFloat(el.style.height) };
     ob.el.style.transform = `translateX(${ob.x}px)`;
@@ -330,17 +332,17 @@
       g.spawnIn -= dt;
       if (g.spawnIn <= 0) {
         spawn();
-        g.spawnIn = (0.85 + Math.random() * 1.0) * (260 / g.speed);
+        g.spawnIn = (0.9 + Math.random() * 1.0) * (280 / g.speed);
       }
-      const rx1 = RUNNER_X + 8;
-      const rx2 = RUNNER_X + RUNNER - 8;
+      const rx1 = RUNNER_X + 10;
+      const rx2 = RUNNER_X + RUNNER - 10;
       for (let i = g.obstacles.length - 1; i >= 0; i--) {
         const o = g.obstacles[i];
         o.x -= g.speed * dt;
         o.el.style.transform = `translateX(${o.x.toFixed(1)}px)`;
         if (o.x + o.w < -10) { o.el.remove(); g.obstacles.splice(i, 1); continue; }
         const hitX = o.x < rx2 && o.x + o.w > rx1;
-        const hitY = g.y < o.h - 4; // 相棒の足が障害物の頭より低い
+        const hitY = g.y < o.h - 5; // 相棒の足が障害物の頭より低い
         if (hitX && hitY) { gameOver(); break; }
       }
     }

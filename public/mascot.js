@@ -384,13 +384,56 @@ function mascotSvg(char) {
 
 // ヘッダー・ふりかえりカード・ステータス画面のキャラクターを、
 // 選択中のものに描き替える
-function mascotRenderAll() {
+// 直前に描いたキャラクター。着せ替えで「別のキャラに変わった」時だけ演出を出すために持つ
+let mascotRenderedChar = null;
+
+function mascotRenderAll(opts = {}) {
   const char = mascotCurrentChar();
-  document.querySelectorAll('.app-icon .gohan-kun, .review-avatar .gohan-kun, .status-avatar .gohan-kun, .chat-intro-avatar .gohan-kun').forEach((el) => {
-    el.outerHTML = mascotSvg(char);
-  });
-  // レベルの飾り・眠そう状態などを付け直す（index.html側で定義される）
-  if (typeof applyGohanVisualState === 'function') applyGohanVisualState();
+  const selector = '.app-icon .gohan-kun, .review-avatar .gohan-kun, .status-avatar .gohan-kun, .chat-intro-avatar .gohan-kun';
+  const swap = () => {
+    document.querySelectorAll(selector).forEach((el) => {
+      el.outerHTML = mascotSvg(char);
+    });
+    // レベルの飾り・眠そう状態などを付け直す（index.html側で定義される）
+    if (typeof applyGohanVisualState === 'function') applyGohanVisualState();
+  };
+  const changed = mascotRenderedChar !== null && mascotRenderedChar !== char.id;
+  mascotRenderedChar = char.id;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!opts.animate || !changed || reduce) { swap(); return; }
+  // 進化のように：今の姿が光って縮み、新しい姿がぽんと現れる
+  mascotEnsureSwapStyle();
+  const olds = [...document.querySelectorAll(selector)];
+  olds.forEach((el) => el.classList.add('mascot-swap-out'));
+  if (typeof playGrowSound === 'function') { try { playGrowSound(); } catch (e) { /* 音は無くてもよい */ } }
+  setTimeout(() => {
+    swap();
+    const fresh = [...document.querySelectorAll(selector)];
+    fresh.forEach((el) => el.classList.add('mascot-swap-in'));
+    setTimeout(() => fresh.forEach((el) => el.classList.remove('mascot-swap-in')), 700);
+  }, 380);
+}
+
+// 着せ替え演出のスタイル。mascot.js を読むどの画面でも使えるよう、ここで1回だけ入れる
+function mascotEnsureSwapStyle() {
+  if (document.getElementById('mascotSwapStyle')) return;
+  const st = document.createElement('style');
+  st.id = 'mascotSwapStyle';
+  st.textContent = `
+  .gohan-kun.mascot-swap-out { animation: mascotSwapOut .38s ease-in forwards !important; transform-origin: 50% 100%; }
+  .gohan-kun.mascot-swap-in { animation: mascotSwapIn .6s cubic-bezier(.2,.9,.2,1.15) both !important; transform-origin: 50% 100%; }
+  @keyframes mascotSwapOut {
+    0%   { transform: none; filter: none; opacity: 1; }
+    55%  { transform: scale(1.18); filter: brightness(3) drop-shadow(0 0 10px #fff); opacity: 1; }
+    100% { transform: scale(0.05) rotate(180deg); filter: brightness(4) drop-shadow(0 0 16px #fff); opacity: 0; }
+  }
+  @keyframes mascotSwapIn {
+    0%   { transform: scale(0.05); filter: brightness(4) drop-shadow(0 0 16px #fff); opacity: 0; }
+    50%  { transform: scale(1.28); filter: brightness(2) drop-shadow(0 0 12px #fff); opacity: 1; }
+    75%  { transform: scale(0.94); filter: none; }
+    100% { transform: none; filter: none; }
+  }`;
+  document.head.appendChild(st);
 }
 
 // --- 着せ替えモーダル -----------------------------------------------------
@@ -424,7 +467,7 @@ function buildMascotModal() {
     mascotSaveSettings(settings);
     mascotPushToServer(settings);
     overlay.classList.add('hidden');
-    mascotRenderAll();
+    mascotRenderAll({ animate: true }); // 別のキャラに変えた時だけ進化の演出が出る
     // ふりかえりの口調はキャラの性格に従うので、新しいキャラの口調で書き直す
     if (window.regenerateDailyReview) regenerateDailyReview();
   });

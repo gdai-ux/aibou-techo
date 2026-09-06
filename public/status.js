@@ -112,6 +112,65 @@ function renderStats(days, totals, today) {
     + `週の運動ボーナス ${(totals.bonusWeeks * GOHAN_WEEK_BONUS).toLocaleString('ja-JP')}pt（${totals.bonusWeeks}週ぶん）`;
 }
 
+// 相棒の「のうりょく」。直近30日の記録から6つの力を0〜100で出す。
+// 睡眠・運動・食事・体調・メモは「その30日で取れたポイント／満点」、
+// 「つづける」は30日のうち何日か記録した割合。毎日きちんと記録すると六角形が大きくなる
+const ABILITY_DAYS = 30;
+function abilityScores(days, today) {
+  const from = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (ABILITY_DAYS - 1));
+  const fromKey = dateKey(from);
+  const toKey = dateKey(today);
+  const recent = days.filter((d) => d.dateStr >= fromKey && d.dateStr <= toKey);
+  const sum = { sleep: 0, exercise: 0, meal: 0, condition: 0, memo: 0 };
+  const max = { sleep: 25, exercise: 25, meal: 30, condition: 5, memo: 5 };
+  recent.forEach((d) => gohanDayPointBreakdown(d).forEach((r) => { if (r.key in sum) sum[r.key] += r.pts; }));
+  const pct = (k) => Math.round((100 * sum[k]) / (max[k] * ABILITY_DAYS));
+  const recorded = recent.filter(hasAnyRecord).length;
+  // 並び順は六角形の上から時計回り
+  return [
+    { key: 'sleep', label: 'すいみん', value: pct('sleep') },
+    { key: 'exercise', label: 'うんどう', value: pct('exercise') },
+    { key: 'meal', label: 'しょくじ', value: pct('meal') },
+    { key: 'keep', label: 'つづける', value: Math.round((100 * recorded) / ABILITY_DAYS) },
+    { key: 'memo', label: 'メモ', value: pct('memo') },
+    { key: 'condition', label: 'たいちょう', value: pct('condition') },
+  ];
+}
+
+function renderAbility(days, today, level) {
+  const svg = document.getElementById('statusAbility');
+  if (!svg) return;
+  const scores = abilityScores(days, today);
+  const cx = 170;
+  const cy = 130;
+  const R = 88;
+  const pt = (i, r) => { const a = -Math.PI / 2 + (i * Math.PI) / 3; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+  const ring = (r) => scores.map((_, i) => pt(i, r).map((v) => v.toFixed(1)).join(',')).join(' ');
+  // 六角形の色は帯の色（白帯だけは薄すぎるのでアクセント色、黒帯は金の縁取りの色）
+  const belt = gohanBelt(level);
+  const color = belt.trim || (belt.name === '白帯' ? 'var(--accent)' : belt.color);
+  let out = '';
+  [0.25, 0.5, 0.75, 1].forEach((f) => { out += `<polygon class="ability-grid" points="${ring(R * f)}"/>`; });
+  scores.forEach((_, i) => { const [x, y] = pt(i, R); out += `<line class="ability-axis" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; });
+  const rOf = (sc) => R * Math.max(0.05, Math.min(1, sc.value / 100));
+  const area = scores.map((sc, i) => pt(i, rOf(sc)).map((v) => v.toFixed(1)).join(',')).join(' ');
+  out += `<polygon class="ability-area" points="${area}" style="fill:${color};stroke:${color}"/>`;
+  scores.forEach((sc, i) => {
+    const [x, y] = pt(i, rOf(sc));
+    out += `<circle class="ability-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3"/>`;
+    const [lx, ly] = pt(i, R + 26);
+    const anchor = Math.abs(lx - cx) < 8 ? 'middle' : (lx > cx ? 'start' : 'end');
+    out += `<text class="ability-label" x="${lx.toFixed(1)}" y="${(ly - 2).toFixed(1)}" text-anchor="${anchor}">${esc(sc.label)}</text>`;
+    out += `<text class="ability-value" x="${lx.toFixed(1)}" y="${(ly + 12).toFixed(1)}" text-anchor="${anchor}">${sc.value}</text>`;
+  });
+  svg.innerHTML = out;
+  const best = scores.reduce((a, b) => (b.value > a.value ? b : a));
+  const weak = scores.reduce((a, b) => (b.value < a.value ? b : a));
+  document.getElementById('statusAbilityNote').textContent = scores.some((x) => x.value > 0)
+    ? `直近30日の記録から。いちばん得意は「${best.label}」、のびしろは「${weak.label}」。毎日記録すると六角形が大きくなります。`
+    : '直近30日の記録から出します。記録が増えると六角形が育っていきます。';
+}
+
 function renderDeco(level) {
   document.getElementById('statusDeco').innerHTML = GOHAN_DECO_STAGES.map((s) => {
     const open = level >= s.level;
@@ -144,6 +203,7 @@ function renderAll(days) {
   renderToday(days.find((d) => d.dateStr === dateKey(today)));
   renderScoreChart(document.getElementById('statusScoreChart'), days, today);
   renderStats(days, totals, today);
+  renderAbility(days, today, level);
   renderDeco(level);
 }
 

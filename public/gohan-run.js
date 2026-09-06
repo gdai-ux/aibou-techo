@@ -84,6 +84,28 @@
   .gr-jump:active, .gr-jump.pressed { transform: translateY(4px); box-shadow: 0 2px 0 #0e0d10, 0 6px 12px rgba(0, 0, 0, 0.45); }
   .gr-lamp { position: absolute; left: 22px; bottom: 26px; width: 8px; height: 8px; border-radius: 50%; background: #7CFC00; box-shadow: 0 0 8px #7CFC00; }
   @media (prefers-reduced-motion: reduce) { .gr-runner .gohan-kun { animation: none !important; } }
+  /* 開く時の演出：背景がふわっと暗くなり、本体が下からせり上がり、画面に電源が入る */
+  .gr-overlay.gr-enter { animation: grFade .3s ease-out both; }
+  .gr-overlay.gr-enter .gr-device { animation: grRise .45s cubic-bezier(.2, .9, .2, 1.08) both; }
+  @keyframes grFade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes grRise { from { transform: translateY(56px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+  .gr-boot { position: absolute; inset: 0; z-index: 5; background: #0b0b10; display: flex; align-items: center; justify-content: center; }
+  .gr-boot::before { content: ''; width: 0; height: 2px; background: #cfeeff; box-shadow: 0 0 14px #cfeeff; animation: grBootLine .6s ease-out .15s both; }
+  .gr-boot.done { animation: grBootOut .35s ease-in both; }
+  @keyframes grBootLine { 0% { width: 0; height: 2px; opacity: 1; } 55% { width: 88%; height: 2px; opacity: 1; } 100% { width: 88%; height: 100%; opacity: 0; } }
+  @keyframes grBootOut { to { opacity: 0; } }
+  /* 相棒を触った時の「あそぶ？」の吹き出し（ヘッダーの相棒の下に出る） */
+  .gr-invite { position: fixed; z-index: 999; transform: translateX(-50%); display: flex; align-items: center; gap: 10px;
+    padding: 8px 8px 8px 14px; border-radius: 16px; background: var(--card, #1c1c1e); color: var(--text, #f2f2f7);
+    border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16)); box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.7);
+    font-size: 13px; font-weight: 700; white-space: nowrap; animation: grInvitePop .28s cubic-bezier(.2, .9, .2, 1.25) both; }
+  .gr-invite::before { content: ''; position: absolute; top: -6px; left: 50%; width: 10px; height: 10px; background: inherit;
+    border-left: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16)); border-top: 1px solid var(--border-strong, rgba(255, 255, 255, 0.16));
+    transform: translateX(-50%) rotate(45deg); }
+  .gr-invite button { appearance: none; border: 0; border-radius: 999px; padding: 7px 14px; font-size: 12px; font-weight: 800; cursor: pointer;
+    background: var(--accent, #0a84ff); color: #fff; }
+  @keyframes grInvitePop { from { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(.9); } to { opacity: 1; transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .gr-overlay.gr-enter, .gr-overlay.gr-enter .gr-device, .gr-invite { animation: none; } }
   `;
 
   let overlay = null;
@@ -91,6 +113,9 @@
   let raf = 0;
   let last = 0;
   let open = false;
+  let invite = null;       // 「あそぶ？」の吹き出し
+  let inviteTimer = 0;
+  const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ゲームの状態。'idle'（スタート待ち）→ 'run' → 'over'（もう一度待ち）
   const g = { state: 'idle', y: 0, vy: 0, speed: BASE_SPEED, dist: 0, score: 0, best: 0, spawnIn: 0, groundX: 0, obstacles: [], clouds: [], overAt: 0 };
@@ -112,6 +137,7 @@
       if (kind === 'jump') { beep(ctx, 660, 0, 0.07); beep(ctx, 990, 0.05, 0.09); }
       else if (kind === 'over') { beep(ctx, 220, 0, 0.16, 'square', 0.06); beep(ctx, 165, 0.14, 0.24, 'square', 0.06); }
       else if (kind === 'best') { beep(ctx, 784, 0, 0.08); beep(ctx, 988, 0.08, 0.08); beep(ctx, 1319, 0.16, 0.16); }
+      else if (kind === 'boot') { beep(ctx, 1047, 0, 0.06, 'square', 0.05); beep(ctx, 2093, 0.07, 0.16, 'square', 0.05); }
     } catch (e) { /* 音は無くても困らない */ }
   }
 
@@ -238,6 +264,7 @@
   }
 
   function jump() {
+    if (g.state === 'boot') return; // 電源が入るまでは待つ
     if (g.state === 'idle') { g.state = 'run'; els.msg.classList.add('hidden'); sound('jump'); g.vy = JUMP_V; return; }
     if (g.state === 'over') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
     if (g.y <= 0) { g.vy = JUMP_V; sound('jump'); }
@@ -320,6 +347,44 @@
     raf = requestAnimationFrame(tick);
   }
 
+  // いきなり全画面が開くと驚くので、まず相棒がぴょこんと動いて「あそぶ？」と聞く。
+  // 吹き出しの「あそぶ」か、相棒をもう一度触るとゲーム機が開く
+  function askToPlay() {
+    if (open) return;
+    if (invite) { hideInvite(); openGame(); return; }
+    const icon = document.querySelector('.page-header .app-icon');
+    const kun = icon && icon.querySelector('.gohan-kun');
+    if (kun && typeof playGohanTrick === 'function') { try { playGohanTrick(kun); } catch (e) { /* 芸は無くてもよい */ } }
+    if (!overlay) build();
+    invite = document.createElement('div');
+    invite.className = 'gr-invite';
+    invite.setAttribute('role', 'dialog');
+    invite.innerHTML = 'いっしょにあそぶ？ <button type="button">▶ あそぶ</button>';
+    invite.querySelector('button').addEventListener('click', (e) => { e.stopPropagation(); hideInvite(); openGame(); });
+    document.body.appendChild(invite);
+    // ヘッダーの相棒の真下に置く（画面の端からはみ出さないように寄せる）
+    const r = icon ? icon.getBoundingClientRect() : { left: 24, right: 74, bottom: 60 };
+    const half = invite.offsetWidth / 2 + 8;
+    const x = Math.max(half, Math.min(window.innerWidth - half, (r.left + r.right) / 2));
+    invite.style.left = `${Math.round(x)}px`;
+    invite.style.top = `${Math.round(r.bottom + 8)}px`;
+    clearTimeout(inviteTimer);
+    inviteTimer = setTimeout(hideInvite, 4500);
+    setTimeout(() => document.addEventListener('pointerdown', onOutside, { capture: true }), 0);
+  }
+  function onOutside(e) {
+    if (!invite) return;
+    const icon = document.querySelector('.page-header .app-icon');
+    if (invite.contains(e.target) || (icon && icon.contains(e.target))) return;
+    hideInvite();
+  }
+  function hideInvite() {
+    clearTimeout(inviteTimer);
+    document.removeEventListener('pointerdown', onOutside, { capture: true });
+    if (invite) invite.remove();
+    invite = null;
+  }
+
   function openGame() {
     if (!overlay) build();
     open = true;
@@ -330,6 +395,21 @@
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     fit();
+    // 本体がせり上がり、画面に電源が入ってからスタート待ちになる
+    overlay.classList.toggle('gr-enter', !reduceMotion());
+    if (!reduceMotion()) {
+      g.state = 'boot';
+      els.msg.classList.add('hidden');
+      const boot = document.createElement('div');
+      boot.className = 'gr-boot';
+      els.screen.appendChild(boot);
+      setTimeout(() => sound('boot'), 250);
+      setTimeout(() => boot.classList.add('done'), 800);
+      setTimeout(() => {
+        boot.remove();
+        if (open && g.state === 'boot') { g.state = 'idle'; showMsg('タップでスタート', 'Aボタンか画面を押すとジャンプ'); }
+      }, 1150);
+    }
     last = 0;
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(tick);
@@ -338,10 +418,14 @@
   function close() {
     open = false;
     cancelAnimationFrame(raf);
-    if (overlay) overlay.classList.add('hidden');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      overlay.classList.remove('gr-enter');
+      [...overlay.querySelectorAll('.gr-boot')].forEach((b) => b.remove());
+    }
     document.body.style.overflow = '';
   }
 
-  window.openGohanRun = openGame;
+  window.openGohanRun = askToPlay;
   window.closeGohanRun = close;
 })();

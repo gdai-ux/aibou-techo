@@ -148,6 +148,15 @@ try {
     font-size: 15px;
     font-weight: 900;
   }
+  /* のうりょく：六角形のグラフ */
+  .ability-wrap { display: flex; justify-content: center; }
+  .ability-chart { width: 100%; max-width: 340px; height: auto; display: block; }
+  .ability-grid { fill: none; stroke: var(--border-strong); stroke-width: 1; }
+  .ability-axis { stroke: var(--border-strong); stroke-width: 1; }
+  .ability-area { fill-opacity: 0.42; stroke-width: 2; stroke-linejoin: round; transition: all .5s var(--ease); }
+  .ability-dot { fill: var(--text); }
+  .ability-label { font-size: 12px; font-weight: 800; fill: var(--text); }
+  .ability-value { font-size: 11px; font-weight: 700; fill: var(--muted); font-variant-numeric: tabular-nums; }
   .status-bio { margin-top: 8px; font-size: 13px; color: var(--muted); }
   /* 次のレベルまでの進み具合 */
   .status-bar {
@@ -266,6 +275,12 @@ try {
     <a href="chat.html" class="status-link-btn status-chat-btn">💬 相棒とはなす</a>
   </div>
 
+  <!-- 相棒ののうりょく：直近30日の記録から、6つの力を六角形で見せる（ゲームのステータス画面風） -->
+  <div class="card">
+    <h2>のうりょく</h2>
+    <div class="ability-wrap"><svg class="ability-chart" id="statusAbility" viewBox="0 0 340 262" role="img" aria-label="相棒ののうりょく"></svg></div>
+    <p class="status-note" id="statusAbilityNote"></p>
+  </div>
   <div class="card">
     <h2>相棒の性格</h2>
     <div id="statusProfile"></div>

@@ -17,7 +17,7 @@ App Store で「入れたら動く」を実現するために、次の順で作�
 | 段階 | 内容 | 状態 |
 |---|---|---|
 | Step 0 | ライフログ機能の切り出し・名前の変更 | ✅ 完了（このリポジトリ） |
-| Step 1 | メールでログイン（Supabase Auth）、自前DB（Postgres）への保存、アカウント削除、利用者ごとのAI利用枠、Stripe決済 | 🔄 進行中（ログイン・自前DB・アカウント削除まで実装済み。AI利用枠・Stripeは未） |
+| Step 1 | メールでログイン（Supabase Auth）、自前DB（Postgres）への保存、アカウント削除、利用者ごとのAI利用枠、Stripe決済 | 🔄 進行中（ログイン・自前DB・アカウント削除・AI利用枠まで実装済み。Stripeは未） |
 | Step 2 | Capacitor でネイティブ化、HealthKit連携、プッシュ通知、TestFlight | 未着手 |
 | Step 3 | プライバシーポリシー・利用規約・免責、審査、公開 | 未着手 |
 
@@ -26,7 +26,12 @@ App Store で「入れたら動く」を実現するために、次の順で作�
 
 ### Web版（自前DBモード）の動かし方
 
-`.env` に `STORAGE=pg`・`DATABASE_URL`・`SUPABASE_URL`・`SUPABASE_ANON_KEY`・
+**NotionもObsidianも使っていない人（家族・友人など）にそのまま使ってもらう**ためのモード。
+利用者はURLを開いてメールアドレスを入れるだけで始められる。
+Supabase（ログイン＋Postgres）とRenderの用意から、使う人への案内文までを
+**[docs/SETUP-web.md](docs/SETUP-web.md)** にまとめてある。
+
+仕組み：`.env` に `STORAGE=pg`・`DATABASE_URL`・`SUPABASE_URL`・`SUPABASE_ANON_KEY`・
 `SUPABASE_JWT_SECRET`（または `SUPABASE_JWKS_URL`）を設定して起動すると、
 記録は Postgres に保存され、`/api` はログイン必須になる。ログインは `login.html`
 （メールのマジックリンク）。未設定なら従来どおり「利用者のNotion」に保存するモードで動く。
@@ -327,13 +332,17 @@ Obsidianは日付ブロックごと書き換わるので、重複は発生しま
 
 ## 他の人に使ってもらう場合
 
-家族や友人など、自分以外の人にもこのアプリを使ってもらいたい場合、
-コードはそのままで、**Renderにもう1つ別のWebサービスを追加デプロイする**
-だけで対応できます（同じGitHubリポジトリ・同じブランチでOK）。
+やり方は2つあります。どちらも、コードはそのままで **Renderにもう1つ別のWebサービスを
+追加デプロイする**だけです（同じGitHubリポジトリ・同じブランチでOK）。
 
+**A. Web版（おすすめ。相手がNotionを使っていなくてもよい）**
+　相手はURLを開いてメールアドレスを入れるだけ。記録はこちらで用意したデータベース
+　（Supabase）に保存されます。手順は [docs/SETUP-web.md](docs/SETUP-web.md)。
+
+**B. 相手の自分のNotionに保存する（従来）**
 1. Renderで新しいWeb Serviceを作成し、同じリポジトリを指定する
 2. **`NOTION_TOKEN` と `NOTION_PAGE_ID` の環境変数は設定しない**（ここが重要）
-3. できあがった別URLを、使ってほしい人に共有する
+3. できあがった別URLを、使ってほしい人に共有する。相手は画面右上の⚙️から自分のNotion連携情報を入れる
 
 ### セキュリティ
 
@@ -424,6 +433,12 @@ node sync.js
 | `OBSIDIAN_FILE_PATH` | 追記先のObsidianノートの絶対パス |
 | `NOTION_TOKEN` | Notion integrationのシークレットトークン（既定値。未設定でも、各利用者が設定画面で入力すればその人専用の値が優先される） |
 | `NOTION_PAGE_ID` | 追記先のNotionページID（同上） |
+| `STORAGE` | `pg` にするとWeb版（自前DB・ログイン必須）。未設定ならNotionに保存する従来モード |
+| `DATABASE_URL` | Web版のPostgres接続文字列（Supabaseの Session pooler URI） |
+| `SUPABASE_URL` / `SUPABASE_ANON_KEY` | Web版のログイン画面がブラウザからSupabase Authを呼ぶための公開情報 |
+| `SUPABASE_JWT_SECRET`（または `SUPABASE_JWKS_URL`） | Web版でログイントークンを検証する鍵 |
+| `SUPABASE_SERVICE_ROLE_KEY` | （任意）アカウント削除の時に認証側の利用者も消すための鍵 |
+| `AI_FREE_VOICE_LIMIT` / `AI_FREE_REVIEW_LIMIT` / `AI_FREE_CHAT_LIMIT` | （任意）Web版のAI無料枠。既定は 20/月・3/週・15/週 |
 
 `.env` は個人の認証情報を含むため、Gitには含めていません（`.gitignore`済み）。
 クラウド版（Render）には `OBSIDIAN_FILE_PATH` を設定しないことで、

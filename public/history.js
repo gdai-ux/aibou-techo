@@ -1506,6 +1506,14 @@ async function checkNotionSetupNeeded() {
     // Web版（ログインあり）かどうかを画面全体で共有する（設定メニューの出し分けに使う）
     window.authRequired = !!data.authRequired;
     window.authEmail = data.email || '';
+    // 記録ボタンの下の一言を、実際の保存先に合わせる
+    // （Web版はNotionもObsidianも使わないので、その名前を出さない）
+    const hint = document.getElementById('saveHint');
+    if (hint) {
+      if (data.authRequired) hint.textContent = '記録はあなたのアカウントに保存され、スマホでもPCでも同じ内容が見られます';
+      else if (data.obsidianConfigured) hint.textContent = 'Obsidian と Notion の両方に自動で追記されます';
+      else hint.textContent = 'Notion に自動で追記されます';
+    }
     if (!data.notionConfigured && !data.authRequired) openNotionSettingsModal();
   } catch (e) {
     // ステータス取得に失敗しても致命的ではないので何もしない

@@ -574,6 +574,9 @@ function setupGohanTap(container) {
   // 差し替え後は画面に無いノードを動かすことになり、何も起きなくなる。
   // 押された時にその場で探すこと。
   container.addEventListener('click', () => {
+    // ヘッダーの相棒を触ると、走って跳ぶだけの小さなゲームが始まる（gohan-run.js）。
+    // それ以外の場所の相棒（ふりかえりの横など）は、これまで通りその場で芸をする
+    if (container.classList.contains('app-icon') && window.openGohanRun) { openGohanRun(); return; }
     const kun = container.querySelector('.gohan-kun');
     if (kun) playGohanTrick(kun);
   });

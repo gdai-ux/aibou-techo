@@ -18,6 +18,7 @@ const CORE = [
   'chat.js',
   'app.css',
   'app.js',
+  'gohan-run.js',
   'history.css',
   'history.js',
   'mascot.js',

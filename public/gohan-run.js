@@ -37,12 +37,13 @@
   // テーマごとの色と障害物の形（ヘッダーの data-stage と同じキー）
   const THEMES = {
     grass:  { sky: 'linear-gradient(180deg,#5c94fc,#a7dcff)', ground: '#8b5e34', line: '#4a9b3f', ob1: '#2f9e44', ob2: '#51cf66', cloud: '#ffffff', ink: '#1c1c1e', shape: 'pipe' },
-    forest: { sky: 'linear-gradient(180deg,#1f3b2a,#3b6b45)', ground: '#2f5233', line: '#8a5a34', ob1: '#6b4226', ob2: '#3d7a3d', cloud: '#5b7a5b', ink: '#f2f2f7', shape: 'tree' },
-    sea:    { sky: 'linear-gradient(180deg,#0b3b5c,#1f6f8b)', ground: '#1f6f8b', line: '#4dd0e1', ob1: '#1f6f8b', ob2: '#4dd0e1', cloud: '#eef6f9', ink: '#f2f2f7', shape: 'hump' },
+    // 障害物は空や地面と色がかぶらないように（森は明るい空に濃い木、海は青い海にサンゴ色）
+    forest: { sky: 'linear-gradient(180deg,#a9d9b8,#e4f4e9)', ground: '#4c7a3e', line: '#2f5233', ob1: '#6b4226', ob2: '#2e7d32', cloud: '#ffffff', ink: '#1c1c1e', shape: 'tree' },
+    sea:    { sky: 'linear-gradient(180deg,#0b3b5c,#1f6f8b)', ground: '#155a73', line: '#4dd0e1', ob1: '#ff6b3d', ob2: '#ffb088', cloud: '#eef6f9', ink: '#f2f2f7', shape: 'hump' },
     desert: { sky: 'linear-gradient(180deg,#f7c873,#fbe4b3)', ground: '#d9a066', line: '#b97a3d', ob1: '#2f9e44', ob2: '#4caf50', cloud: '#f4e3c1', ink: '#1c1c1e', shape: 'cactus' },
-    snow:   { sky: 'linear-gradient(180deg,#9fc5e8,#e8f4fb)', ground: '#cfe8f3', line: '#9fd3e8', ob1: '#9fd3e8', ob2: '#eaf7fb', cloud: '#ffffff', ink: '#1c1c1e', shape: 'spike' },
-    cave:   { sky: 'linear-gradient(180deg,#1b1a20,#33313a)', ground: '#4a4550', line: '#6b6b78', ob1: '#5a5a66', ob2: '#8d8d99', cloud: '#6b6b78', ink: '#f2f2f7', shape: 'spike' },
-    space:  { sky: 'linear-gradient(180deg,#05051a,#1a1b4a)', ground: '#2b2d6b', line: '#ffd60a', ob1: '#7b2cbf', ob2: '#c77dff', cloud: '#ffe066', ink: '#f2f2f7', shape: 'ball' },
+    snow:   { sky: 'linear-gradient(180deg,#9fc5e8,#e8f4fb)', ground: '#cfe8f3', line: '#9fd3e8', ob1: '#2f7fb8', ob2: '#8ccbe8', cloud: '#ffffff', ink: '#1c1c1e', shape: 'spike' },
+    cave:   { sky: 'linear-gradient(180deg,#1b1a20,#33313a)', ground: '#4a4550', line: '#6b6b78', ob1: '#7a7a88', ob2: '#c4c4d4', cloud: '#6b6b78', ink: '#f2f2f7', shape: 'spike' },
+    space:  { sky: 'linear-gradient(180deg,#05051a,#1a1b4a)', ground: '#2b2d6b', line: '#ffd60a', ob1: '#9d4edd', ob2: '#e6c4ff', cloud: '#ffe066', ink: '#f2f2f7', shape: 'ball' },
   };
 
   const CSS = `
@@ -70,7 +71,8 @@
   .gr-runner { position: absolute; left: ${RUNNER_X}px; bottom: ${GROUND}px; width: ${RUNNER}px; height: ${RUNNER}px; will-change: transform; }
   .gr-runner .gohan-kun { display: block; width: ${RUNNER}px; height: ${RUNNER}px; }
   .gr-runner.gr-hit .gohan-kun { animation: none; transform: rotate(-18deg); }
-  .gr-ob { position: absolute; bottom: ${GROUND}px; left: 0; will-change: transform; }
+  .gr-ob { position: absolute; bottom: ${GROUND}px; left: 0; will-change: transform;
+    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)); }
   .gr-ob-pipe, .gr-ob-cactus { border-radius: 3px 3px 0 0; background: linear-gradient(90deg, var(--gr-ob1) 0 25%, var(--gr-ob2) 25% 75%, var(--gr-ob1) 75%); }
   .gr-ob-pipe::before { content: ''; position: absolute; top: -5px; left: -3px; right: -3px; height: 7px; border-radius: 3px; background: inherit; }
   .gr-ob-cactus { border-radius: 8px 8px 2px 2px; }

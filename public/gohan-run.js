@@ -25,13 +25,13 @@
   const BASE_SPEED = 250; // 走り始めの速さ（px/s）
   const STAGE_KEY = 'gohanRunBestStage';
   // 5つのステージ。length はゴールまでの距離（px）、speed は走り始めの速さ、
-  // gap は障害物の間隔の比率（小さいほど詰まる）
+  // gapMin/gapMax は障害物が出る間隔（秒）。後のステージほど長く、速く、詰まる
   const STAGES = [
-    { key: 'grass',  name: 'そうげん', length: 2600, speed: 250, gap: 1.0 },
-    { key: 'forest', name: 'もり',     length: 3000, speed: 270, gap: 0.95 },
-    { key: 'sea',    name: 'うみ',     length: 3400, speed: 290, gap: 0.9 },
-    { key: 'desert', name: 'さばく',   length: 3800, speed: 310, gap: 0.85 },
-    { key: 'space',  name: 'うちゅう', length: 4200, speed: 330, gap: 0.8 },
+    { key: 'grass',  name: 'そうげん', length: 5000, speed: 270, gapMin: 0.85, gapMax: 1.6 },
+    { key: 'forest', name: 'もり',     length: 5800, speed: 290, gapMin: 0.8,  gapMax: 1.5 },
+    { key: 'sea',    name: 'うみ',     length: 6600, speed: 310, gapMin: 0.75, gapMax: 1.4 },
+    { key: 'desert', name: 'さばく',   length: 7400, speed: 330, gapMin: 0.7,  gapMax: 1.3 },
+    { key: 'space',  name: 'うちゅう', length: 8400, speed: 350, gapMin: 0.65, gapMax: 1.2 },
   ];
 
   // テーマごとの色と障害物の形（ヘッダーの data-stage と同じキー）
@@ -342,9 +342,9 @@
   }
 
   function spawn() {
-    // 高さ・幅は少しずつ違う。ときどき2本並べる
-    const tall = Math.random() < 0.35;
-    const twin = Math.random() < 0.22;
+    // 高さ・幅は少しずつ違う。ときどき2本並べる（後のステージほど高い・2本が増える）
+    const tall = Math.random() < 0.3 + g.stage * 0.08;
+    const twin = Math.random() < 0.15 + g.stage * 0.07;
     const w = twin ? 44 : (16 + Math.floor(Math.random() * 12));
     const h = tall ? 50 + Math.floor(Math.random() * 12) : 30 + Math.floor(Math.random() * 14);
     const el = document.createElement('div');
@@ -410,7 +410,7 @@
       g.stageDist += g.speed * dt;
       g.score = Math.floor(g.dist / 12);
       // ステージの中で少しずつ速くなる（ステージが進むほど土台の速さも上がる）
-      g.speed = st.speed + Math.min(120, (g.stageDist / st.length) * 120);
+      g.speed = st.speed + Math.min(150, (g.stageDist / st.length) * 150);
       els.score.textContent = pad(g.score);
       els.prog.style.width = `${Math.min(100, (g.stageDist / st.length) * 100).toFixed(1)}%`;
 
@@ -443,7 +443,7 @@
       const nearGoal = g.stageDist >= st.length - 460;
       if (g.spawnIn <= 0 && !nearGoal) {
         spawn();
-        g.spawnIn = (0.9 + Math.random() * 1.0) * (280 / g.speed) * st.gap;
+        g.spawnIn = st.gapMin + Math.random() * (st.gapMax - st.gapMin);
       }
       const rx1 = RUNNER_X + 10;
       const rx2 = RUNNER_X + RUNNER - 10;

@@ -9,6 +9,7 @@
 // 眠そうな魔王）。ボス戦だけ十字キーと B ボタンが増え、B で「ほのおだま」を撃てる。
 // 十字キーの ◀▶ で前後に動き、▼ でしゃがみ、▲ か A でジャンプ。魔王が投げてくる
 // まくら（低い＝ジャンプ、顔の高さ＝しゃがむ）をよけながら、ほのおだまを当てて倒す。
+// 遊んでいる最中に「とじる」や外側を触った時は、いきなり閉じずに「ゲームをやめる？」と聞く。
 //
 // 依存：ページに .page-header .gohan-kun（相棒のSVG）があること。音は app 側の
 // ensureAudio / beep / tapSoundEnabled があれば使い、無ければ鳴らさない。
@@ -37,12 +38,12 @@
   ];
   // ボス戦
   const BOSS_NAME = 'サボリ魔王 ダラーン';
-  const BOSS_HP = 12;         // ほのおだまを当てる回数
+  const BOSS_HP = 10;         // ほのおだまを当てる回数
   const BOSS_SIZE = 72;
   const PLAYER_HEARTS = 3;
   const MOVE_SPEED = 150;     // ◀▶ で動く速さ（px/s）
-  const FIRE_SPEED = 430;     // ほのおだまの速さ
-  const FIRE_COOLDOWN = 0.45; // 連射の間隔（秒）
+  const FIRE_SPEED = 300;     // ほのおだまの速さ（目で追える速さ）
+  const FIRE_COOLDOWN = 0.55; // 連射の間隔（秒）
   const HURT_TIME = 1.5;      // やられた後の無敵時間（秒）
 
   // テーマごとの色と障害物の形（ヘッダーの data-stage と同じキー。castle はボス戦だけ）
@@ -156,9 +157,36 @@
   .gr-pillow { position: absolute; left: 0; bottom: ${GROUND}px; width: 24px; height: 14px; border-radius: 6px; will-change: transform;
     background: linear-gradient(180deg, #fff6e5, #e9d8ff); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.25); }
   .gr-pillow::before { content: 'z'; position: absolute; right: -2px; top: -12px; font: 800 11px/1 sans-serif; color: #8fe3ff; }
-  .gr-fire { position: absolute; left: 0; bottom: ${GROUND}px; width: 14px; height: 14px; border-radius: 50%; will-change: transform;
-    background: radial-gradient(circle at 40% 40%, #fff6a8, #ff9f1c 55%, #ff3d00); box-shadow: 0 0 10px rgba(255, 140, 0, 0.9); animation: grFireSpin .25s linear infinite; }
-  @keyframes grFireSpin { to { transform: rotate(360deg); } }
+  /* ほのおだま：右へ飛ぶ彗星の形（左に尾を引く）。飛ぶ向きがひと目で分かるように */
+  .gr-fire { position: absolute; left: 0; bottom: ${GROUND}px; width: 30px; height: 16px; will-change: transform; z-index: 3; }
+  .gr-fire i { position: absolute; right: 0; top: 0; width: 16px; height: 16px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #fff6a8, #ff9f1c 55%, #ff3d00); box-shadow: 0 0 12px rgba(255, 140, 0, 0.95); animation: grFireFlicker .12s ease-in-out infinite alternate; }
+  .gr-fire b { position: absolute; left: 0; top: 4px; width: 18px; height: 8px; border-radius: 8px 0 0 8px; background: linear-gradient(90deg, rgba(255, 120, 0, 0), #ff9f1c); }
+  @keyframes grFireFlicker { from { transform: scale(0.9); } to { transform: scale(1.1); } }
+  .gr-muzzle { position: absolute; left: 0; bottom: ${GROUND}px; width: 14px; height: 14px; border-radius: 50%; background: #fff6a8; box-shadow: 0 0 10px #ffb300;
+    animation: grMuzzle .18s ease-out forwards; z-index: 3; pointer-events: none; }
+  @keyframes grMuzzle { to { transform: scale(2.2); opacity: 0; } }
+  /* 当たった時：輪が広がって「HIT!」が浮かぶ */
+  .gr-hitfx { position: absolute; left: 0; bottom: ${GROUND}px; width: 20px; height: 20px; pointer-events: none; z-index: 7; }
+  .gr-hitfx::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 3px solid #ffd60a; box-shadow: 0 0 10px #ff9f1c; animation: grRing .45s ease-out forwards; }
+  .gr-hitfx::after { content: attr(data-text); position: absolute; left: 50%; top: -6px; transform: translateX(-50%); font: 900 14px/1 sans-serif; color: #fff; -webkit-text-stroke: 1px #c0392b;
+    text-shadow: 0 2px 0 #c0392b; animation: grHitText .7s ease-out forwards; white-space: nowrap; }
+  @keyframes grRing { to { transform: scale(3); opacity: 0; } }
+  @keyframes grHitText { 0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; } 25% { transform: translate(-50%, -8px) scale(1.2); opacity: 1; } 100% { transform: translate(-50%, -30px) scale(1); opacity: 0; } }
+  .gr-boss.gr-shake { animation: grShake .35s ease-out; }
+  @keyframes grShake { 0%, 100% { margin-left: 0; } 20% { margin-left: 8px; } 40% { margin-left: -6px; } 60% { margin-left: 4px; } 80% { margin-left: -2px; } }
+  /* 突進の予告：「！」を出してぶるぶる震える */
+  .gr-boss.gr-warn .gr-boss-svg { animation: grTremble .1s linear infinite; }
+  .gr-boss.gr-warn::after { content: '！'; position: absolute; left: 50%; top: -22px; transform: translateX(-50%); font: 900 20px/1 sans-serif; color: #ff453a; text-shadow: 0 0 6px #fff; }
+  @keyframes grTremble { 0%, 100% { transform: translateX(-2px); } 50% { transform: translateX(2px); } }
+  /* 一時停止（ゲームをやめる？） */
+  .gr-pause { position: absolute; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.55); }
+  .gr-pause.show { display: flex; }
+  .gr-pause-box { background: #1c1a20; color: #f2f2f7; border-radius: 14px; padding: 16px 18px; text-align: center; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.12); }
+  .gr-pause-box p { margin: 0 0 12px; font-size: 15px; font-weight: 800; }
+  .gr-pause-box button { appearance: none; border: 0; border-radius: 999px; padding: 9px 18px; margin: 0 5px; font-size: 13px; font-weight: 800; cursor: pointer; }
+  .gr-pause-box .gr-resume { background: #0a84ff; color: #fff; }
+  .gr-pause-box .gr-quit { background: rgba(255, 255, 255, 0.14); color: #f2f2f7; }
   /* ボタン類 */
   .gr-controls { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-top: 20px; padding: 0 8px; }
   .gr-left { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
@@ -227,6 +255,7 @@
     obstacles: [], clouds: [], overAt: 0, stage: 0, stageDist: 0, goal: null, bestStage: 0,
     held: { left: false, right: false, down: false },
     boss: null, pillows: [], fires: [], hearts: PLAYER_HEARTS, hurt: 0, fireCd: 0,
+    paused: false, introLeft: 0, introNext: 'run',
   };
 
   function readBest() {
@@ -284,6 +313,7 @@
               <div class="gr-hearts"></div>
               <div class="gr-boss-hp"><b></b><i><span></span></i></div>
               <div class="gr-msg"></div>
+              <div class="gr-pause"><div class="gr-pause-box"><p>ゲームをやめる？</p><button type="button" class="gr-resume">つづける</button><button type="button" class="gr-quit">やめる</button></div></div>
             </div>
           </div>
         </div>
@@ -324,7 +354,11 @@
       fire: overlay.querySelector('.gr-b'),
       close: overlay.querySelector('.gr-close'),
       dpad: overlay.querySelector('.gr-dpad'),
+      pause: overlay.querySelector('.gr-pause'),
     };
+    els.pause.querySelector('.gr-resume').addEventListener('click', (e) => { e.stopPropagation(); resumeGame(); });
+    els.pause.querySelector('.gr-quit').addEventListener('click', (e) => { e.stopPropagation(); close(); });
+    els.pause.addEventListener('pointerdown', (e) => e.stopPropagation());
     g.clouds = [...overlay.querySelectorAll('.gr-cloud')].map((el, i) => ({ el, x: 60 + i * 170, y: 14 + i * 22 }));
 
     // 入力：画面のどこか・Aボタン・スペース/↑キー。ボス戦は十字キーと B も
@@ -353,8 +387,8 @@
       el.addEventListener('touchstart', stopTouch, { passive: false });
       el.addEventListener('contextmenu', stopTouch);
     });
-    els.close.addEventListener('click', close);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    els.close.addEventListener('click', requestClose);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) requestClose(); });
     document.addEventListener('keydown', (e) => {
       if (!open) return;
       if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); jump(); }
@@ -362,7 +396,7 @@
       else if (e.code === 'ArrowRight') { e.preventDefault(); g.held.right = true; }
       else if (e.code === 'ArrowDown') { e.preventDefault(); g.held.down = true; }
       else if (e.code === 'KeyX' || e.code === 'KeyZ' || e.code === 'KeyB') { e.preventDefault(); fire(); }
-      else if (e.code === 'Escape') close();
+      else if (e.code === 'Escape') requestClose();
     });
     document.addEventListener('keyup', (e) => {
       if (e.code === 'ArrowLeft') g.held.left = false;
@@ -471,7 +505,8 @@
     els.runner.classList.add('gohan-walking');
     showMsg(`STAGE ${i + 1}  ${STAGES[i].name}`, 'いくよ！');
     sound('jump');
-    setTimeout(() => { if (open && g.state === 'intro') { g.state = 'run'; els.msg.classList.add('hidden'); } }, 1000);
+    g.introLeft = 1.0;
+    g.introNext = 'run';
   }
 
   function showMsg(main, sub) {
@@ -481,7 +516,26 @@
     els.msg.classList.remove('hidden');
   }
 
+  // 遊んでいる最中は、いきなり閉じずに「ゲームをやめる？」と聞く
+  function requestClose() {
+    if (!open) return;
+    if (['run', 'boss', 'intro', 'clear'].includes(g.state)) { pauseGame(); return; }
+    close();
+  }
+  function pauseGame() {
+    if (g.paused) return;
+    g.paused = true;
+    g.held.left = g.held.right = g.held.down = false;
+    els.pause.classList.add('show');
+  }
+  function resumeGame() {
+    g.paused = false;
+    els.pause.classList.remove('show');
+    last = 0; // 止めていた時間ぶん、いきなり進まないように
+  }
+
   function jump() {
+    if (g.paused) return;
     if (g.state === 'boot' || g.state === 'intro') return; // 電源が入る・ステージ名を見せている間は待つ
     if (g.state === 'idle') { g.state = 'run'; els.msg.classList.add('hidden'); sound('jump'); g.vy = JUMP_V; return; }
     if (g.state === 'clear') { if (performance.now() - g.overAt > 400) { if (g.stage + 1 >= STAGES.length) startBoss(); else startStage(g.stage + 1); } return; }
@@ -491,15 +545,23 @@
 
   // ほのおだま（ボス戦だけ）
   function fire() {
+    if (g.paused) return;
     if (g.state !== 'boss') { if (g.state === 'clear' || g.state === 'over' || g.state === 'bosswin' || g.state === 'idle') jump(); return; }
     if (g.fireCd > 0 || g.fires.length >= 2) return;
     g.fireCd = FIRE_COOLDOWN;
     const el = document.createElement('div');
     el.className = 'gr-fire';
+    el.innerHTML = '<b></b><i></i>';
     els.screen.appendChild(el);
-    const f = { el, x: g.rx + RUNNER - 6, y: g.y + (g.held.down ? 8 : 20) };
+    const f = { el, x: g.rx + RUNNER - 14, y: g.y + (g.held.down ? 6 : 24), w: 30, h: 16 };
     el.style.transform = `translate(${f.x}px, ${-f.y}px)`;
     g.fires.push(f);
+    // 出た場所が分かるように、相棒の前でぱっと光る
+    const m = document.createElement('div');
+    m.className = 'gr-muzzle';
+    m.style.transform = `translate(${g.rx + RUNNER - 8}px, ${-(f.y + 1)}px)`;
+    els.screen.appendChild(m);
+    setTimeout(() => m.remove(), 200);
     sound('fire');
   }
 
@@ -574,14 +636,15 @@
     el.className = 'gr-boss';
     el.innerHTML = BOSS_SVG;
     els.screen.appendChild(el);
-    g.boss = { el, hp: BOSS_HP, x: W - BOSS_SIZE - 24, y: 30, t: 0, attackIn: 2.2, dashIn: 7, dash: null, flash: 0 };
+    g.boss = { el, hp: BOSS_HP, x: W - BOSS_SIZE - 24, y: 26, t: 0, attackIn: 2.4, dashIn: 9, dash: null, flash: 0 };
     placeBoss();
     els.bossName.textContent = BOSS_NAME;
     els.bossBar.style.width = '100%';
     els.bossBar.style.background = '#34c759';
     showMsg(`BOSS  ${BOSS_NAME}`, '「ねむい…記録なんてサボっちゃえ…」\nB：ほのおだま　▼：しゃがむ　A：ジャンプ');
     sound('roar');
-    setTimeout(() => { if (open && g.state === 'intro') { g.state = 'boss'; els.msg.classList.add('hidden'); } }, 2600);
+    g.introLeft = 2.8;
+    g.introNext = 'boss';
   }
 
   function placeBoss() {
@@ -599,7 +662,7 @@
     els.screen.appendChild(el);
     // low: 足もと（ジャンプでよける） / head: 顔の高さ（しゃがんでよける）
     const y = kind === 'head' ? 30 : 2;
-    const p = { el, x: g.boss.x - 10, y, w: 24, h: 14, speed: 180 + (BOSS_HP - g.boss.hp) * 8 + Math.random() * 30 };
+    const p = { el, x: g.boss.x - 10, y, w: 24, h: 14, speed: 130 + (BOSS_HP - g.boss.hp) * 6 + Math.random() * 20 };
     el.style.transform = `translate(${p.x}px, ${-p.y}px)`;
     g.pillows.push(p);
   }
@@ -614,11 +677,22 @@
     els.runner.classList.add('gr-hurt');
   }
 
-  function bossHit() {
+  function hitFx(x, y, text) {
+    const el = document.createElement('div');
+    el.className = 'gr-hitfx';
+    el.dataset.text = text;
+    el.style.transform = `translate(${x}px, ${-y}px)`;
+    els.screen.appendChild(el);
+    setTimeout(() => el.remove(), 750);
+  }
+
+  function bossHit(x, y) {
     const b = g.boss;
     b.hp -= 1;
-    b.flash = 0.12;
+    b.flash = 0.35;
     b.el.classList.add('gr-flash');
+    b.el.classList.remove('gr-shake'); void b.el.offsetWidth; b.el.classList.add('gr-shake');
+    hitFx(x, y, 'HIT!');
     g.score += 50;
     els.score.textContent = pad(g.score);
     const ratio = Math.max(0, b.hp / BOSS_HP);
@@ -667,30 +741,38 @@
     g.clouds.forEach((c) => { c.x -= 10 * dt; if (c.x < -40) c.x = W + 20; c.el.style.transform = `translate(${c.x.toFixed(1)}px, ${c.y}px)`; });
 
     // ボス：ふわふわ浮く。HPが減るほど攻撃が速い。ときどき突進してくる（ジャンプでよける）
-    const phase = 1 + (BOSS_HP - b.hp) / BOSS_HP; // 1 → 2
+    const phase = 1 + 0.6 * ((BOSS_HP - b.hp) / BOSS_HP); // 1 → 1.6
     if (b.dash) {
       b.dash.t += dt;
       const d = b.dash;
-      if (d.t < d.out) b.x = d.from + (d.to - d.from) * (d.t / d.out);
-      else if (d.t < d.out + d.wait) b.x = d.to;
-      else if (d.t < d.out + d.wait + d.back) b.x = d.to + (d.from - d.to) * ((d.t - d.out - d.wait) / d.back);
-      else { b.x = d.from; b.dash = null; b.el.classList.remove('gr-dash'); }
-      b.y = b.dash ? Math.max(0, 30 - 30 * Math.min(1, d.t / 0.15)) : 30;
+      if (d.t < d.warn) {
+        // 予告：その場で震える（この間はまだ当たらない）
+        b.el.classList.add('gr-warn');
+        b.x = d.from;
+      } else {
+        b.el.classList.remove('gr-warn');
+        b.el.classList.add('gr-dash');
+        const t = d.t - d.warn;
+        if (t < d.out) b.x = d.from + (d.to - d.from) * (t / d.out);
+        else if (t < d.out + d.wait) b.x = d.to;
+        else if (t < d.out + d.wait + d.back) b.x = d.to + (d.from - d.to) * ((t - d.out - d.wait) / d.back);
+        else { b.x = d.from; b.dash = null; b.el.classList.remove('gr-dash'); }
+      }
+      b.y = b.dash && b.dash.t >= b.dash.warn ? Math.max(0, 26 - 26 * Math.min(1, (b.dash.t - b.dash.warn) / 0.15)) : 26;
     } else {
-      b.y = 30 + Math.sin(b.t * 2.2) * 14;
+      b.y = 26 + Math.sin(b.t * 2.2) * 6;
       b.attackIn -= dt;
       if (b.attackIn <= 0) {
         const r = Math.random();
         if (r < 0.5) throwPillow('low');
         else if (r < 0.85) throwPillow('head');
         else { throwPillow('low'); setTimeout(() => { if (open && g.state === 'boss' && g.boss) throwPillow('head'); }, 350); }
-        b.attackIn = (1.7 + Math.random() * 0.9) / phase;
+        b.attackIn = (2.2 + Math.random() * 1.0) / phase;
       }
       b.dashIn -= dt;
       if (b.dashIn <= 0) {
-        b.dash = { t: 0, from: b.x, to: g.rx - 30, out: 0.45, wait: 0.15, back: 0.9 };
-        b.dashIn = 6 + Math.random() * 3;
-        b.el.classList.add('gr-dash');
+        b.dash = { t: 0, warn: 0.7, from: b.x, to: g.rx - 30, out: 0.7, wait: 0.2, back: 1.0 };
+        b.dashIn = 9 + Math.random() * 4;
         sound('roar');
       }
     }
@@ -701,7 +783,7 @@
     const rh = duck ? 26 : RUNNER - 6;
     const rx1 = g.rx + 10, rx2 = g.rx + RUNNER - 10, ry1 = g.y, ry2 = g.y + rh;
     // 突進中のボスに触れたらダメージ
-    if (b.dash && b.x < rx2 && b.x + BOSS_SIZE > rx1 && b.y < ry2 && b.y + BOSS_SIZE - 10 > ry1) hurtPlayer();
+    if (b.dash && b.dash.t >= b.dash.warn && b.x < rx2 && b.x + BOSS_SIZE > rx1 && b.y < ry2 && b.y + BOSS_SIZE - 10 > ry1) hurtPlayer();
 
     // ほのおだま：右へ飛んでボスに当たる。まくらも消せる
     for (let i = g.fires.length - 1; i >= 0; i--) {
@@ -709,11 +791,12 @@
       f.x += FIRE_SPEED * dt;
       f.el.style.transform = `translate(${f.x.toFixed(1)}px, ${-f.y}px)`;
       let gone = f.x > W + 20;
-      if (!gone && f.x + 14 > b.x + 8 && f.x < b.x + BOSS_SIZE - 8 && f.y + 14 > b.y && f.y < b.y + BOSS_SIZE) { bossHit(); gone = true; }
+      const head = f.x + f.w; // 先端
+      if (!gone && head > b.x + 8 && f.x + 10 < b.x + BOSS_SIZE - 8 && f.y + f.h > b.y && f.y < b.y + BOSS_SIZE) { bossHit(head - 10, f.y); gone = true; }
       if (!gone) {
         for (let j = g.pillows.length - 1; j >= 0; j--) {
           const p = g.pillows[j];
-          if (f.x + 14 > p.x && f.x < p.x + p.w && f.y + 14 > p.y && f.y < p.y + p.h) { p.el.remove(); g.pillows.splice(j, 1); gone = true; g.score += 10; els.score.textContent = pad(g.score); break; }
+          if (head > p.x && f.x + 10 < p.x + p.w && f.y + f.h > p.y && f.y < p.y + p.h) { p.el.remove(); g.pillows.splice(j, 1); gone = true; g.score += 10; els.score.textContent = pad(g.score); hitFx(p.x, p.y, '+10'); break; }
         }
       }
       if (gone) { f.el.remove(); g.fires.splice(i, 1); }
@@ -735,7 +818,11 @@
     const dt = Math.min(0.033, (t - last) / 1000);
     last = t;
 
-    if (g.state === 'boss') {
+    if (g.paused) { raf = requestAnimationFrame(tick); return; }
+    if (g.state === 'intro') {
+      g.introLeft -= dt;
+      if (g.introLeft <= 0) { g.state = g.introNext; els.msg.classList.add('hidden'); }
+    } else if (g.state === 'boss') {
       bossUpdate(dt);
     } else if (g.state === 'run') {
       const st = STAGES[g.stage];
@@ -834,6 +921,8 @@
   function openGame() {
     if (!overlay) build();
     open = true;
+    g.paused = false;
+    els.pause.classList.remove('show');
     adoptRunner();
     reset();
     g.clouds.forEach((c) => { c.el.style.transform = `translate(${c.x}px, ${c.y}px)`; });
@@ -868,6 +957,8 @@
       overlay.classList.remove('gr-enter');
       [...overlay.querySelectorAll('.gr-boot')].forEach((b) => b.remove());
       clearField();
+      g.paused = false;
+      els.pause.classList.remove('show');
     }
     document.body.style.overflow = '';
   }

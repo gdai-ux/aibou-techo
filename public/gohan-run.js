@@ -47,7 +47,9 @@
 
   const CSS = `
   .gr-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
-    background: rgba(0, 0, 0, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); touch-action: none; }
+    background: rgba(0, 0, 0, 0.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); touch-action: none;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .gr-overlay *, .gr-invite, .gr-invite * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
   .gr-overlay.hidden { display: none; }
   /* 携帯ゲーム機の本体 */
   .gr-device { width: min(100vw - 12px, 460px); padding: 12px 12px 18px; border-radius: 24px 24px 44px 24px;
@@ -103,7 +105,7 @@
   .gr-tip { font-size: 12px; opacity: 0.85; line-height: 1.5; }
   .gr-close { appearance: none; border: 0; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
     color: #f2f2f7; background: rgba(0, 0, 0, 0.35); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15); }
-  .gr-jump { appearance: none; border: 0; width: 96px; height: 96px; border-radius: 50%; cursor: pointer; touch-action: none;
+  .gr-jump { appearance: none; border: 0; width: 96px; height: 96px; border-radius: 50%; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent;
     background: radial-gradient(circle at 35% 30%, #4a4550, #1c1a20); color: #f2f2f7; font-size: 28px; font-weight: 800;
     box-shadow: 0 6px 0 #0e0d10, 0 10px 18px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15); transform: translateY(0); transition: transform .06s, box-shadow .06s; }
   .gr-jump small { display: block; font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: 0.75; }
@@ -227,6 +229,12 @@
     const press = (e) => { e.preventDefault(); jump(); };
     els.screen.addEventListener('pointerdown', press);
     els.jump.addEventListener('pointerdown', (e) => { els.jump.classList.add('pressed'); press(e); });
+    // iOSでは touchstart を止めないと、連打や長押しで文字の選択・コピーの吹き出しが出る
+    const stopTouch = (e) => e.preventDefault();
+    els.screen.addEventListener('touchstart', stopTouch, { passive: false });
+    els.jump.addEventListener('touchstart', stopTouch, { passive: false });
+    els.jump.addEventListener('contextmenu', stopTouch);
+    els.screen.addEventListener('contextmenu', stopTouch);
     els.jump.addEventListener('pointerup', () => els.jump.classList.remove('pressed'));
     els.jump.addEventListener('pointercancel', () => els.jump.classList.remove('pressed'));
     els.close.addEventListener('click', close);

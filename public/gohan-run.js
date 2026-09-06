@@ -2,6 +2,8 @@
 //
 // 遊び方は Chrome のオフライン画面の恐竜ゲームと同じ：相棒はひとりで走り続け、
 // 画面か A ボタンを押すとジャンプ。障害物にぶつかったら終わりで、走った距離が点数。
+// ステージは5つ（そうげん→もり→うみ→さばく→うちゅう）。それぞれ決まった距離を
+// 走るとゴールの旗が見えてきて、触れるとクリア。次のステージは少し速く、障害物も多い。
 // 画面はゲームボーイのような携帯機の見た目にし、ヘッダーのステージのテーマ
 // （草原・森・海・砂漠・雪山・洞窟・宇宙）に合わせて空・地面・障害物の色と形が変わる。
 //
@@ -21,6 +23,16 @@
   const GRAVITY = 1700;   // px/s^2
   const JUMP_V = -620;    // 跳んだ瞬間の速さ（px/s、上向きが負）
   const BASE_SPEED = 250; // 走り始めの速さ（px/s）
+  const STAGE_KEY = 'gohanRunBestStage';
+  // 5つのステージ。length はゴールまでの距離（px）、speed は走り始めの速さ、
+  // gap は障害物の間隔の比率（小さいほど詰まる）
+  const STAGES = [
+    { key: 'grass',  name: 'そうげん', length: 2600, speed: 250, gap: 1.0 },
+    { key: 'forest', name: 'もり',     length: 3000, speed: 270, gap: 0.95 },
+    { key: 'sea',    name: 'うみ',     length: 3400, speed: 290, gap: 0.9 },
+    { key: 'desert', name: 'さばく',   length: 3800, speed: 310, gap: 0.85 },
+    { key: 'space',  name: 'うちゅう', length: 4200, speed: 330, gap: 0.8 },
+  ];
 
   // テーマごとの色と障害物の形（ヘッダーの data-stage と同じキー）
   const THEMES = {
@@ -67,10 +79,24 @@
   .gr-ob-ball { border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--gr-ob2), var(--gr-ob1)); }
   .gr-hud { position: absolute; top: 8px; right: 10px; font: 700 13px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 1px; color: var(--gr-ink); opacity: 0.85; }
   .gr-hud .gr-hi { opacity: 0.6; margin-right: 8px; }
-  .gr-msg { position: absolute; left: 0; right: 0; top: 46%; transform: translateY(-50%); text-align: center; color: var(--gr-ink);
+  .gr-msg { position: absolute; left: 0; right: 0; top: 46%; transform: translateY(-50%); z-index: 6; text-align: center; color: var(--gr-ink);
     font-size: 16px; font-weight: 800; line-height: 1.6; white-space: pre-line; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25); pointer-events: none; }
   .gr-msg.hidden { display: none; }
   .gr-msg small { display: block; font-size: 11px; font-weight: 600; opacity: 0.8; }
+  /* ステージ名と、ゴールまでの進み具合（左上） */
+  .gr-stage { position: absolute; top: 8px; left: 10px; color: var(--gr-ink); opacity: 0.9; }
+  .gr-stage-name { display: block; font: 800 12px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: 1px; }
+  .gr-prog { position: relative; margin-top: 5px; width: 110px; height: 5px; border-radius: 999px; background: rgba(127, 127, 127, 0.35); overflow: visible; }
+  .gr-prog i { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--gr-ink); opacity: 0.8; }
+  .gr-prog::after { content: '⚑'; position: absolute; right: -14px; top: -8px; font-size: 12px; line-height: 1; color: var(--gr-ink); }
+  /* ゴールの旗（ポールの先に赤い旗） */
+  .gr-goal { position: absolute; left: 0; bottom: ${GROUND}px; width: 5px; height: 118px; border-radius: 3px 3px 0 0;
+    background: linear-gradient(90deg, #cfd3da, #f4f5f7 50%, #9aa0aa); will-change: transform; }
+  .gr-goal::before { content: ''; position: absolute; top: 8px; left: 5px; width: 0; height: 0;
+    border-top: 13px solid transparent; border-bottom: 13px solid transparent; border-left: 34px solid #ff453a; }
+  .gr-goal::after { content: ''; position: absolute; top: -8px; left: -4px; width: 13px; height: 13px; border-radius: 50%; background: #ffd60a; box-shadow: 0 0 8px rgba(255, 214, 10, 0.7); }
+  .gr-runner.gr-clear .gohan-kun { animation: grClearHop .5s ease-in-out infinite !important; }
+  @keyframes grClearHop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
   /* ボタン類 */
   .gr-controls { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-top: 20px; padding: 0 8px; }
   .gr-left { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
@@ -118,13 +144,20 @@
   const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ゲームの状態。'idle'（スタート待ち）→ 'run' → 'over'（もう一度待ち）
-  const g = { state: 'idle', y: 0, vy: 0, speed: BASE_SPEED, dist: 0, score: 0, best: 0, spawnIn: 0, groundX: 0, obstacles: [], clouds: [], overAt: 0 };
+  const g = { state: 'idle', y: 0, vy: 0, speed: BASE_SPEED, dist: 0, score: 0, best: 0, spawnIn: 0, groundX: 0, obstacles: [], clouds: [], overAt: 0,
+    stage: 0, stageDist: 0, goal: null, bestStage: 0 };
 
   function readBest() {
     try { return Number(localStorage.getItem(BEST_KEY) || 0) || 0; } catch (e) { return 0; }
   }
   function saveBest(v) {
     try { localStorage.setItem(BEST_KEY, String(v)); } catch (e) { /* 保存できなくても遊べる */ }
+  }
+  function readBestStage() {
+    try { return Number(localStorage.getItem(STAGE_KEY) || 0) || 0; } catch (e) { return 0; }
+  }
+  function saveBestStage(v) {
+    try { localStorage.setItem(STAGE_KEY, String(v)); } catch (e) { /* 任意 */ }
   }
   const pad = (n) => String(Math.max(0, Math.floor(n))).padStart(5, '0');
 
@@ -160,6 +193,7 @@
               <div class="gr-ground"></div>
               <div class="gr-runner gohan-walking"></div>
               <div class="gr-hud"><span class="gr-hi">HI 00000</span><span class="gr-score">00000</span></div>
+              <div class="gr-stage"><span class="gr-stage-name">STAGE 1/5</span><div class="gr-prog"><i></i></div></div>
               <div class="gr-msg"></div>
             </div>
           </div>
@@ -182,6 +216,8 @@
       hi: overlay.querySelector('.gr-hi'),
       score: overlay.querySelector('.gr-score'),
       msg: overlay.querySelector('.gr-msg'),
+      stageName: overlay.querySelector('.gr-stage-name'),
+      prog: overlay.querySelector('.gr-prog i'),
       jump: overlay.querySelector('.gr-jump'),
       close: overlay.querySelector('.gr-close'),
     };
@@ -229,9 +265,7 @@
     els.runner.appendChild(kun);
   }
 
-  function applyTheme() {
-    const header = document.querySelector('.page-header');
-    const key = (header && header.dataset.stage) || 'grass';
+  function applyTheme(key) {
     const t = THEMES[key] || THEMES.grass;
     const s = els.screen.style;
     s.setProperty('--gr-sky', t.sky);
@@ -246,16 +280,50 @@
 
   function reset() {
     g.state = 'idle';
-    g.y = 0; g.vy = 0; g.speed = BASE_SPEED; g.dist = 0; g.score = 0; g.spawnIn = 1.2; g.groundX = 0;
-    g.obstacles.forEach((o) => o.el.remove());
-    g.obstacles = [];
+    g.y = 0; g.vy = 0; g.dist = 0; g.score = 0; g.groundX = 0;
     g.best = readBest();
+    g.bestStage = readBestStage();
     els.hi.textContent = `HI ${pad(g.best)}`;
     els.score.textContent = pad(0);
     els.runner.style.transform = 'translateY(0)';
-    els.runner.classList.remove('gr-hit');
+    els.runner.classList.remove('gr-hit', 'gr-clear');
     els.runner.classList.add('gohan-walking');
-    showMsg('タップでスタート', 'Aボタンか画面を押すとジャンプ');
+    setStage(0);
+    showIdleMsg();
+  }
+
+  // スタート待ちの案内（電源が入った直後にも同じものを出す）
+  function showIdleMsg() {
+    const bestNote = g.bestStage >= STAGES.length ? 'ぜんぶクリア済み！' : (g.bestStage > 0 ? `ベスト: STAGE ${g.bestStage} クリア` : '');
+    showMsg('タップでスタート', `全5ステージ。ゴールの旗をめざそう${bestNote ? '\n' + bestNote : ''}`);
+  }
+
+  // ステージを切り替える（テーマ・速さ・障害物をそのステージのものに）
+  function setStage(i) {
+    g.stage = i;
+    const st = STAGES[i];
+    g.stageDist = 0;
+    g.speed = st.speed;
+    g.spawnIn = 1.4;
+    g.obstacles.forEach((o) => o.el.remove());
+    g.obstacles = [];
+    if (g.goal) { g.goal.el.remove(); g.goal = null; }
+    applyTheme(st.key);
+    els.stageName.textContent = `STAGE ${i + 1}/${STAGES.length}`;
+    els.prog.style.width = '0%';
+  }
+
+  // クリア後の「次のステージへ」。名前を見せてから走り出す
+  function startStage(i) {
+    setStage(i);
+    g.state = 'intro';
+    g.y = 0; g.vy = 0;
+    els.runner.style.transform = 'translateY(0)';
+    els.runner.classList.remove('gr-clear');
+    els.runner.classList.add('gohan-walking');
+    showMsg(`STAGE ${i + 1}  ${STAGES[i].name}`, 'いくよ！');
+    sound('jump');
+    setTimeout(() => { if (open && g.state === 'intro') { g.state = 'run'; els.msg.classList.add('hidden'); } }, 1000);
   }
 
   function showMsg(main, sub) {
@@ -266,9 +334,10 @@
   }
 
   function jump() {
-    if (g.state === 'boot') return; // 電源が入るまでは待つ
+    if (g.state === 'boot' || g.state === 'intro') return; // 電源が入る・ステージ名を見せている間は待つ
     if (g.state === 'idle') { g.state = 'run'; els.msg.classList.add('hidden'); sound('jump'); g.vy = JUMP_V; return; }
-    if (g.state === 'over') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
+    if (g.state === 'clear') { if (performance.now() - g.overAt > 400) startStage(g.stage + 1); return; }
+    if (g.state === 'over' || g.state === 'allclear') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
     if (g.y <= 0) { g.vy = JUMP_V; sound('jump'); }
   }
 
@@ -289,15 +358,44 @@
     g.obstacles.push(ob);
   }
 
+  function spawnGoal() {
+    const el = document.createElement('div');
+    el.className = 'gr-goal';
+    els.screen.appendChild(el);
+    g.goal = { el, x: W + 30 };
+    el.style.transform = `translateX(${g.goal.x}px)`;
+  }
+
+  function updateBest() {
+    if (g.score > g.best) { g.best = g.score; saveBest(g.best); els.hi.textContent = `HI ${pad(g.best)}`; return true; }
+    return false;
+  }
+
+  function stageClear() {
+    g.overAt = performance.now();
+    els.runner.classList.remove('gohan-walking');
+    els.runner.classList.add('gr-clear');
+    const cleared = g.stage + 1;
+    if (cleared > g.bestStage) { g.bestStage = cleared; saveBestStage(cleared); }
+    const newBest = updateBest();
+    if (cleared >= STAGES.length) {
+      g.state = 'allclear';
+      showMsg(`ぜんぶクリア！  ${g.score} 点`, newBest ? 'ベスト記録！ タップでもう一度' : 'タップでもう一度');
+    } else {
+      g.state = 'clear';
+      showMsg(`STAGE ${cleared} クリア！`, `タップで次のステージ（${STAGES[cleared].name}）へ`);
+    }
+    sound('best');
+  }
+
   function gameOver() {
     g.state = 'over';
     g.overAt = performance.now();
     els.runner.classList.remove('gohan-walking');
     els.runner.classList.add('gr-hit');
-    let sub = 'タップでもう一度';
-    if (g.score > g.best) { g.best = g.score; saveBest(g.best); els.hi.textContent = `HI ${pad(g.best)}`; sub = 'ベスト記録！ タップでもう一度'; sound('best'); }
-    else sound('over');
-    showMsg(`おわり  ${g.score} 点`, sub);
+    const newBest = updateBest();
+    if (!newBest) sound('over'); else sound('best');
+    showMsg(`おわり  STAGE ${g.stage + 1} で ${g.score} 点`, newBest ? 'ベスト記録！ タップでもう一度' : 'タップでもう一度');
   }
 
   function tick(t) {
@@ -307,10 +405,14 @@
     last = t;
 
     if (g.state === 'run') {
+      const st = STAGES[g.stage];
       g.dist += g.speed * dt;
+      g.stageDist += g.speed * dt;
       g.score = Math.floor(g.dist / 12);
-      g.speed = BASE_SPEED + Math.min(320, g.score * 0.6);
+      // ステージの中で少しずつ速くなる（ステージが進むほど土台の速さも上がる）
+      g.speed = st.speed + Math.min(120, (g.stageDist / st.length) * 120);
       els.score.textContent = pad(g.score);
+      els.prog.style.width = `${Math.min(100, (g.stageDist / st.length) * 100).toFixed(1)}%`;
 
       // 相棒の上下（地面より下には行かない）
       g.vy += GRAVITY * dt;
@@ -328,11 +430,20 @@
         c.el.style.transform = `translate(${c.x.toFixed(1)}px, ${c.y}px)`;
       });
 
+      // ゴール：決まった距離を走ったら旗が出てくる。旗の手前は障害物を出さない
+      if (!g.goal && g.stageDist >= st.length) spawnGoal();
+      if (g.goal) {
+        g.goal.x -= g.speed * dt;
+        g.goal.el.style.transform = `translateX(${g.goal.x.toFixed(1)}px)`;
+        if (g.goal.x <= RUNNER_X + RUNNER - 10) { stageClear(); raf = requestAnimationFrame(tick); return; }
+      }
+
       // 障害物：出す・動かす・当たり判定
       g.spawnIn -= dt;
-      if (g.spawnIn <= 0) {
+      const nearGoal = g.stageDist >= st.length - 460;
+      if (g.spawnIn <= 0 && !nearGoal) {
         spawn();
-        g.spawnIn = (0.9 + Math.random() * 1.0) * (280 / g.speed);
+        g.spawnIn = (0.9 + Math.random() * 1.0) * (280 / g.speed) * st.gap;
       }
       const rx1 = RUNNER_X + 10;
       const rx2 = RUNNER_X + RUNNER - 10;
@@ -390,7 +501,6 @@
   function openGame() {
     if (!overlay) build();
     open = true;
-    applyTheme();
     adoptRunner();
     reset();
     g.clouds.forEach((c) => { c.el.style.transform = `translate(${c.x}px, ${c.y}px)`; });
@@ -409,7 +519,7 @@
       setTimeout(() => boot.classList.add('done'), 800);
       setTimeout(() => {
         boot.remove();
-        if (open && g.state === 'boot') { g.state = 'idle'; showMsg('タップでスタート', 'Aボタンか画面を押すとジャンプ'); }
+        if (open && g.state === 'boot') { g.state = 'idle'; showIdleMsg(); }
       }, 1150);
     }
     last = 0;
@@ -424,6 +534,7 @@
       overlay.classList.add('hidden');
       overlay.classList.remove('gr-enter');
       [...overlay.querySelectorAll('.gr-boot')].forEach((b) => b.remove());
+      if (g.goal) { g.goal.el.remove(); g.goal = null; }
     }
     document.body.style.overflow = '';
   }

@@ -467,6 +467,8 @@ function launchGohanRocket(kun) {
   if (!home || !r.width) return false;
 
   const SIZE = 48;
+  // 着地する時の大きさ。ふりかえりの横の小さな相棒から飛んだ時も、元の大きさに戻って着地する
+  const homeScale = r.width ? r.width / SIZE : 1;
   const startX = r.left + r.width / 2 - SIZE / 2;
   const startY = r.top + r.height / 2 - SIZE / 2;
 
@@ -488,10 +490,6 @@ function launchGohanRocket(kun) {
 
   // 発射中は元のキャラクターを隠す（2体に見えないように）
   home.style.visibility = 'hidden';
-  const restore = () => {
-    home.style.visibility = '';
-    overlay.remove();
-  };
 
   // 画面の端で跳ね返りながら進む道すじを作る
   const pad = 30;
@@ -520,17 +518,46 @@ function launchGohanRocket(kun) {
   }
   points.push({ x: startX, y: startY }); // 最後は元の位置へ帰ってくる
 
+  // 道すじをキーフレームにする。跳ね返りの間は一定の速さで飛び、最後の帰り道だけ
+  // 長めに取って、減速しながら降りてくる。着地の向きは必ず正立（360度の倍数）に
+  // して、元のキャラクターと入れ替わった時に向きが跳ばないようにする
+  const last = points.length - 1;
+  const weights = points.slice(1).map((_, i) => (i === last - 1 ? 1.8 : 1));
+  const totalW = weights.reduce((a, b) => a + b, 0);
+  const offsets = [0];
+  weights.reduce((acc, w) => { offsets.push((acc + w) / totalW); return acc + w; }, 0);
+  const landRot = Math.ceil(((last - 1) * 220 + 180) / 360) * 360;
   const frames = points.map((p, i) => ({
-    transform: `translate(${(p.x - startX).toFixed(1)}px, ${(p.y - startY).toFixed(1)}px) rotate(${i * 220}deg) scale(${i === points.length - 1 ? 1 : 1.1})`,
+    offset: offsets[i],
+    easing: i === last - 1 ? 'cubic-bezier(.2, .8, .3, 1)' : 'linear',
+    transform: `translate(${(p.x - startX).toFixed(1)}px, ${(p.y - startY).toFixed(1)}px) rotate(${i === last ? landRot : i * 220}deg) scale(${i === last ? homeScale.toFixed(3) : 1.1})`,
   }));
+
+  // 着地。飛んでいた複製をその場で薄くしながら元のキャラクターを戻し、
+  // 元のキャラクターに「とん」と着地の弾みを付ける（いきなり戻った感じをなくす）
+  let landed = false;
+  const land = () => {
+    if (landed) return;
+    landed = true;
+    home.style.visibility = '';
+    const homeKun = home.querySelector('.gohan-kun');
+    if (homeKun) {
+      homeKun.classList.add('gohan-landing');
+      homeKun.addEventListener('animationend', () => homeKun.classList.remove('gohan-landing'), { once: true });
+    }
+    flyer.classList.add('landed');
+    setTimeout(() => overlay.remove(), 260);
+  };
 
   // ためを見せてから飛び出す
   setTimeout(() => {
     flyer.classList.remove('winding');
-    const anim = flyer.animate(frames, { duration: 1500, easing: 'ease-in-out', fill: 'forwards' });
-    anim.onfinish = restore;
+    // 怒りマークは帰り道で薄れていく（落ち着いて戻ってくる）
+    anger.animate([{ opacity: 1 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: 1700, fill: 'forwards' });
+    const anim = flyer.animate(frames, { duration: 1700, fill: 'forwards' });
+    anim.onfinish = land;
     // 何かの理由でアニメーションが終わらなくても、必ず片付ける
-    setTimeout(restore, 2200);
+    setTimeout(land, 2400);
   }, 320);
   return true;
 }

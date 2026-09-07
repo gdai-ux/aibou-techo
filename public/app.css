@@ -1468,6 +1468,16 @@
   }
   /* 発射前のためを作る。ぷるぷる震えてから、ぐっと縮んで飛び出す */
   .gohan-flyer.winding .gohan-kun { animation: flyWindUp 0.32s ease-in-out; }
+  /* 着地。飛んでいた複製は薄れて消え、元のキャラクターが「とん」と弾む */
+  .gohan-flyer.landed { opacity: 0; transition: opacity 0.22s ease; }
+  .gohan-kun.gohan-landing { animation: gohanLand 0.5s cubic-bezier(.2, .8, .3, 1) both; transform-origin: 50% 100%; }
+  @keyframes gohanLand {
+    0%   { transform: scale(1.02, 0.98); }
+    30%  { transform: scale(1.22, 0.78); }
+    60%  { transform: scale(0.92, 1.1); }
+    80%  { transform: scale(1.04, 0.97); }
+    100% { transform: none; }
+  }
   @keyframes flyWindUp {
     0%   { transform: translate(0, 0) scale(1); }
     20%  { transform: translate(-2px, 1px) scale(1.06, 0.94); }

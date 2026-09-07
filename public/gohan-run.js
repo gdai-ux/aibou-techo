@@ -9,7 +9,7 @@
 // 眠そうな魔王）。ボス戦だけ十字キーと B ボタンが増え、B で「ほのおだま」を撃てる。
 // 十字キーの ◀▶ で前後に動き、▼ でしゃがみ、▲ か A でジャンプ。魔王が投げてくる
 // まくら（低い＝ジャンプ、顔の高さ＝しゃがむ）をよけながら、ほのおだまを当てて倒す。
-// 遊んでいる最中に「とじる」や外側を触った時は、いきなり閉じずに「ゲームをやめる？」と聞く。
+// 「とじる」や外側を触った時は、いきなり閉じずに一時停止して「ゲームをやめる？」と聞く。
 //
 // 依存：ページに .page-header .gohan-kun（相棒のSVG）があること。音は app 側の
 // ensureAudio / beep / tapSoundEnabled があれば使い、無ければ鳴らさない。
@@ -188,9 +188,10 @@
   .gr-pause-box .gr-resume { background: #0a84ff; color: #fff; }
   .gr-pause-box .gr-quit { background: rgba(255, 255, 255, 0.14); color: #f2f2f7; }
   /* ボタン類 */
-  .gr-controls { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-top: 20px; padding: 0 8px; }
-  .gr-left { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  .gr-controls { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 12px; margin-top: 18px; padding: 0 8px; }
+  .gr-left { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding-top: 6px; }
   .gr-right { display: flex; align-items: flex-end; gap: 10px; }
+  .gr-bottom { display: flex; justify-content: center; margin-top: 14px; }
   .gr-tip { font-size: 12px; opacity: 0.85; line-height: 1.5; }
   .gr-close { appearance: none; border: 0; border-radius: 999px; padding: 10px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
     color: #f2f2f7; background: rgba(0, 0, 0, 0.35); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15); }
@@ -202,9 +203,9 @@
   .gr-jump small, .gr-b small { display: block; font-size: 10px; font-weight: 700; letter-spacing: 1px; opacity: 0.75; }
   .gr-jump:active, .gr-jump.pressed, .gr-b:active, .gr-b.pressed { transform: translateY(4px); box-shadow: 0 2px 0 #0e0d10, 0 6px 12px rgba(0, 0, 0, 0.45); }
   /* 十字キー（ボス戦だけ） */
-  .gr-dpad { display: grid; grid-template-columns: repeat(3, 36px); grid-template-rows: repeat(3, 36px); gap: 0; }
-  .gr-dpad button { appearance: none; border: 0; padding: 0; margin: 0; background: #1c1a20; color: #f2f2f7; font-size: 14px; cursor: pointer; touch-action: none;
-    -webkit-tap-highlight-color: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+  .gr-dpad { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 0; filter: drop-shadow(0 4px 0 #0e0d10) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.4)); }
+  .gr-dpad button { appearance: none; border: 0; padding: 0; margin: 0; background: #1c1a20; color: #f2f2f7; font-size: 15px; cursor: pointer; touch-action: none;
+    -webkit-tap-highlight-color: transparent; box-shadow: none; outline: none; }
   .gr-dpad button.pressed { background: #0e0d10; }
   .gr-dpad .gr-up { grid-column: 2; grid-row: 1; border-radius: 8px 8px 0 0; }
   .gr-dpad .gr-left-btn { grid-column: 1; grid-row: 2; border-radius: 8px 0 0 8px; }
@@ -319,7 +320,6 @@
         </div>
         <div class="gr-controls">
           <div class="gr-left">
-            <button type="button" class="gr-close">とじる</button>
             <div class="gr-tip">画面か <b>A</b> を押すとジャンプ。<br>障害物をよけて、どこまで走れるか。</div>
             <div class="gr-dpad" aria-label="十字キー">
               <button type="button" class="gr-up" data-dir="up" aria-label="ジャンプ">▲</button>
@@ -334,6 +334,7 @@
             <button type="button" class="gr-jump" aria-label="ジャンプ">A<small>JUMP</small></button>
           </div>
         </div>
+        <div class="gr-bottom"><button type="button" class="gr-close">とじる</button></div>
       </div>`;
     document.body.appendChild(overlay);
     els = {
@@ -519,8 +520,9 @@
   // 遊んでいる最中は、いきなり閉じずに「ゲームをやめる？」と聞く
   function requestClose() {
     if (!open) return;
-    if (['run', 'boss', 'intro', 'clear'].includes(g.state)) { pauseGame(); return; }
-    close();
+    if (g.state === 'boot') return;
+    if (g.paused) { close(); return; } // 一時停止中にもう一度押したら閉じる
+    pauseGame();
   }
   function pauseGame() {
     if (g.paused) return;

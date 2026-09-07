@@ -397,21 +397,68 @@ function mascotRenderAll(opts = {}) {
     // レベルの飾り・眠そう状態などを付け直す（index.html側で定義される）
     if (typeof applyGohanVisualState === 'function') applyGohanVisualState();
   };
-  const changed = mascotRenderedChar !== null && mascotRenderedChar !== char.id;
+  const prevId = mascotRenderedChar;
+  const changed = prevId !== null && prevId !== char.id;
   mascotRenderedChar = char.id;
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!opts.animate || !changed || reduce) { swap(); return; }
-  // 進化のように：今の姿が光って縮み、新しい姿がぽんと現れる
-  mascotEnsureSwapStyle();
-  const olds = [...document.querySelectorAll(selector)];
-  olds.forEach((el) => el.classList.add('mascot-swap-out'));
-  if (typeof playGrowSound === 'function') { try { playGrowSound(); } catch (e) { /* 音は無くてもよい */ } }
-  setTimeout(() => {
+  // 相棒同士のバトンタッチ。前の相棒と新しい相棒が並んでバトンを渡し、
+  // 前の相棒は走り去り、新しい相棒が跳んで喜ぶ。途中で画面の相棒も差し替わる
+  const prev = MASCOT_CHARS.find((c) => c.id === prevId) || MASCOT_CHARS[0];
+  const oldSvg = document.querySelector(selector);
+  mascotBatonPass(prev, char, oldSvg, () => {
     swap();
     const fresh = [...document.querySelectorAll(selector)];
     fresh.forEach((el) => el.classList.add('mascot-swap-in'));
     setTimeout(() => fresh.forEach((el) => el.classList.remove('mascot-swap-in')), 700);
-  }, 380);
+  });
+}
+
+// バトンタッチの演出（約2.8秒）。画面の上に小さなステージを重ねて見せる。
+// 触ると飛ばせる。onSwap は途中（バトンを渡した後）で1回だけ呼ぶ
+function mascotBatonPass(prevChar, nextChar, oldSvg, onSwap) {
+  mascotEnsureSwapStyle();
+  const TOTAL = 2800;
+  const SWAP_AT = 1500;
+  // 今の飾り（ほっぺ・王冠…）は両方の相棒に付けたまま見せる
+  const deco = oldSvg ? [...oldSvg.classList].filter((c) => /^gohan-stage-\d$/.test(c)) : [];
+  const withDeco = (svgHtml) => {
+    const t = document.createElement('div');
+    t.innerHTML = svgHtml;
+    const svg = t.firstElementChild;
+    deco.forEach((c) => svg.classList.add(c));
+    return svg.outerHTML;
+  };
+  const oldHtml = oldSvg ? (() => { const c = oldSvg.cloneNode(true); [...c.classList].forEach((k) => { if (k.startsWith('gohan-play-') || k.startsWith('mascot-swap')) c.classList.remove(k); }); c.removeAttribute('id'); return c.outerHTML; })() : withDeco(mascotSvg(prevChar));
+  const newHtml = withDeco(mascotSvg(nextChar));
+  const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+  const ov = document.createElement('div');
+  ov.className = 'mb-overlay';
+  ov.setAttribute('role', 'dialog');
+  ov.setAttribute('aria-label', '相棒のバトンタッチ');
+  ov.innerHTML = `
+    <div class="mb-stage">
+      <div class="mb-title"><b>${esc(prevChar.name)}</b><span class="mb-arrow">→</span><b>${esc(nextChar.name)}</b></div>
+      <div class="mb-ground"></div>
+      <div class="mb-kun mb-old">${oldHtml}</div>
+      <div class="mb-kun mb-new">${newHtml}</div>
+      <div class="mb-baton"></div>
+      ${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<i class="mb-spark" style="--a:${i * 45}deg"></i>`).join('')}
+      <div class="mb-caption">バトンタッチ！<small>これからは ${esc(nextChar.name)} が相棒</small></div>
+    </div>`;
+  document.body.appendChild(ov);
+
+  let swapped = false;
+  let done = false;
+  const doSwap = () => { if (swapped) return; swapped = true; try { onSwap(); } catch (e) { /* 差し替えは必ず行う */ } };
+  const finish = () => { if (done) return; done = true; doSwap(); ov.classList.add('mb-out'); setTimeout(() => ov.remove(), 260); };
+  ov.addEventListener('pointerdown', (e) => { e.preventDefault(); finish(); });
+  // 音：走ってきた時に軽く、バトンを渡した時にしっかり
+  setTimeout(() => { if (!done && typeof playTapSound === 'function') { try { playTapSound(); } catch (e) { /* 任意 */ } } }, 700);
+  setTimeout(() => { if (!done && typeof playGrowSound === 'function') { try { playGrowSound(); } catch (e) { /* 任意 */ } } }, 1000);
+  setTimeout(doSwap, SWAP_AT);
+  setTimeout(finish, TOTAL);
 }
 
 // 着せ替え演出のスタイル。mascot.js を読むどの画面でも使えるよう、ここで1回だけ入れる
@@ -420,19 +467,77 @@ function mascotEnsureSwapStyle() {
   const st = document.createElement('style');
   st.id = 'mascotSwapStyle';
   st.textContent = `
-  .gohan-kun.mascot-swap-out { animation: mascotSwapOut .38s ease-in forwards !important; transform-origin: 50% 100%; }
   .gohan-kun.mascot-swap-in { animation: mascotSwapIn .6s cubic-bezier(.2,.9,.2,1.15) both !important; transform-origin: 50% 100%; }
-  @keyframes mascotSwapOut {
-    0%   { transform: none; filter: none; opacity: 1; }
-    55%  { transform: scale(1.18); filter: brightness(3) drop-shadow(0 0 10px #fff); opacity: 1; }
-    100% { transform: scale(0.05) rotate(180deg); filter: brightness(4) drop-shadow(0 0 16px #fff); opacity: 0; }
-  }
   @keyframes mascotSwapIn {
     0%   { transform: scale(0.05); filter: brightness(4) drop-shadow(0 0 16px #fff); opacity: 0; }
     50%  { transform: scale(1.28); filter: brightness(2) drop-shadow(0 0 12px #fff); opacity: 1; }
     75%  { transform: scale(0.94); filter: none; }
     100% { transform: none; filter: none; }
-  }`;
+  }
+  /* バトンタッチのステージ */
+  .mb-overlay { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.62); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    animation: mbFade .25s ease-out both; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+  .mb-overlay.mb-out { animation: mbFadeOut .25s ease-in both; }
+  @keyframes mbFade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes mbFadeOut { to { opacity: 0; } }
+  .mb-stage { position: relative; width: min(100vw - 32px, 360px); height: 250px; overflow: hidden; border-radius: 20px;
+    background: linear-gradient(180deg, #5c94fc, #a7dcff 72%, #4a9b3f 72%, #4a9b3f 75%, #8b5e34 75%);
+    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.8); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; }
+  .mb-title { position: absolute; top: 16px; left: 0; right: 0; text-align: center; font-size: 15px; font-weight: 900; color: #1c1c1e;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+  .mb-title .mb-arrow { margin: 0 8px; opacity: 0.7; }
+  .mb-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 25%; }
+  .mb-kun { position: absolute; left: 50%; bottom: 25%; width: 96px; height: 96px; margin-left: -48px; will-change: transform; }
+  .mb-kun .gohan-kun { display: block; width: 96px; height: 96px; animation: mbBob .3s ease-in-out infinite; transform-origin: 50% 100%; }
+  .mb-old { animation: mbOld 2.8s linear both; }
+  .mb-new { animation: mbNew 2.8s linear both; }
+  /* 走っている間だけ弾む。止まっている区間は上で止める */
+  .mb-old .gohan-kun { animation: mbBobOld 2.8s linear both; }
+  .mb-new .gohan-kun { animation: mbBobNew 2.8s linear both; }
+  @keyframes mbBob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-4px) rotate(4deg); } }
+  @keyframes mbBobOld { 0%, 46% { transform: none; } 50%, 58%, 66%, 74% { transform: translateY(-5px) rotate(-5deg); } 54%, 62%, 70%, 78% { transform: translateY(0) rotate(5deg); } 80%, 100% { transform: none; } }
+  @keyframes mbBobNew { 0%, 4%, 12%, 20% { transform: translateY(-5px) rotate(5deg); } 8%, 16%, 24% { transform: translateY(0) rotate(-5deg); } 28%, 100% { transform: none; } }
+  @keyframes mbOld {
+    0%, 30% { transform: translateX(-46px); }
+    35% { transform: translate(-46px, -22px); }
+    40%, 46% { transform: translateX(-46px); }
+    78%, 100% { transform: translateX(-360px); }
+  }
+  @keyframes mbNew {
+    0% { transform: translateX(340px); }
+    28%, 30% { transform: translateX(46px); }
+    35% { transform: translate(46px, -22px); }
+    40%, 46% { transform: translateX(46px); }
+    60% { transform: translateX(0); }
+    68% { transform: translate(0, -30px); }
+    76% { transform: translateX(0); }
+    84% { transform: translate(0, -16px); }
+    90%, 100% { transform: translateX(0); }
+  }
+  /* バトン：前の相棒の右手から新しい相棒の左手へ */
+  .mb-baton { position: absolute; left: 50%; bottom: calc(25% + 44px); width: 34px; height: 8px; margin-left: -17px; border-radius: 4px;
+    background: linear-gradient(90deg, #ffd60a, #ff9f1c); box-shadow: 0 0 8px rgba(255, 214, 10, 0.8); animation: mbBaton 2.8s linear both; }
+  @keyframes mbBaton {
+    0%, 30% { transform: translateX(-14px) rotate(-20deg); opacity: 1; }
+    35% { transform: translate(0, -26px) rotate(0); }
+    40%, 46% { transform: translateX(14px) rotate(20deg); opacity: 1; }
+    60% { transform: translateX(-32px) rotate(20deg); opacity: 1; }
+    66%, 100% { transform: translateX(-32px) rotate(20deg); opacity: 0; }
+  }
+  .mb-spark { position: absolute; left: 50%; bottom: calc(25% + 60px); width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #fff6a8;
+    box-shadow: 0 0 8px #ffd60a; opacity: 0; animation: mbSpark 2.8s linear both; }
+  @keyframes mbSpark {
+    0%, 34% { transform: rotate(var(--a)) translateY(0) scale(0.4); opacity: 0; }
+    36% { opacity: 1; }
+    50% { transform: rotate(var(--a)) translateY(-56px) scale(1.2); opacity: 0; }
+    100% { opacity: 0; }
+  }
+  .mb-caption { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 18px; font-weight: 900; color: #fff;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), 0 0 12px rgba(0, 0, 0, 0.35); opacity: 0; animation: mbCaption 2.8s linear both; }
+  .mb-caption small { display: block; font-size: 12px; font-weight: 700; margin-top: 4px; opacity: 0.95; }
+  @keyframes mbCaption { 0%, 44% { opacity: 0; transform: translateY(8px); } 52%, 100% { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .mb-overlay { display: none; } }`;
   document.head.appendChild(st);
 }
 

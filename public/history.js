@@ -848,13 +848,19 @@ function openEditModal(blockId) {
   }
 }
 
+// 食事の品目は「11:10 パン」のように先頭に時刻が付いた文字列で保存されている
+const MEAL_TIME_RE = /^\s*(\d{1,2}:\d{2})\s*/;
+
 function openMealEditModal(mealBlockId) {
   const meal = mealIndex[mealBlockId];
   if (!meal) return;
   currentEdit = { mode: 'meal', mealBlockId, mealType: meal.mealType, dateStr: meal.dateStr };
-  showFields('field-items');
+  showFields('field-time', 'field-items');
+  // 品目の先頭に付いている時刻は「時刻」の欄で直せるようにし、品目の欄では品目だけを見せる。
   // カロリー表記は保存時に付け直すので、編集欄では見せない
-  document.getElementById('editItems').value = meal.items.map((i) => splitKcal(i).text).join('\n');
+  const times = meal.items.map((i) => (String(i).match(MEAL_TIME_RE) || [])[1]).filter(Boolean);
+  document.getElementById('editTime').value = times[0] ? times[0].padStart(5, '0') : (meal.time || '');
+  document.getElementById('editItems').value = meal.items.map((i) => splitKcal(i).text.replace(MEAL_TIME_RE, '')).join('\n');
   openModal(`${meal.mealType}を編集`);
 }
 
@@ -884,7 +890,12 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
   try {
     let resp;
     if (currentEdit.mode === 'meal') {
-      const items = document.getElementById('editItems').value.split('\n').map((s) => s.trim()).filter(Boolean);
+      // 「時刻」の欄の値を、各品目の先頭に付け直す（欄に時刻を書いてしまっていても二重にならない）
+      const time = document.getElementById('editTime').value.trim();
+      const items = document.getElementById('editItems').value.split('\n')
+        .map((s) => s.trim().replace(MEAL_TIME_RE, ''))
+        .filter(Boolean)
+        .map((s) => (time ? `${time} ${s}` : s));
       if (!items.length) throw new Error('品目を1つ以上入力してください');
       resp = await fetch('/api/entry/meal', {
         method: 'PUT',

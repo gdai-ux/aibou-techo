@@ -4,6 +4,8 @@
 // 画面か A ボタンを押すとジャンプ。障害物にぶつかったら終わりで、走った距離が点数。
 // ステージは5つ（そうげん→もり→うみ→さばく→うちゅう）。それぞれ決まった距離を
 // 走るとゴールの旗が見えてきて、触れるとクリア。次のステージは少し速く、障害物も多い。
+// 相棒はハート3つ。障害物にぶつかると1つ減って少しのあいだ無敵、0で終わり。
+// ステージをクリアすると1つ回復し、ボス戦にもそのまま持ち越す。
 //
 // 5つ目をクリアするとボス戦。相手は「サボリ魔王 ダラーン」（記録をサボらせようとする
 // 眠そうな魔王）。ボス戦だけ十字キーと B ボタンが増え、B で「ほのおだま」を撃てる。
@@ -139,8 +141,8 @@
   .gr-runner.gr-clear .gohan-kun { animation: grClearHop .5s ease-in-out infinite !important; }
   @keyframes grClearHop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
   /* ボス戦：ハート、ボスのHP、ボス本体、まくら、ほのおだま */
-  .gr-hearts { position: absolute; top: 24px; left: 10px; font-size: 13px; letter-spacing: 2px; color: #ff5e7a; display: none; }
-  .gr-screen.boss .gr-hearts { display: block; }
+  .gr-hearts { position: absolute; top: 40px; left: 10px; font-size: 13px; letter-spacing: 2px; color: #ff5e7a; }
+  .gr-screen.boss .gr-hearts { top: 24px; }
   .gr-boss-hp { position: absolute; top: 26px; right: 10px; width: 132px; display: none; color: var(--gr-ink); }
   .gr-screen.boss .gr-boss-hp { display: block; }
   .gr-boss-hp b { display: block; font-size: 10px; font-weight: 800; text-align: right; margin-bottom: 3px; }
@@ -357,8 +359,9 @@
       dpad: overlay.querySelector('.gr-dpad'),
       pause: overlay.querySelector('.gr-pause'),
     };
-    els.pause.querySelector('.gr-resume').addEventListener('click', (e) => { e.stopPropagation(); resumeGame(); });
-    els.pause.querySelector('.gr-quit').addEventListener('click', (e) => { e.stopPropagation(); close(); });
+    // iOSでは画面の touchstart を止めているとボタンの click が発火しないので、pointerup で反応させる
+    els.pause.querySelector('.gr-resume').addEventListener('pointerup', (e) => { e.stopPropagation(); e.preventDefault(); resumeGame(); });
+    els.pause.querySelector('.gr-quit').addEventListener('pointerup', (e) => { e.stopPropagation(); e.preventDefault(); close(); });
     els.pause.addEventListener('pointerdown', (e) => e.stopPropagation());
     g.clouds = [...overlay.querySelectorAll('.gr-cloud')].map((el, i) => ({ el, x: 60 + i * 170, y: 14 + i * 22 }));
 
@@ -383,7 +386,7 @@
       b.addEventListener('contextmenu', (e) => e.preventDefault());
     });
     // iOSでは touchstart を止めないと、連打や長押しで文字の選択・コピーの吹き出しが出る
-    const stopTouch = (e) => e.preventDefault();
+    const stopTouch = (e) => { if (e.target && e.target.closest && e.target.closest('.gr-pause')) return; e.preventDefault(); };
     [els.screen, els.jump, els.fire].forEach((el) => {
       el.addEventListener('touchstart', stopTouch, { passive: false });
       el.addEventListener('contextmenu', stopTouch);
@@ -470,6 +473,8 @@
     g.y = 0; g.vy = 0; g.rx = RUNNER_X; g.dist = 0; g.score = 0; g.groundX = 0;
     g.best = readBest();
     g.bestStage = readBestStage();
+    g.hearts = PLAYER_HEARTS; g.hurt = 0;
+    renderHearts();
     els.hi.textContent = `HI ${pad(g.best)}`;
     els.score.textContent = pad(0);
     clearField();
@@ -604,6 +609,8 @@
     const cleared = g.stage + 1;
     if (cleared > g.bestStage) { g.bestStage = cleared; saveBestStage(cleared); }
     updateBest();
+    // ステージをクリアするとハートが1つ回復する
+    if (g.hearts < PLAYER_HEARTS) { g.hearts += 1; renderHearts(); }
     g.state = 'clear';
     if (cleared >= STAGES.length) showMsg(`STAGE ${cleared} クリア！`, 'タップで…ボスがあらわれる');
     else showMsg(`STAGE ${cleared} クリア！`, `タップで次のステージ（${STAGES[cleared].name}）へ`);
@@ -629,7 +636,7 @@
     els.device.classList.add('boss');
     els.stageName.textContent = 'BOSS';
     g.state = 'intro';
-    g.y = 0; g.vy = 0; g.rx = RUNNER_X; g.speed = 120; g.hearts = PLAYER_HEARTS; g.hurt = 0; g.fireCd = 0;
+    g.y = 0; g.vy = 0; g.rx = RUNNER_X; g.speed = 120; g.hurt = 0; g.fireCd = 0; // ハートは持ち越し
     placeRunner();
     els.runner.classList.remove('gr-clear');
     els.runner.classList.add('gohan-walking');
@@ -674,7 +681,7 @@
     g.hearts -= 1;
     renderHearts();
     sound('hurt');
-    if (g.hearts <= 0) { gameOver('boss'); return; }
+    if (g.hearts <= 0) { gameOver(g.state === 'boss' ? 'boss' : 'stage'); return; }
     g.hurt = HURT_TIME;
     els.runner.classList.add('gr-hurt');
   }
@@ -867,6 +874,7 @@
         spawn();
         g.spawnIn = st.gapMin + Math.random() * (st.gapMax - st.gapMin);
       }
+      if (g.hurt > 0) { g.hurt -= dt; if (g.hurt <= 0) els.runner.classList.remove('gr-hurt'); }
       const rx1 = RUNNER_X + 10;
       const rx2 = RUNNER_X + RUNNER - 10;
       for (let i = g.obstacles.length - 1; i >= 0; i--) {
@@ -876,7 +884,12 @@
         if (o.x + o.w < -10) { o.el.remove(); g.obstacles.splice(i, 1); continue; }
         const hitX = o.x < rx2 && o.x + o.w > rx1;
         const hitY = g.y < o.h - 5; // 相棒の足が障害物の頭より低い
-        if (hitX && hitY) { gameOver(); break; }
+        if (hitX && hitY && g.hurt <= 0) {
+          // ぶつかった障害物は消して、ハートを1つ減らす（0なら終わり）
+          o.el.remove(); g.obstacles.splice(i, 1);
+          hurtPlayer();
+          if (g.state !== 'run') break;
+        }
       }
     }
     raf = requestAnimationFrame(tick);

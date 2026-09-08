@@ -13,6 +13,7 @@ const { userFromRequest, authConfigured } = require('./lib/auth');
 const pgStore = require('./lib/pgStore');
 const db = require('./lib/db');
 const quota = require('./lib/quota');
+const billing = require('./lib/billing');
 const notionDb = require('./lib/notionDb');
 const crypto = require('crypto');
 
@@ -39,6 +40,27 @@ const app = express();
 // （これが無いと全アクセスがプロキシの内部IPとして扱われ、IPごとのレート制限が
 // 意味を成さなくなる）
 app.set('trust proxy', true);
+
+// Stripeのwebhookは署名の検証に生のボディが要るので、下のexpress.json()より先に
+// 生ボディのまま受け取る（json()を先に通すと、ここではもう読めなくなる）
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  let event;
+  try {
+    event = billing.constructEvent(req.body, req.get('stripe-signature'));
+  } catch (err) {
+    console.error('[aibou-techo] Stripe webhookの検証に失敗:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  try {
+    await billing.applyEvent(event);
+  } catch (err) {
+    // 反映に失敗してもStripeへは200を返す（失敗は再送されないため、ここでは
+    // 諦めてログにだけ残す。次のイベント（subscription.updated等）で追いつくことが多い）
+    console.error('[aibou-techo] Stripe webhookの反映に失敗:', event.type, err.message);
+  }
+  res.json({ received: true });
+});
+
 app.use(express.json());
 
 // pgモードでは、/api へのリクエストから利用者（JWT）を取り出しておく。
@@ -213,6 +235,8 @@ app.get('/api/status', async (req, res) => {
       loggedIn: Boolean(req.user),
       email: req.user ? req.user.email : '',
       quota: req.user ? await quota.usage(req.user.id).catch(() => null) : null,
+      billingEnabled: billing.billingEnabled(),
+      billing: req.user && billing.billingEnabled() ? billing.serializeStatus(await billing.status(req.user.id)) : null,
       supabaseUrl: SUPABASE_URL,
       supabaseAnonKey: SUPABASE_ANON_KEY,
       obsidianConfigured: false,
@@ -354,7 +378,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
 
 // 相棒とのチャット（専属パーソナルトレーナー役）。会話の履歴はサーバーに保存せず、
 // クライアントが持ち回す（history）。直近の記録は毎回読み直して文脈として渡す。
-app.post('/api/chat', openaiRateLimit, async (req, res) => {
+app.post('/api/chat', openaiRateLimit, billing.requireAccess, async (req, res) => {
   try {
     if (!OPENAI_API_KEY) throw new Error(CHAT_UNAVAILABLE);
     // ログインの確認は先に（枠の消費より前に、未ログインをはっきり案内する）
@@ -388,7 +412,7 @@ app.post('/api/chat', openaiRateLimit, async (req, res) => {
 });
 
 // 録音した音声(生バイナリ)を受け取り、OpenAIで文字起こしして返す
-app.post('/api/transcribe', openaiRateLimit, express.raw({ type: '*/*', limit: '15mb' }), async (req, res) => {
+app.post('/api/transcribe', openaiRateLimit, billing.requireAccess, express.raw({ type: '*/*', limit: '15mb' }), async (req, res) => {
   try {
     if (!OPENAI_API_KEY) throw new Error(VOICE_UNAVAILABLE);
     // ログインの確認は先に（未ログインの空リクエストを「録音できていない」と案内しないように）、
@@ -408,7 +432,7 @@ app.post('/api/transcribe', openaiRateLimit, express.raw({ type: '*/*', limit: '
 
 // 文字起こし済みのテキストから、カテゴリと入力項目をOpenAIに推定させる
 // （音声だけで項目選択・入力までまとめて行う「スマート音声入力」用）
-app.post('/api/parse-entry', openaiRateLimit, async (req, res) => {
+app.post('/api/parse-entry', openaiRateLimit, billing.requireAccess, async (req, res) => {
   try {
     if (!OPENAI_API_KEY) throw new Error(VOICE_UNAVAILABLE);
     if (STORAGE_MODE === 'pg' && !req.user) throw new Error(LOGIN_REQUIRED);
@@ -515,7 +539,7 @@ async function backfillOne(store, target) {
   return estimated.items.every((i) => !/（kcal不明）\s*$/.test(i));
 }
 
-app.post('/api/backfill-calories', openaiRateLimit, async (req, res) => {
+app.post('/api/backfill-calories', openaiRateLimit, billing.requireAccess, async (req, res) => {
   try {
     if (!OPENAI_API_KEY) throw new Error(CALORIE_UNAVAILABLE);
     const store = await getStore(req);
@@ -547,7 +571,7 @@ app.post('/api/backfill-calories', openaiRateLimit, async (req, res) => {
   }
 });
 
-app.post('/api/entry', async (req, res) => {
+app.post('/api/entry', billing.requireAccess, async (req, res) => {
   const { category, payload, dateStr, clientId } = req.body || {};
   if (!category || !payload) {
     return res.status(400).json({ error: 'category と payload は必須です' });
@@ -631,6 +655,33 @@ app.post('/api/entry', async (req, res) => {
   res.json({ ok: true, result });
 });
 
+// ---- 有料登録（Web版・Stripe） ----------------------------------------------
+// 登録ページ（Stripe Checkout）・お支払いの管理（Stripe カスタマーポータル）へのURLを
+// 作って返すだけ。実際の課金状態はwebhook（/api/stripe/webhook）で反映する
+function requestBaseUrl(req) {
+  return `${req.protocol}://${req.get('host')}`;
+}
+app.post('/api/billing/checkout', async (req, res) => {
+  try {
+    if (!req.user) throw new Error(LOGIN_REQUIRED);
+    if (!billing.billingEnabled()) return res.status(400).json({ error: 'お支払いはまだ準備中です' });
+    const url = await billing.createCheckoutUrl(req.user.id, req.user.email, requestBaseUrl(req));
+    res.json({ url });
+  } catch (err) {
+    sendError(res, err, '登録ページを作れませんでした');
+  }
+});
+app.post('/api/billing/portal', async (req, res) => {
+  try {
+    if (!req.user) throw new Error(LOGIN_REQUIRED);
+    if (!billing.billingEnabled()) return res.status(400).json({ error: 'お支払いはまだ準備中です' });
+    const url = await billing.createPortalUrl(req.user.id, requestBaseUrl(req));
+    res.json({ url });
+  } catch (err) {
+    sendError(res, err, 'お支払いの管理画面を開けませんでした');
+  }
+});
+
 // ---- アカウント削除（Web版） -----------------------------------------------
 // 記録・利用回数・契約を全部消し、認証側（Supabase）の利用者も消す。
 // 認証側の削除には service role の鍵が要るので、無い環境では記録だけ消す
@@ -662,7 +713,7 @@ app.delete('/api/account', async (req, res) => {
 // 元のページ本文は消さず、バックアップとしてそのまま残す。
 const MIGRATE_DAYS_PER_CALL = 5;
 
-app.post('/api/migrate-db', async (req, res) => {
+app.post('/api/migrate-db', billing.requireAccess, async (req, res) => {
   if (STORAGE_MODE === 'pg') return res.status(400).json({ error: '自前DBでは移行は不要です' });
   try {
     const { token, pageId } = resolveNotionConfig(req);
@@ -700,7 +751,7 @@ app.post('/api/migrate-db', async (req, res) => {
 });
 
 // メタ系エントリ(メモ/運動/睡眠/体調)を編集する
-app.put('/api/entry/meta', async (req, res) => {
+app.put('/api/entry/meta', billing.requireAccess, async (req, res) => {
   const { blockId, category, payload } = req.body || {};
   if (!blockId || !category || !payload) {
     return res.status(400).json({ error: 'blockId, category, payload は必須です' });
@@ -719,7 +770,7 @@ app.put('/api/entry/meta', async (req, res) => {
 });
 
 // 食事エントリ(品目リスト)を編集する
-app.put('/api/entry/meal', async (req, res) => {
+app.put('/api/entry/meal', billing.requireAccess, async (req, res) => {
   const { mealBlockId, items, mealType } = req.body || {};
   if (!mealBlockId || !Array.isArray(items)) {
     return res.status(400).json({ error: 'mealBlockId, items は必須です' });
@@ -738,7 +789,7 @@ app.put('/api/entry/meal', async (req, res) => {
 });
 
 // メタ系エントリを削除する
-app.delete('/api/entry/meta/:blockId', async (req, res) => {
+app.delete('/api/entry/meta/:blockId', billing.requireAccess, async (req, res) => {
   try {
     const store = await getStore(req);
     await store.removeMeta(req.params.blockId);
@@ -750,7 +801,7 @@ app.delete('/api/entry/meta/:blockId', async (req, res) => {
 });
 
 // 食事エントリ(見出し＋品目)を丸ごと削除する
-app.delete('/api/entry/meal/:mealBlockId', async (req, res) => {
+app.delete('/api/entry/meal/:mealBlockId', billing.requireAccess, async (req, res) => {
   try {
     const store = await getStore(req);
     await store.removeMeal(req.params.mealBlockId);

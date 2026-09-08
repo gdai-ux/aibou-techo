@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<script>
+try {
+  if (localStorage.getItem('themeSetting') === 'light') document.documentElement.classList.add('theme-light');
+} catch (e) { /* 既定のブラックのまま */ }
+</script>
+<title>特定商取引法に基づく表記 - あいぼう手帳</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e0e11; --bg-blur: rgba(14, 14, 17, 0.78); --card: #17171b; --fill: rgba(255, 255, 255, 0.07);
+    --text: #f2f2f7; --muted: #8e8e96; --accent: #3d8bff; --accent-text: #ffffff;
+    --border: rgba(255, 255, 255, 0.06); --border-strong: rgba(255, 255, 255, 0.1);
+    --ease: cubic-bezier(.32, .72, 0, 1);
+  }
+  :root.theme-light {
+    --bg: #f2f2f7; --bg-blur: rgba(242, 242, 247, 0.8); --card: #ffffff; --fill: rgba(120, 120, 128, 0.12);
+    --text: #1c1c1e; --muted: #6e6e73; --accent: #2f7cf6;
+    --border: rgba(0, 0, 0, 0.06); --border-strong: rgba(0, 0, 0, 0.1);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body {
+    margin: 0 auto; max-width: 640px; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-font-smoothing: antialiased; padding: 0 20px calc(60px + env(safe-area-inset-bottom));
+  }
+  .page-header {
+    position: sticky; top: 0; z-index: 20; display: flex; justify-content: space-between; align-items: center;
+    margin: 0 -20px 16px; padding: calc(14px + env(safe-area-inset-top)) 20px 12px;
+    background: var(--bg-blur); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+  }
+  h1 { font-size: 18px; font-weight: 800; margin: 0; }
+  .back-link { display: flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 999px;
+    background: var(--fill); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid var(--border); }
+  h2 { font-size: 15px; font-weight: 800; margin: 28px 0 6px; }
+  h2:first-of-type { margin-top: 8px; }
+  p, li { font-size: 14px; line-height: 1.8; color: var(--text); }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 20px; }
+  th, td { text-align: left; padding: 10px 8px; font-size: 13.5px; line-height: 1.7; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { width: 34%; color: var(--muted); font-weight: 700; white-space: nowrap; }
+  .note { margin-top: 32px; padding: 14px 16px; border-radius: 12px; background: var(--fill); font-size: 12.5px; line-height: 1.8; color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="page-header">
+    <h1>特定商取引法に基づく表記</h1>
+    <a href="index.html" class="back-link">‹ 記録に戻る</a>
+  </div>
+
+  <p class="muted">この表記は、特定商取引法（通信販売）に基づき、月額プラン「あいぼう手帳 プレミアム」の販売条件をまとめたものです。</p>
+
+  <table>
+    <tr><th>販売業者</th><td>【運営者名を記入】<br /><span class="muted">個人事業主として運営しています。</span></td></tr>
+    <tr><th>運営責任者</th><td>【氏名を記入】</td></tr>
+    <tr><th>所在地・電話番号</th><td>ご請求をいただいた場合、遅滞なく開示いたします。開示のご請求は下記のお問い合わせ先までご連絡ください。</td></tr>
+    <tr><th>お問い合わせ先</th><td>【連絡用メールアドレスを記入】<br /><span class="muted">お問い合わせへの回答は、原則として2〜3営業日以内に行います。</span></td></tr>
+    <tr><th>販売価格</th><td>月額 【金額を記入】円（税込）<br /><span class="muted">価格は登録ページ（Stripeの決済画面）に表示される金額が正となります。</span></td></tr>
+    <tr><th>商品代金以外の必要料金</th><td>インターネット接続料金・通信料金など、本サービスのご利用に必要な通信環境の費用はお客様のご負担となります。</td></tr>
+    <tr><th>お支払い方法</th><td>クレジットカード（Stripe社の決済サービスを利用）</td></tr>
+    <tr><th>お支払い時期</th><td>無料トライアル終了後、初回のお支払いが発生します。以後は毎月同じ日に自動更新されます。</td></tr>
+    <tr><th>サービス提供時期</th><td>お申し込み手続き完了後、直ちにご利用いただけます。</td></tr>
+    <tr><th>返品・キャンセルについて</th><td>デジタルサービスの性質上、お支払い済みの当月分の返金は行っておりません。解約はいつでもでき、解約後は次回の更新日以降、課金されません。解約方法は下記「解約について」をご覧ください。</td></tr>
+    <tr><th>動作環境</th><td>最新のSafari・Chrome等の主要なWebブラウザが動作するスマートフォン・PC。</td></tr>
+  </table>
+
+  <h2>解約について</h2>
+  <p>アプリ内の「設定」→「アカウント」→「お支払いの管理」から、いつでもご自身で解約手続きができます。解約後も、その時点で契約中の期間の終わりまではご利用いただけます。</p>
+
+  <h2>無料トライアルについて</h2>
+  <p>新規にご登録いただいた方には、無料トライアル期間を設けています。トライアル期間や条件は、アプリ内の登録画面の表示が最新の内容です。</p>
+
+  <div class="note">
+    この文書は一般的なひな形をもとに作成した下書きです。公開の前に、【 】で示した箇所（運営者名・氏名・連絡先・価格など）を実際の内容に書き換えてください。特定商取引法・消費者契約法などの内容は変わることがあるため、公開前に一度、行政書士・弁護士などの専門家にご確認いただくことをおすすめします。
+  </div>
+</body>
+</html>

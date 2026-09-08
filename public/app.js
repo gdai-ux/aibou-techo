@@ -1823,6 +1823,11 @@ submitBtn.addEventListener('click', async () => {
     } else if (resp.status === 207) {
       statusEl.className = 'err';
       statusEl.textContent = '⚠️ ' + (data.warning || '一部失敗しました');
+    } else if (resp.status === 402) {
+      // 無料トライアルの期限切れ。入力は残したまま、登録の案内を出す
+      statusEl.className = 'err';
+      statusEl.textContent = '';
+      if (window.openPaywallModal) openPaywallModal(data.billing || {});
     } else if (resp.status >= 500) {
       // サーバー側の一時的な失敗（スリープ明け・Notion障害など）は端末に貯めて自動再送する
       queueEntry(currentCat, payload, clientId);

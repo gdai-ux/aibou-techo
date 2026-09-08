@@ -48,16 +48,22 @@ CREATE TABLE IF NOT EXISTS ai_events (
 CREATE INDEX IF NOT EXISTS ai_events_user_kind_time ON ai_events (user_id, kind, created_at DESC);
 DROP TABLE IF EXISTS ai_usage;
 
--- Stripe の契約状態（Step 1 の後半で使う）
+-- Stripe の契約状態
 CREATE TABLE IF NOT EXISTS subscriptions (
   user_id                 uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   stripe_customer_id      text,
   stripe_subscription_id  text,
-  status                  text,               -- 'active' | 'past_due' | 'canceled' ...
+  status                  text,               -- 'active' | 'trialing' | 'past_due' | 'canceled' ...
   current_period_end      timestamptz,
   updated_at              timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS subscriptions_customer ON subscriptions (stripe_customer_id);
+CREATE INDEX IF NOT EXISTS subscriptions_stripe_sub ON subscriptions (stripe_subscription_id);
 
 -- 端末をまたいだ小さな設定（選んだキャラクターなど）。ログインしている利用者に
 -- 紐づくので、PCでもスマホでも同じ内容になる
 ALTER TABLE users ADD COLUMN IF NOT EXISTS settings jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- 無料トライアルの終了日時。新規登録時（Stripeを設定した後）だけ入る（lib/billing.js）。
+-- NULLの利用者（この機能を入れる前からの登録）はトライアルの対象にしない＝据え置きでずっと使える
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at timestamptz;

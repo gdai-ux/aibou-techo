@@ -1324,6 +1324,9 @@ function openSettingsMenu() {
             </div>
           </div>
         </div>
+        <div class="legal-links">
+          <a href="terms.html">利用規約</a><a href="privacy.html">プライバシーポリシー</a><a href="tokushoho.html">特定商取引法に基づく表記</a>
+        </div>
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
@@ -1569,6 +1572,22 @@ function openAccountModal() {
   renderAccountQuota();
 }
 
+// 契約状態の言葉と、ボタン（アップグレード／お支払いの管理）。
+// 「プラン・お支払い」欄（アカウントの中）と、期限切れの案内（paywall）の両方で使う
+const BILLING_STATE_LABELS = {
+  trial: (b) => `無料トライアル中・あと${b.daysLeft}日`,
+  active: () => '契約中',
+  trialing: () => '契約中（Stripeのトライアル）',
+  past_due: () => 'お支払いに問題があります',
+  comp: () => 'プレミアム（無料付与）',
+  grandfathered: () => '無料でご利用いただけます',
+  expired: () => '無料トライアルが終了しました',
+};
+function billingStateLabel(b) {
+  const f = BILLING_STATE_LABELS[b.state];
+  return f ? f(b) : b.state;
+}
+
 // プランと、AI機能を今どれだけ使ったか（無料枠の残り）を出す
 async function renderAccountQuota() {
   const el = document.getElementById('accountQuota');
@@ -1586,6 +1605,23 @@ async function renderAccountQuota() {
     ];
     el.innerHTML = rows.map((r) => `<div class="point-rule-row"><span class="pr-label">${escapeHtml(r.label)}</span>`
       + `<span class="pr-detail">${escapeHtml(r.detail)}</span><span class="pr-pts">${escapeHtml(r.pts)}</span></div>`).join('');
+    // 「プラン・お支払い」欄。billingEnabled（Stripe設定済み）の時だけ出す
+    let box = document.getElementById('accountBilling');
+    if (box) box.remove();
+    if (!data.billingEnabled || !data.billing) return;
+    const b = data.billing;
+    box = document.createElement('div');
+    box.id = 'accountBilling';
+    box.className = 'account-billing';
+    const action = (b.state === 'trial' || b.state === 'expired' || b.state === 'grandfathered')
+      ? `<button type="button" class="upgrade-btn" id="accountUpgradeBtn">アップグレードする</button>`
+      : `<button type="button" class="portal-btn" id="accountPortalBtn">お支払いの管理</button>`;
+    box.innerHTML = `<div class="account-billing-state${b.state === 'expired' || b.state === 'past_due' ? ' warn' : ''}">${escapeHtml(billingStateLabel(b))}</div>${action}`;
+    el.insertAdjacentElement('afterend', box);
+    const up = document.getElementById('accountUpgradeBtn');
+    if (up) up.addEventListener('click', startBillingCheckout);
+    const pt = document.getElementById('accountPortalBtn');
+    if (pt) pt.addEventListener('click', openBillingPortal);
   } catch (e) {
     // 出せなくても致命的ではない
   }
@@ -1729,11 +1765,93 @@ async function checkNotionSetupNeeded() {
       else hint.textContent = 'Notion に自動で追記されます';
     }
     if (!data.notionConfigured && !data.authRequired) openNotionSettingsModal();
+    renderBillingNotice(data.billingEnabled, data.billing);
   } catch (e) {
     // ステータス取得に失敗しても致命的ではないので何もしない
   }
 }
 checkNotionSetupNeeded();
+
+// --- 有料登録（Web版・Stripe） -----------------------------------------------
+// 登録ページ・お支払いの管理画面（どちらもStripe側）を開く。同じタブで移動し、
+// 終わったら ?billing=success/cancel を付けてこのアプリへ戻ってくる
+async function startBillingCheckout() {
+  try {
+    const resp = await fetch('/api/billing/checkout', { method: 'POST', headers: notionHeaders() });
+    const data = await resp.json();
+    if (resp.ok && data.url) { window.location.href = data.url; return; }
+    window.alert(data.error || '登録ページを開けませんでした');
+  } catch (e) {
+    window.alert('登録ページを開けませんでした');
+  }
+}
+async function openBillingPortal() {
+  try {
+    const resp = await fetch('/api/billing/portal', { method: 'POST', headers: notionHeaders() });
+    const data = await resp.json();
+    if (resp.ok && data.url) { window.location.href = data.url; return; }
+    window.alert(data.error || 'お支払いの管理画面を開けませんでした');
+  } catch (e) {
+    window.alert('お支払いの管理画面を開けませんでした');
+  }
+}
+window.startBillingCheckout = startBillingCheckout;
+window.openBillingPortal = openBillingPortal;
+
+// 記録フォームの上に出す、トライアル・期限切れの案内。記録フォームが無いページ
+// （history.htmlなど）では何もしない。呼ぶたびに前の表示を作り直す
+function renderBillingNotice(billingEnabled, b) {
+  const panel = document.querySelector('.input-panel');
+  const old = document.getElementById('billingNotice');
+  if (old) old.remove();
+  if (!panel || !billingEnabled || !b) return;
+  // 契約中・トライアルの序盤・据え置きの利用者には、ふだんは何も出さない
+  if (b.state !== 'trial' && b.state !== 'expired' && b.state !== 'past_due') return;
+  if (b.state === 'trial' && b.daysLeft > 3) return;
+  const el = document.createElement('div');
+  el.id = 'billingNotice';
+  el.className = 'billing-notice' + (b.state === 'expired' || b.state === 'past_due' ? ' warn' : '');
+  const text = b.state === 'trial' ? `無料トライアルはあと${b.daysLeft}日です`
+    : b.state === 'past_due' ? 'お支払いに問題がありました。カードの情報をご確認ください'
+    : '無料トライアルが終了しました。続けるには登録してください';
+  const btnLabel = b.state === 'past_due' ? 'お支払いを確認' : 'アップグレードする';
+  el.innerHTML = `<span>${escapeHtml(text)}</span><button type="button" class="billing-notice-btn">${btnLabel}</button>`;
+  el.querySelector('button').addEventListener('click', () => (b.state === 'past_due' ? openBillingPortal() : startBillingCheckout()));
+  panel.parentNode.insertBefore(el, panel);
+}
+
+// 記録しようとしてサーバーに断られた時（トライアル終了）に出す、案内モーダル
+function openPaywallModal(b) {
+  let overlay = document.getElementById('paywallModal');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'modal-overlay hidden';
+    overlay.id = 'paywallModal';
+    overlay.innerHTML = `
+      <div class="modal-panel">
+        <h3>無料トライアルが終了しました</h3>
+        <p class="hs-note" id="paywallNote">続けて記録するには、登録が必要です。これまでの記録はいつでも見返せます。</p>
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" id="paywallClose">あとで</button>
+          <button type="button" class="save-btn" id="paywallUpgrade">アップグレードする</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
+    document.getElementById('paywallClose').addEventListener('click', () => overlay.classList.add('hidden'));
+    document.getElementById('paywallUpgrade').addEventListener('click', startBillingCheckout);
+  }
+  overlay.classList.remove('hidden');
+}
+window.openPaywallModal = openPaywallModal;
+
+// Stripeの登録ページ・お支払い管理から戻ってきた時、契約状態を読み直して案内を更新する
+(function refreshAfterBillingReturn() {
+  const p = new URLSearchParams(location.search);
+  if (!p.has('billing')) return;
+  history.replaceState(null, '', location.pathname);
+  setTimeout(checkNotionSetupNeeded, 800); // webhookの反映が少し遅れることがあるので少し待つ
+})();
 
 // --- 入力欄の自動リサイズ（トップ画面の内容欄・品目欄と、編集シートの品目欄で共通） ---
 // .auto-grow を付けた欄は、改行して行が増えるたびにその行数ぶん背が伸びる。

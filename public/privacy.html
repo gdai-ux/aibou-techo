@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<script>
+try {
+  if (localStorage.getItem('themeSetting') === 'light') document.documentElement.classList.add('theme-light');
+} catch (e) { /* 既定のブラックのまま */ }
+</script>
+<title>プライバシーポリシー - あいぼう手帳</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e0e11; --bg-blur: rgba(14, 14, 17, 0.78); --card: #17171b; --fill: rgba(255, 255, 255, 0.07);
+    --text: #f2f2f7; --muted: #8e8e96; --accent: #3d8bff; --accent-text: #ffffff;
+    --border: rgba(255, 255, 255, 0.06); --border-strong: rgba(255, 255, 255, 0.1);
+  }
+  :root.theme-light {
+    --bg: #f2f2f7; --bg-blur: rgba(242, 242, 247, 0.8); --card: #ffffff; --fill: rgba(120, 120, 128, 0.12);
+    --text: #1c1c1e; --muted: #6e6e73; --accent: #2f7cf6;
+    --border: rgba(0, 0, 0, 0.06); --border-strong: rgba(0, 0, 0, 0.1);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body {
+    margin: 0 auto; max-width: 640px; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-font-smoothing: antialiased; padding: 0 20px calc(60px + env(safe-area-inset-bottom));
+  }
+  .page-header {
+    position: sticky; top: 0; z-index: 20; display: flex; justify-content: space-between; align-items: center;
+    margin: 0 -20px 16px; padding: calc(14px + env(safe-area-inset-top)) 20px 12px;
+    background: var(--bg-blur); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+  }
+  h1 { font-size: 18px; font-weight: 800; margin: 0; }
+  .back-link { display: flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 999px;
+    background: var(--fill); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; border: 1px solid var(--border); }
+  h2 { font-size: 15px; font-weight: 800; margin: 26px 0 6px; }
+  h2:first-of-type { margin-top: 8px; }
+  p, li { font-size: 14px; line-height: 1.85; color: var(--text); }
+  ol, ul { padding-left: 20px; margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 20px; }
+  th, td { text-align: left; padding: 9px 8px; font-size: 13px; line-height: 1.7; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { width: 30%; color: var(--muted); font-weight: 700; }
+  .muted { color: var(--muted); font-size: 12.5px; }
+  .note { margin-top: 32px; padding: 14px 16px; border-radius: 12px; background: var(--fill); font-size: 12.5px; line-height: 1.8; color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="page-header">
+    <h1>プライバシーポリシー</h1>
+    <a href="index.html" class="back-link">‹ 記録に戻る</a>
+  </div>
+
+  <p class="muted">最終更新日: 【日付を記入】</p>
+  <p>【運営者名】（以下「運営者」）は、アプリ「あいぼう手帳」（以下「本サービス」）における利用者の情報の取り扱いについて、以下のとおりプライバシーポリシー（以下「本ポリシー」）を定めます。</p>
+
+  <h2>1. 取得する情報</h2>
+  <table>
+    <tr><th>アカウント情報</th><td>メールアドレス（ログインのため。Supabase Auth 経由で取得）</td></tr>
+    <tr><th>記録データ</th><td>睡眠・運動・食事・体調・メモなど、利用者が入力した内容</td></tr>
+    <tr><th>利用状況</th><td>AI機能（音声入力・ふりかえり・チャット等）の利用回数（無料枠の管理のため）</td></tr>
+    <tr><th>お支払い情報</th><td>クレジットカード番号等は運営者のサーバーには保存されません。決済代行会社（Stripe, Inc.）が直接取り扱います</td></tr>
+    <tr><th>天気情報の取得地域</th><td>利用者が設定した地域名（天気表示のため）</td></tr>
+  </table>
+
+  <h2>2. 情報の利用目的</h2>
+  <ul>
+    <li>本サービスの提供・維持・改善のため</li>
+    <li>ログイン認証のため</li>
+    <li>無料トライアル・有料プランの契約状態を管理するため</li>
+    <li>AI機能（音声入力の解析・カロリーの推定・ふりかえりの生成・チャット）を提供するため</li>
+    <li>お問い合わせへの対応のため</li>
+  </ul>
+
+  <h2>3. 外部サービスへの提供</h2>
+  <p>本サービスは、次の外部サービスを利用しており、その提供に必要な範囲で情報を送信します。</p>
+  <table>
+    <tr><th>Supabase, Inc.</th><td>ログイン認証（メールアドレス）</td></tr>
+    <tr><th>OpenAI, L.L.C.</th><td>音声の文字起こし・カロリーの推定・ふりかえり文の生成・チャットの応答（入力した記録・メッセージの内容）</td></tr>
+    <tr><th>Stripe, Inc.</th><td>有料プランの決済処理（お支払い情報）</td></tr>
+    <tr><th>Open-Meteo</th><td>天気情報の取得（設定した地域名）</td></tr>
+  </table>
+  <p class="muted">これらの外部サービスは、それぞれ独自のプライバシーポリシーに基づき情報を取り扱います。法令に基づく場合を除き、これら以外の第三者に情報を提供することはありません。</p>
+
+  <h2>4. データの保存期間</h2>
+  <p>記録データは、利用者がアカウントを削除するまで保存します。アカウントを削除すると、記録データは復元できない形で削除されます。</p>
+
+  <h2>5. 利用者による確認・訂正・削除</h2>
+  <p>利用者は、アプリ内からいつでも自分の記録データを確認・編集・削除できます。アカウントごと削除したい場合は、アプリ内の「設定」→「アカウント」→「アカウントを削除」から行えます。</p>
+
+  <h2>6. Cookie・端末内保存について</h2>
+  <p>本サービスは、ログイン状態の保持や、端末ごとの表示設定（テーマ・文字サイズ等）のために、ブラウザのlocalStorage等を利用します。これらは他のサイトから読み取ることはできません。</p>
+
+  <h2>7. お子さまのご利用について</h2>
+  <p>本サービスは、原則として成人の利用を想定しています。未成年の方がご利用になる場合は、保護者の同意を得た上でご利用ください。</p>
+
+  <h2>8. 本ポリシーの変更</h2>
+  <p>運営者は、必要に応じて本ポリシーを変更することがあります。重要な変更がある場合は、本サービス上でお知らせします。</p>
+
+  <h2>お問い合わせ</h2>
+  <p>本ポリシーに関するお問い合わせ、情報の開示・訂正・削除のご請求は、【連絡用メールアドレスを記入】までお願いします。</p>
+
+  <div class="note">
+    この文書は一般的なひな形をもとに作成した下書きです。公開の前に、【 】で示した箇所を実際の内容に書き換え、実際に取得・利用している情報と合っているかご確認ください。個人情報保護法の内容は変わることがあるため、公開前に一度、専門家にご確認いただくことをおすすめします。
+  </div>
+</body>
+</html>

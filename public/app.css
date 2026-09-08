@@ -1458,16 +1458,23 @@
   .gohan-flyer .gohan-kun {
     width: 100%;
     height: 100%;
-    /* 怒っているので赤いオーラをまとう */
+    /* ロケットの噴射のようなオレンジの光をまとう */
     filter:
       drop-shadow(1px 0 0 var(--sprite-outline))
       drop-shadow(-1px 0 0 var(--sprite-outline))
       drop-shadow(0 1px 0 var(--sprite-outline))
       drop-shadow(0 -1px 0 var(--sprite-outline))
-      drop-shadow(0 0 12px rgba(255, 69, 58, 0.9));
+      drop-shadow(0 0 12px rgba(255, 159, 10, 0.9));
   }
-  /* 発射前のためを作る。ぷるぷる震えてから、ぐっと縮んで飛び出す */
-  .gohan-flyer.winding .gohan-kun { animation: flyWindUp 0.32s ease-in-out; }
+  /* カウントダウン中の震え。--rumble はJS側が1秒ごとに大きくしていく */
+  .gohan-flyer.winding .gohan-kun { animation: flyRumble 0.1s linear infinite; }
+  @keyframes flyRumble {
+    0%   { transform: translate(calc(var(--rumble, 1px) * -1), 0); }
+    25%  { transform: translate(0, var(--rumble, 1px)); }
+    50%  { transform: translate(var(--rumble, 1px), 0); }
+    75%  { transform: translate(0, calc(var(--rumble, 1px) * -1)); }
+    100% { transform: translate(calc(var(--rumble, 1px) * -1), 0); }
+  }
   /* 着地。飛んでいた複製は薄れて消え、元のキャラクターが「とん」と弾む */
   .gohan-flyer.landed { opacity: 0; transition: opacity 0.22s ease; }
   .gohan-kun.gohan-landing { animation: gohanLand 0.5s cubic-bezier(.2, .8, .3, 1) both; transform-origin: 50% 100%; }
@@ -1478,25 +1485,25 @@
     80%  { transform: scale(1.04, 0.97); }
     100% { transform: none; }
   }
-  @keyframes flyWindUp {
-    0%   { transform: translate(0, 0) scale(1); }
-    20%  { transform: translate(-2px, 1px) scale(1.06, 0.94); }
-    40%  { transform: translate(2px, 1px) scale(0.94, 1.06); }
-    60%  { transform: translate(-2px, 1px) scale(1.06, 0.94); }
-    80%  { transform: translate(1px, 2px) scale(1.18, 0.8); }
-    100% { transform: translate(0, 0) scale(0.9, 1.15); }
-  }
-  /* 怒りマーク。発射までの間に出して、飛んでいる間も付いてくる */
-  .gohan-anger {
+  /* カウントダウンの数字。頭の上に出して、1秒ごとにポンと弾む */
+  .gohan-count {
     position: absolute;
-    top: -6px;
-    right: -8px;
-    font-size: 15px;
-    animation: angerPop 0.3s ease-out;
+    left: 50%;
+    top: -30px;
+    transform: translateX(-50%);
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    color: #fff;
+    text-shadow: 0 0 6px rgba(255, 159, 10, 0.9), 0 1px 2px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
   }
-  @keyframes angerPop {
-    from { opacity: 0; transform: scale(0.3); }
-    to { opacity: 1; transform: scale(1); }
+  .gohan-count.pop { animation: countPop 0.9s cubic-bezier(.2, .8, .3, 1) both; }
+  @keyframes countPop {
+    0%   { opacity: 0; transform: translateX(-50%) scale(1.8); }
+    25%  { opacity: 1; transform: translateX(-50%) scale(1); }
+    80%  { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) scale(0.8); }
   }
   @media (prefers-reduced-motion: reduce) {
     .gohan-big-overlay { display: none; }

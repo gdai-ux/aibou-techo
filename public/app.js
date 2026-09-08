@@ -327,7 +327,7 @@ function playGohanTrick(kun) {
   do { n = 1 + Math.floor(Math.random() * GOHAN_TAP_PATTERNS); } while (n === lastGohanPlay);
   lastGohanPlay = n;
   // 12番目は特別。その場では動かず、怒って画面へ発射する
-  if (n === 12 && launchGohanRocket(kun)) { playLaunchSound(); return; }
+  if (n === 12 && launchGohanRocket(kun)) return;
   playTapSound();
   const cls = `gohan-play-${n}`;
   kun.classList.add(cls);
@@ -394,14 +394,10 @@ function playLaunchSound() {
   if (!tapSoundEnabled()) return;
   const ctx = ensureAudio();
   if (!ctx) return;
-  // ためのぷるぷる（短い音を3つ）
-  beep(ctx, 220, 0, 0.05, 'square', 0.05);
-  beep(ctx, 220, 0.09, 0.05, 'square', 0.05);
-  beep(ctx, 260, 0.18, 0.05, 'square', 0.05);
-  // 発射
+  // 発射（カウントダウンの直後に鳴らすので、ためはカウントの音に任せる）
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  const t = ctx.currentTime + 0.32;
+  const t = ctx.currentTime;
   osc.type = 'sawtooth';
   osc.frequency.setValueAtTime(180, t);
   osc.frequency.exponentialRampToValueAtTime(1400, t + 0.35);
@@ -411,6 +407,14 @@ function playLaunchSound() {
   osc.connect(gain).connect(ctx.destination);
   osc.start(t);
   osc.stop(t + 0.45);
+}
+
+// 発射前のカウントダウンの「ピッ」。最後の1だけ高くして、次に来るのを予感させる
+function playCountSound(last) {
+  if (!tapSoundEnabled()) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  beep(ctx, last ? 1046.50 : 783.99, 0, 0.08, 'square', 0.05);
 }
 
 // 記録できた時の「ピロン♪」。低い方から3つ、明るく駆け上がる
@@ -455,7 +459,7 @@ function playLevelUpSound() {
   });
 }
 
-// 怒って身体ごと発射し、画面の端で跳ね返りながら飛び回って、元の位置に戻る。
+// 5秒のカウントダウンのあと身体ごと発射し、画面の端で跳ね返りながら飛び回って、元の位置に戻る。
 // 飛ぶのは複製したキャラクターで、その間は元のキャラクターを消しておく
 // （「身体が飛び出した」ように見せるため）。
 // 出せなかった時はfalseを返し、呼び出し側は普通の芸に切り替える。
@@ -481,10 +485,9 @@ function launchGohanRocket(kun) {
   const clone = kun.cloneNode(true);
   [...clone.classList].filter((c) => c.startsWith('gohan-play-')).forEach((c) => clone.classList.remove(c));
   flyer.appendChild(clone);
-  const anger = document.createElement('span');
-  anger.className = 'gohan-anger';
-  anger.textContent = '💢';
-  flyer.appendChild(anger);
+  const count = document.createElement('span');
+  count.className = 'gohan-count';
+  flyer.appendChild(count);
   overlay.appendChild(flyer);
   document.body.appendChild(overlay);
 
@@ -549,16 +552,31 @@ function launchGohanRocket(kun) {
     setTimeout(() => overlay.remove(), 260);
   };
 
-  // ためを見せてから飛び出す
-  setTimeout(() => {
+  // 5秒のカウントダウン。頭の上に数字を出し、1秒ごとに震えが少しずつ大きくなる
+  const COUNT_FROM = 5;
+  let n = COUNT_FROM;
+  const showCount = () => {
+    count.textContent = String(n);
+    count.classList.remove('pop');
+    void count.offsetWidth; // リフローを挟んで数字のポップを毎回やり直す
+    count.classList.add('pop');
+    flyer.style.setProperty('--rumble', `${((COUNT_FROM - n + 1) * 0.6).toFixed(1)}px`);
+    playCountSound(n === 1);
+  };
+  showCount();
+  const timer = setInterval(() => {
+    n--;
+    if (n >= 1) { showCount(); return; }
+    clearInterval(timer);
+    // 発射！
+    count.textContent = '';
     flyer.classList.remove('winding');
-    // 怒りマークは帰り道で薄れていく（落ち着いて戻ってくる）
-    anger.animate([{ opacity: 1 }, { opacity: 1, offset: 0.7 }, { opacity: 0 }], { duration: 1700, fill: 'forwards' });
+    playLaunchSound();
     const anim = flyer.animate(frames, { duration: 1700, fill: 'forwards' });
     anim.onfinish = land;
     // 何かの理由でアニメーションが終わらなくても、必ず片付ける
     setTimeout(land, 2400);
-  }, 320);
+  }, 1000);
   return true;
 }
 

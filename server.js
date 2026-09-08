@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const { appendToObsidian } = require('./lib/obsidian');
 const { transcribeAudio } = require('./lib/transcribe');
+const { findDuplicate, rememberEntry, recallEntry, normalizeClientId } = require('./lib/dedupe');
 const { parseVoiceEntry } = require('./lib/parseEntry');
 const { withEstimatedCalories, withBurnedCalories, isKcalResolved, isBurnedResolved } = require('./lib/calories');
 const { collapseRepeatedItems } = require('./lib/format');
@@ -547,7 +548,7 @@ app.post('/api/backfill-calories', openaiRateLimit, async (req, res) => {
 });
 
 app.post('/api/entry', async (req, res) => {
-  const { category, payload, dateStr } = req.body || {};
+  const { category, payload, dateStr, clientId } = req.body || {};
   if (!category || !payload) {
     return res.status(400).json({ error: 'category と payload は必須です' });
   }
@@ -566,6 +567,28 @@ app.post('/api/entry', async (req, res) => {
       return res.status(400).json({ error: 'dateStr は今日から3日前までの日付だけ指定できます' });
     }
     if (dateInfo.dateStr === today) dateInfo = null; // 今日なら従来通り
+  }
+
+  // 二重登録よけ（lib/dedupe.js）。端末が付けた記録IDをおぼえておき、同じIDや
+  // 「同じ日の同じ内容」が来たら、保存せずに「保存済み」として成功を返す
+  const clientKey = normalizeClientId(clientId);
+  let store = null;
+  try { store = await getStore(req); } catch (err) { if (err.message === LOGIN_REQUIRED) return sendError(res, err); }
+  const scope = !store ? 'none' : store.kind === 'pg' ? `u:${req.user.id}` : `p:${resolveNotionConfig(req).pageId}`;
+  if (clientKey) {
+    const seen = recallEntry(`${scope}:${clientKey}`);
+    if (seen) return res.json({ ok: true, duplicate: true, result: seen });
+  }
+  if (store) {
+    try {
+      const targetDate = dateInfo ? dateInfo.dateStr : todayInfo().dateStr;
+      const days = await store.history(4);
+      if (findDuplicate(days.find((d) => d.dateStr === targetDate), category, payload)) {
+        const dupResult = { obsidian: null, notion: 'ok', duplicate: true };
+        if (clientKey) rememberEntry(`${scope}:${clientKey}`, dupResult);
+        return res.json({ ok: true, duplicate: true, result: dupResult });
+      }
+    } catch (err) { /* 照合できなくても、記録そのものは進める */ }
   }
 
   const result = { obsidian: null, notion: null };
@@ -588,13 +611,15 @@ app.post('/api/entry', async (req, res) => {
   }
 
   try {
-    const store = await getStore(req);
-    await store.append(category, payload, dateInfo);
+    const st = store || await getStore(req);
+    await st.append(category, payload, dateInfo);
     result.notion = 'ok';
   } catch (err) {
     if (err.message === LOGIN_REQUIRED) return sendError(res, err);
     warnings.push(`記録の保存に失敗しました: ${toUserMessage(err)}`);
   }
+  // 保存できた記録のIDをおぼえておく（同じIDで再送されても二重にしない）
+  if (clientKey && result.notion === 'ok') rememberEntry(`${scope}:${clientKey}`, result);
 
   if (warnings.length && !result.notion && !result.obsidian) {
     return res.status(500).json({ error: warnings.join(' / '), result });

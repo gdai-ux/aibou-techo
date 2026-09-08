@@ -1329,6 +1329,13 @@ let statusClearTimer = null;
 const ENTRY_QUEUE_KEY = 'entryQueue';
 const ENTRY_QUEUE_MAX = 50;
 
+// 記録1件ごとに端末側で付けるID。送信中に通信が切れて（サーバーでは保存できて
+// いたのに）再送した時、サーバーが同じ記録だと分かって二重に保存しないための印
+function newEntryId() {
+  try { if (crypto.randomUUID) return crypto.randomUUID(); } catch (e) { /* 古い環境 */ }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function todayLocalStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1373,9 +1380,9 @@ function updateQueueNotice() {
     });
   }
 }
-function queueEntry(category, payload) {
+function queueEntry(category, payload, clientId) {
   const queue = loadEntryQueue();
-  queue.push({ category, payload, dateStr: todayLocalStr(), queuedAt: Date.now() });
+  queue.push({ category, payload, clientId: clientId || newEntryId(), dateStr: todayLocalStr(), queuedAt: Date.now() });
   saveEntryQueue(queue);
   updateQueueNotice();
 }
@@ -1402,7 +1409,7 @@ async function flushEntryQueue(opts = {}) {
         resp = await fetch('/api/entry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...notionHeaders() },
-          body: JSON.stringify({ category: item.category, payload: item.payload, dateStr: item.dateStr }),
+          body: JSON.stringify({ category: item.category, payload: item.payload, dateStr: item.dateStr, clientId: item.clientId }),
         });
       } catch (e) {
         offline = true; // まだオフライン。この記録も、後ろの記録も次の機会に
@@ -1480,6 +1487,7 @@ submitBtn.addEventListener('click', async () => {
   }
 
   const payload = buildPayload(currentCat);
+  const clientId = newEntryId(); // 再送しても二重にならないよう、この記録のIDを最初から付ける
   submitBtn.disabled = true;
   clearTimeout(statusClearTimer);
   submitBtn.classList.remove('success');
@@ -1491,7 +1499,7 @@ submitBtn.addEventListener('click', async () => {
     const resp = await fetch('/api/entry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...notionHeaders() },
-      body: JSON.stringify({ category: currentCat, payload }),
+      body: JSON.stringify({ category: currentCat, payload, clientId }),
     });
     const data = await resp.json();
     if (resp.ok) {
@@ -1500,7 +1508,8 @@ submitBtn.addEventListener('click', async () => {
       // （推定できなかった時は今まで通り何も出さない）
       const r = data.result || {};
       statusEl.textContent =
-        (currentCat === 'meal' && r.totalKcal) ? `おおよそ ${r.totalKcal.toLocaleString('ja-JP')}kcal として記録しました`
+        data.duplicate ? '同じ記録がすでにあったので、二重には記録していません'
+        : (currentCat === 'meal' && r.totalKcal) ? `おおよそ ${r.totalKcal.toLocaleString('ja-JP')}kcal として記録しました`
         : (currentCat === 'exercise' && r.burnedKcal) ? `おおよそ ${r.burnedKcal.toLocaleString('ja-JP')}kcal 消費として記録しました`
         : '';
       submitBtn.classList.add('success');
@@ -1547,7 +1556,7 @@ submitBtn.addEventListener('click', async () => {
       statusEl.textContent = '⚠️ ' + (data.warning || '一部失敗しました');
     } else if (resp.status >= 500) {
       // サーバー側の一時的な失敗（スリープ明け・Notion障害など）は端末に貯めて自動再送する
-      queueEntry(currentCat, payload);
+      queueEntry(currentCat, payload, clientId);
       clearFormAfterRecord(form);
       statusEl.className = '';
       statusEl.textContent = '今は送信できなかったので端末に保存しました。接続が戻り次第、自動で記録します';
@@ -1557,7 +1566,7 @@ submitBtn.addEventListener('click', async () => {
     }
   } catch (e) {
     // 通信エラー（オフライン・タイムアウト）。入力を失わないよう端末に貯める
-    queueEntry(currentCat, payload);
+    queueEntry(currentCat, payload, clientId);
     clearFormAfterRecord(form);
     statusEl.className = '';
     statusEl.textContent = '今は送信できなかったので端末に保存しました。接続が戻り次第、自動で記録します';

@@ -138,6 +138,24 @@ setTimeout(async () => {
 
   // 6. 編集（メモ→内容変更）と削除
   const memoRow = today.memo.find((m) => m.content === 'DBモードのメモ');
+  // 5b. 同じ記録をもう一度送っても二重にならない（再送キューやタイムアウト後の再送）
+  const dup = await call('POST', '/api/entry', { category: 'memo', payload: { time: '15:00', content: 'DBモードのメモ' } });
+  assert.strictEqual(dup.status, 200, JSON.stringify(dup.body));
+  assert.strictEqual(dup.body.duplicate, true, '同じ内容は「保存済み」として返る');
+  assert.strictEqual(dbCreated.rows.size, 7, '行は増えない');
+  // 端末IDが同じ再送も二重にならない（内容が同じかどうかに関わらず）
+  const id1 = await call('POST', '/api/entry', { category: 'memo', payload: { time: '15:10', content: 'ID付きのメモ' }, clientId: 'test-client-id-0001' });
+  assert.ok(id1.status === 200 || id1.status === 207, JSON.stringify(id1.body));
+  assert.strictEqual(dbCreated.rows.size, 8);
+  const id2 = await call('POST', '/api/entry', { category: 'memo', payload: { time: '15:10', content: 'ID付きのメモ' }, clientId: 'test-client-id-0001' });
+  assert.strictEqual(id2.body.duplicate, true, '同じ端末IDは保存しない');
+  assert.strictEqual(dbCreated.rows.size, 8, '行は増えない');
+  // 少しでも違う記録は普通に増える
+  const other = await call('POST', '/api/entry', { category: 'memo', payload: { time: '15:11', content: 'ID付きのメモ' } });
+  assert.ok(!other.body.duplicate);
+  assert.strictEqual(dbCreated.rows.size, 9);
+  console.log('  二重登録よけが効いている');
+
   const e = await call('PUT', '/api/entry/meta', { blockId: memoRow.blockId, category: 'memo', payload: { time: '15:05', content: '編集後のメモ' } });
   assert.strictEqual(e.status, 200, JSON.stringify(e.body));
   const h3 = await call('GET', '/api/history?days=30');

@@ -849,6 +849,7 @@ function applyGohanVisualState() {
   document.querySelectorAll('.gohan-kun').forEach((k) => {
     for (let i = 1; i <= 4; i++) k.classList.toggle(`gohan-stage-${i}`, i <= stage);
   });
+  updateBossTrophy();
   // ヘッダーの帯（進化の色）も、姿の変化と同じ節目で切り替える
   const belt = gohanBelt(level);
   const header = document.querySelector('.page-header');
@@ -1579,6 +1580,26 @@ function newEntryId() {
   try { if (crypto.randomUUID) return crypto.randomUUID(); } catch (e) { /* 古い環境 */ }
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
+
+// ゲームでその日サボリ魔王を倒していたら、ヘッダーの相棒に小さなトロフィーを乗せる（その日だけ）
+function updateBossTrophy() {
+  const icon = document.querySelector('.page-header .app-icon');
+  if (!icon) return;
+  let won = '';
+  try { won = localStorage.getItem('gohanBossWonDate') || ''; } catch (e) { /* プライベートモード等 */ }
+  const on = won === todayLocalStr();
+  let t = icon.querySelector('.gohan-trophy');
+  if (on && !t) {
+    t = document.createElement('span');
+    t.className = 'gohan-trophy';
+    t.textContent = '🏆';
+    t.title = '今日サボリ魔王をたおした！';
+    icon.appendChild(t);
+  } else if (!on && t) {
+    t.remove();
+  }
+}
+window.onGohanBossWin = updateBossTrophy;
 
 function todayLocalStr() {
   const d = new Date();

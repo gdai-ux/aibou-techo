@@ -220,7 +220,45 @@
   .gr-device:not(.boss) .gr-dpad, .gr-device:not(.boss) .gr-b { display: none; }
   .gr-device.boss .gr-tip { display: none; }
   .gr-lamp { position: absolute; left: 22px; bottom: 26px; width: 8px; height: 8px; border-radius: 50%; background: #7CFC00; box-shadow: 0 0 8px #7CFC00; }
-  @media (prefers-reduced-motion: reduce) { .gr-runner .gohan-kun { animation: none !important; } }
+  /* --- ボス撃破の演出 --- */
+  .gr-flash { position: absolute; inset: 0; background: #fff; z-index: 8; pointer-events: none; animation: grFlash .55s ease-out forwards; }
+  @keyframes grFlash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+  .gr-screen.gr-shake { animation: grShake .55s linear; }
+  @keyframes grShake { 0%, 100% { translate: 0 0; } 15% { translate: -5px 3px; } 30% { translate: 5px -3px; } 45% { translate: -4px -2px; } 60% { translate: 4px 2px; } 75% { translate: -2px 1px; } 90% { translate: 2px -1px; } }
+  .gr-boss.gr-dying .gr-boss-svg { animation: grDying 1.3s steps(2) forwards !important; }
+  @keyframes grDying { 0% { filter: brightness(3); transform: none; } 50% { filter: none; transform: scale(0.92) rotate(-6deg); } 100% { filter: brightness(3); transform: scale(0.5) rotate(8deg); opacity: 0.4; } }
+  .gr-say { position: absolute; z-index: 9; max-width: 150px; padding: 5px 8px; border-radius: 8px; background: #fff; color: #1c1a20; font-size: 10px; font-weight: 800; line-height: 1.4;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); animation: grSayIn .25s ease-out both; }
+  .gr-say::after { content: ''; position: absolute; left: 14px; bottom: -6px; border: 6px solid transparent; border-top-color: #fff; border-bottom: 0; }
+  .gr-say-me { background: #ffd60a; }
+  .gr-say-me::after { border-top-color: #ffd60a; }
+  @keyframes grSayIn { from { opacity: 0; transform: translateY(6px) scale(0.9); } to { opacity: 1; transform: none; } }
+  .gr-bits { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
+  .gr-bits i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; animation: grBit .8s ease-out forwards; }
+  @keyframes grBit { 0% { transform: translate(0, 0); opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) * -1 + 30px)) rotate(180deg); opacity: 0; } }
+  .gr-bigtext { position: absolute; left: 0; right: 0; top: 30%; z-index: 9; text-align: center; font-size: 30px; font-weight: 900; letter-spacing: 0.04em; color: #ffd60a;
+    text-shadow: 3px 3px 0 #7a3b00, 0 0 14px rgba(255, 214, 10, 0.7); pointer-events: none; }
+  .gr-bigtext span { display: inline-block; animation: grLetter .5s cubic-bezier(.2, .9, .2, 1.3) both; }
+  @keyframes grLetter { 0% { transform: translateY(-26px) scale(1.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  .gr-confetti { position: absolute; inset: 0; z-index: 6; pointer-events: none; overflow: hidden; }
+  .gr-confetti i { position: absolute; top: -8px; width: 6px; height: 9px; animation: grConfetti 2.2s linear both; }
+  @keyframes grConfetti { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(${H + 20}px) rotate(540deg); opacity: 0.9; } }
+  .gr-runner.gr-slide { transition: transform .5s ease-out; }
+  .gr-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 10; width: 236px; padding: 10px 12px 8px; border-radius: 10px;
+    background: rgba(28, 26, 32, 0.94); color: #f2f2f7; border: 2px solid #c9b8ff; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); font-size: 11px; }
+  .gr-result h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.2em; text-align: center; color: #c9b8ff; }
+  .gr-result-row, .gr-result-total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 3px 0; opacity: 0; transform: translateX(-6px); transition: opacity .2s, transform .2s; }
+  .gr-result-row.show, .gr-result-total.show { opacity: 1; transform: none; }
+  .gr-result-row b { font-variant-numeric: tabular-nums; font-size: 12px; }
+  .gr-result-row span i { font-style: normal; opacity: 0.3; }
+  .gr-result-row.gold { color: #ffd60a; }
+  .gr-result-total { margin-top: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.2); font-weight: 900; }
+  .gr-result-total b { font-size: 16px; font-variant-numeric: tabular-nums; color: #ffd60a; }
+  .gr-result-best { margin-top: 4px; text-align: center; font-size: 11px; font-weight: 900; color: #ff9f1c; letter-spacing: 0.1em; animation: grBlink .5s steps(2) infinite; }
+  .gr-result-best.hidden { display: none; }
+  .gr-result-foot { margin-top: 6px; text-align: center; font-size: 9px; opacity: 0; color: #c9b8ff; }
+  .gr-result.done .gr-result-foot { opacity: 0.9; animation: grBlink 1s steps(2) infinite; }
+  @media (prefers-reduced-motion: reduce) { .gr-runner .gohan-kun { animation: none !important; } .gr-bigtext span, .gr-confetti i, .gr-screen.gr-shake { animation: none !important; } }
   /* 開く時の演出：背景がふわっと暗くなり、本体が下からせり上がり、画面に電源が入る */
   .gr-overlay.gr-enter { animation: grFade .3s ease-out both; }
   .gr-overlay.gr-enter .gr-device { animation: grRise .45s cubic-bezier(.2, .9, .2, 1.08) both; }
@@ -292,6 +330,13 @@
       else if (kind === 'hurt') { beep(ctx, 196, 0, 0.12, 'square', 0.07); beep(ctx, 147, 0.1, 0.16, 'square', 0.06); }
       else if (kind === 'roar') { beep(ctx, 110, 0, 0.3, 'sawtooth', 0.06); beep(ctx, 92, 0.25, 0.4, 'sawtooth', 0.06); }
       else if (kind === 'win') { [523, 659, 784, 1047, 1319].forEach((f, i) => beep(ctx, f, i * 0.09, 0.12)); beep(ctx, 1568, 0.5, 0.4); }
+      else if (kind === 'die') { beep(ctx, 220, 0, 0.15, 'sawtooth', 0.06); beep(ctx, 160, 0.15, 0.2, 'sawtooth', 0.06); beep(ctx, 110, 0.35, 0.4, 'sawtooth', 0.06); }
+      else if (kind === 'fanfare') {
+        [392, 392, 392, 523].forEach((f, i) => beep(ctx, f, i * 0.12, i === 3 ? 0.3 : 0.1, 'square', 0.06));
+        [659, 784, 1047].forEach((f, i) => beep(ctx, f, 0.75 + i * 0.12, 0.14, 'square', 0.06));
+        beep(ctx, 1319, 1.15, 0.6, 'square', 0.06); beep(ctx, 1047, 1.15, 0.6, 'triangle', 0.05); beep(ctx, 784, 1.15, 0.6, 'triangle', 0.04);
+      }
+      else if (kind === 'tick') { beep(ctx, 1200, 0, 0.03, 'square', 0.03); }
     } catch (e) { /* 音は無くても困らない */ }
   }
 
@@ -454,6 +499,7 @@
   }
 
   function clearField() {
+    clearWinFx();
     g.obstacles.forEach((o) => o.el.remove());
     g.obstacles = [];
     if (g.goal) { g.goal.el.remove(); g.goal = null; }
@@ -548,8 +594,10 @@
   function jump() {
     if (g.paused) return;
     if (g.state === 'boot' || g.state === 'intro') return; // 電源が入る・ステージ名を見せている間は待つ
-    if (g.state === 'idle') { g.state = 'run'; els.msg.classList.add('hidden'); sound('jump'); g.vy = JUMP_V; return; }
+    if (g.state === 'idle') { g.state = 'run'; g.startedAt = performance.now(); els.msg.classList.add('hidden'); sound('jump'); g.vy = JUMP_V; return; }
     if (g.state === 'clear') { if (performance.now() - g.overAt > 400) { if (g.stage + 1 >= STAGES.length) startBoss(); else startStage(g.stage + 1); } return; }
+    // ボス撃破の演出中は、タップでその段階を飛ばす。リザルトまで見終わったら、タップでもう一度
+    if (g.state === 'bosswin' && g.winPhase !== 'done') { winSkip(); return; }
     if (g.state === 'over' || g.state === 'bosswin') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
     if (g.y <= 0 && !g.held.down) { g.vy = JUMP_V; sound('jump'); }
   }
@@ -714,19 +762,199 @@
     if (b.hp <= 0) bossWin();
   }
 
+  // --- ボス撃破の演出 ---
+  // 倒した瞬間（フラッシュ・揺れ・捨て台詞・粒になって消える）→ 勝利（BOSS CLEAR!・
+  // 相棒のジャンプ・紙吹雪・ファンファーレ）→ リザルト（内訳の数字が回る）の3段階。
+  // タップでそれぞれの段階を飛ばせる。状態は 'bosswin' のまま、winPhase で段階を持つ
+  const WIN_BOSS_BONUS = 500;
+  const WIN_HEART_BONUS = 100;
+  const WIN_PERFECT_BONUS = 300;
+  let winTimers = [];
+  function later(ms, fn) {
+    const id = setTimeout(() => { if (open && g.state === 'bosswin') fn(); }, ms);
+    winTimers.push(id);
+    return id;
+  }
+  function clearWinTimers() { winTimers.forEach(clearTimeout); winTimers = []; }
+  function clearWinFx() {
+    clearWinTimers();
+    if (!els) return;
+    els.screen.querySelectorAll('.gr-flash, .gr-say, .gr-bits, .gr-bigtext, .gr-confetti, .gr-result').forEach((n) => n.remove());
+    els.screen.classList.remove('gr-shake');
+    els.runner.classList.remove('gr-slide');
+  }
+
   function bossWin() {
     g.state = 'bosswin';
-    g.overAt = performance.now();
-    g.score += 500;
-    els.score.textContent = pad(g.score);
-    g.boss.el.classList.add('gr-dead');
+    g.winPhase = 'die';
+    g.overAt = performance.now() + 60 * 1000; // リザルトを見終わるまでは、タップで再スタートしない
     g.pillows.forEach((p) => p.el.remove()); g.pillows = [];
+    g.fires.forEach((f) => f.el.remove()); g.fires = [];
     els.runner.classList.remove('gohan-walking', 'gr-duck', 'gr-hurt');
-    els.runner.classList.add('gr-clear');
+    els.msg.classList.add('hidden');
     if (STAGES.length + 1 > g.bestStage) { g.bestStage = STAGES.length + 1; saveBestStage(g.bestStage); }
-    const newBest = updateBest();
-    showMsg(`サボリ魔王をたおした！  ${g.score} 点`, `${newBest ? 'ベスト記録！ ' : ''}ぜんぶクリア！ タップでもう一度`);
-    sound('win');
+    // 点数の内訳。走ったぶんは g.score にすでに入っている
+    const heartsLeft = g.hearts;
+    const perfect = heartsLeft >= PLAYER_HEARTS;
+    const timeSec = g.startedAt ? Math.max(1, Math.round((performance.now() - g.startedAt) / 1000)) : 0;
+    g.win = { base: g.score, boss: WIN_BOSS_BONUS, heartsLeft, hearts: heartsLeft * WIN_HEART_BONUS, perfect: perfect ? WIN_PERFECT_BONUS : 0, timeSec };
+    g.score = g.win.base + g.win.boss + g.win.hearts + g.win.perfect;
+    els.score.textContent = pad(g.score);
+    g.win.newBest = updateBest();
+    rememberBossWin();
+    winPhaseDie();
+  }
+
+  // 撃破の記録。手帳側（ヘッダーのトロフィー・ステータスの回数）が読む
+  function rememberBossWin() {
+    try {
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      localStorage.setItem('gohanBossWins', String((Number(localStorage.getItem('gohanBossWins') || 0) || 0) + 1));
+      localStorage.setItem('gohanBossWonDate', today);
+    } catch (e) { /* 保存できなくても演出は進める */ }
+    if (typeof window.onGohanBossWin === 'function') { try { window.onGohanBossWin(); } catch (e) { /* 任意 */ } }
+  }
+
+  function say(text, x, y, mine) {
+    const el = document.createElement('div');
+    el.className = 'gr-say' + (mine ? ' gr-say-me' : '');
+    el.textContent = text;
+    el.style.left = `${x}px`;
+    el.style.bottom = `${y}px`;
+    els.screen.appendChild(el);
+    return el;
+  }
+
+  // 段階1: 倒した瞬間（約2秒）
+  function winPhaseDie() {
+    g.winPhase = 'die';
+    const b = g.boss;
+    const flash = document.createElement('div');
+    flash.className = 'gr-flash';
+    els.screen.appendChild(flash);
+    els.screen.classList.add('gr-shake');
+    sound('die');
+    if (b) {
+      b.el.classList.remove('gr-flash', 'gr-dash');
+      b.el.classList.add('gr-dying');
+      later(350, () => say('…きょうは… みのがして やる…', Math.min(W - 150, b.x - 60), GROUND + BOSS_SIZE + 6, false));
+    }
+    later(600, () => els.screen.classList.remove('gr-shake'));
+    later(1300, () => {
+      if (!b) return;
+      // 粒になって弾け飛ぶ
+      const cx = b.x + BOSS_SIZE / 2;
+      const cy = GROUND + b.y + BOSS_SIZE / 2;
+      const bits = document.createElement('div');
+      bits.className = 'gr-bits';
+      bits.innerHTML = Array.from({ length: 16 }, (_, i) => {
+        const a = (Math.PI * 2 * i) / 16 + Math.random() * 0.4;
+        const d = 34 + Math.random() * 40;
+        const c = ['#6d55e6', '#c9b8ff', '#fff', '#2a2530'][i % 4];
+        return `<i style="left:${cx}px;bottom:${cy}px;--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d).toFixed(0)}px;background:${c};animation-delay:${(Math.random() * 0.1).toFixed(2)}s"></i>`;
+      }).join('');
+      els.screen.appendChild(bits);
+      b.el.remove();
+      g.boss = null;
+      sound('hit');
+    });
+    later(2000, winPhaseWin);
+  }
+
+  // 段階2: 勝利（約2.8秒）
+  function winPhaseWin() {
+    g.winPhase = 'win';
+    clearWinTimers();
+    els.screen.querySelectorAll('.gr-flash, .gr-say, .gr-bits').forEach((n) => n.remove());
+    els.screen.classList.remove('gr-shake');
+    if (g.boss) { g.boss.el.remove(); g.boss = null; }
+    els.screen.classList.remove('boss'); // ボスの体力バーを消す
+    // 相棒は真ん中へ走って、跳んで喜ぶ
+    els.runner.classList.add('gr-slide');
+    g.rx = W / 2 - RUNNER / 2; g.y = 0;
+    placeRunner();
+    els.runner.classList.add('gr-clear');
+    const big = document.createElement('div');
+    big.className = 'gr-bigtext';
+    big.innerHTML = [...'BOSS CLEAR!'].map((ch, i) => `<span style="animation-delay:${(i * 0.06).toFixed(2)}s">${ch === ' ' ? '&nbsp;' : ch}</span>`).join('');
+    els.screen.appendChild(big);
+    const conf = document.createElement('div');
+    conf.className = 'gr-confetti';
+    conf.innerHTML = Array.from({ length: 28 }, (_, i) => {
+      const c = ['#ffd60a', '#ff9f1c', '#34c759', '#3d8bff', '#ff375f', '#fff'][i % 6];
+      return `<i style="left:${(Math.random() * 100).toFixed(0)}%;background:${c};animation-delay:${(Math.random() * 1.2).toFixed(2)}s;animation-duration:${(1.8 + Math.random() * 1.2).toFixed(2)}s"></i>`;
+    }).join('');
+    els.screen.appendChild(conf);
+    sound('fanfare');
+    later(700, () => say('やったね！', g.rx + RUNNER + 4, GROUND + RUNNER + 2, true));
+    later(2800, winPhaseResult);
+  }
+
+  // 段階3: リザルト（内訳の数字が順に回る）
+  function winPhaseResult() {
+    g.winPhase = 'result';
+    clearWinTimers();
+    els.screen.querySelectorAll('.gr-bigtext, .gr-say').forEach((n) => n.remove());
+    els.runner.classList.remove('gr-clear');
+    const w = g.win;
+    const mmss = w.timeSec ? `${Math.floor(w.timeSec / 60)}:${String(w.timeSec % 60).padStart(2, '0')}` : '--:--';
+    const hearts = '♥'.repeat(w.heartsLeft) + '<i>' + '♥'.repeat(Math.max(0, PLAYER_HEARTS - w.heartsLeft)) + '</i>';
+    const rows = [
+      { label: 'はしった', value: w.base },
+      { label: 'ボス撃破', value: w.boss, plus: true },
+      { label: `のこりハート ${hearts}`, value: w.hearts, plus: true },
+    ];
+    if (w.perfect) rows.push({ label: 'PERFECT! ノーダメージ', value: w.perfect, plus: true, gold: true });
+    const panel = document.createElement('div');
+    panel.className = 'gr-result';
+    panel.innerHTML = `<h4>RESULT</h4>` +
+      rows.map((r, i) => `<div class="gr-result-row${r.gold ? ' gold' : ''}" data-i="${i}"><span>${r.label}</span><b data-target="${r.value}" data-plus="${r.plus ? 1 : 0}">${r.plus ? '+' : ''}0</b></div>`).join('') +
+      `<div class="gr-result-row gr-result-time"><span>タイム</span><b>${mmss}</b></div>` +
+      `<div class="gr-result-total"><span>TOTAL</span><b data-target="${g.score}">0</b></div>` +
+      `<div class="gr-result-best${w.newBest ? '' : ' hidden'}">NEW RECORD!</div>` +
+      `<div class="gr-result-foot">タップでもういちど</div>`;
+    els.screen.appendChild(panel);
+    // 行を1つずつ出し、数字を回す
+    const counters = [...panel.querySelectorAll('b[data-target]')];
+    const rowEls = [...panel.querySelectorAll('.gr-result-row, .gr-result-total')];
+    rowEls.forEach((r, i) => later(200 + i * 380, () => {
+      r.classList.add('show');
+      const b = r.querySelector('b[data-target]');
+      if (b) countUp(b, Number(b.dataset.target), b.dataset.plus === '1', 520);
+    }));
+    later(200 + rowEls.length * 380 + 300, winDone);
+  }
+  function countUp(el, target, plus, ms) {
+    const t0 = performance.now();
+    let lastTick = 0;
+    const step = (t) => {
+      if (el.dataset.done === '1') return;
+      const k = Math.min(1, (t - t0) / ms);
+      const v = Math.round(target * (1 - Math.pow(1 - k, 3)));
+      el.textContent = `${plus ? '+' : ''}${v.toLocaleString('ja-JP')}`;
+      if (t - lastTick > 60 && k < 1) { lastTick = t; sound('tick'); }
+      if (k < 1) requestAnimationFrame(step); else el.dataset.done = '1';
+    };
+    requestAnimationFrame(step);
+  }
+  function winDone() {
+    g.winPhase = 'done';
+    clearWinTimers();
+    const panel = els.screen.querySelector('.gr-result');
+    if (panel) {
+      panel.querySelectorAll('.gr-result-row, .gr-result-total').forEach((r) => r.classList.add('show'));
+      panel.querySelectorAll('b[data-target]').forEach((b) => { b.dataset.done = '1'; b.textContent = `${b.dataset.plus === '1' ? '+' : ''}${Number(b.dataset.target).toLocaleString('ja-JP')}`; });
+      panel.classList.add('done');
+    }
+    g.overAt = performance.now();
+    if (g.win && g.win.newBest) sound('best');
+  }
+  // タップで段階を飛ばす
+  function winSkip() {
+    if (g.winPhase === 'die') winPhaseWin();
+    else if (g.winPhase === 'win') winPhaseResult();
+    else if (g.winPhase === 'result') winDone();
   }
 
   function bossUpdate(dt) {
@@ -989,4 +1217,5 @@
   window.closeGohanRun = close;
   // 動作確認用：開いている時に呼ぶとすぐボス戦になる
   window.gohanRunSkipToBoss = () => { if (open && els) startBoss(); };
+  window.gohanRunDebugWin = () => { if (open && g.state === 'boss') bossWin(); };
 })();

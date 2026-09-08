@@ -1198,3 +1198,5 @@ body.timemenu-open { overflow: hidden; }
 .card h2 .chart-today b { font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .card h2 .chart-today small { font-size: 10px; opacity: 0.75; }
 .card h2 .chart-today em { font-style: normal; font-weight: 800; }
+/* ステータス画面: ゲームでサボリ魔王を倒した回数 */
+.status-boss { margin-top: 8px; font-size: 12px; font-weight: 700; color: #ffd60a; }

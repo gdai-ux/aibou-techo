@@ -36,6 +36,21 @@ function renderHero(state) {
   document.getElementById('statusLevel').textContent = `Lv.${state.level}・${belt.name}`;
   const profile = window.mascotProfile ? mascotProfile() : { bio: '' };
   document.getElementById('statusBio').textContent = profile.bio || '';
+  // ゲームでサボリ魔王を倒した回数（端末に残る記録）
+  let bossWins = 0;
+  try { bossWins = Number(localStorage.getItem('gohanBossWins') || 0) || 0; } catch (e) { /* プライベートモード等 */ }
+  let bossEl = document.getElementById('statusBossWins');
+  if (bossWins > 0) {
+    if (!bossEl) {
+      bossEl = document.createElement('div');
+      bossEl.id = 'statusBossWins';
+      bossEl.className = 'status-boss';
+      document.getElementById('statusBio').insertAdjacentElement('afterend', bossEl);
+    }
+    bossEl.textContent = `🏆 サボリ魔王 撃破 ${bossWins}回`;
+  } else if (bossEl) {
+    bossEl.remove();
+  }
 
   // レベルの飾り（ほっぺ・王冠…）を今のレベルに合わせて付ける。
   // トップ画面のapplyGohanVisualStateはこの画面には無いので、ここで付け直す

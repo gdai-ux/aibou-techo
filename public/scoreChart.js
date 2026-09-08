@@ -118,6 +118,22 @@ function renderScoreChart(container, days, today) {
     </div>`;
 
   attachScoreChartScrub(container, points, { left, plotW, n });
+
+  // 見出し（「ポイントの推移」）の右に、今日の点数と段階を出す。グラフを読まなくても
+  // 「今日は何点で、どの段階か」がすぐ分かるように
+  const card = container.closest('.card');
+  const heading = card && card.querySelector('h2');
+  if (heading) {
+    let badge = heading.querySelector('.chart-today');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'chart-today';
+      heading.classList.add('has-today');
+      heading.appendChild(badge);
+    }
+    badge.innerHTML = `今日 <b>${todayPoint.score}</b><small>/100</small>${todayPoint.word ? ` <em>${scoreChartEsc(todayPoint.word)}</em>` : ''}`;
+    badge.style.color = todayPoint.score ? todayPoint.color : '';
+  }
 }
 
 // 指でなぞる（マウスなら乗せる）と、なぞった位置に一番近い日の点数を

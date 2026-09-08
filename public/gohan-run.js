@@ -318,7 +318,7 @@
               <div class="gr-hearts"></div>
               <div class="gr-boss-hp"><b></b><i><span></span></i></div>
               <div class="gr-msg"></div>
-              <div class="gr-pause"><div class="gr-pause-box"><p>ゲームをやめる？</p><button type="button" class="gr-resume">つづける</button><button type="button" class="gr-quit">やめる</button><a class="gr-applink" href="/game/">ゲームだけのアプリ（あいぼうラン）→</a></div></div>
+              <div class="gr-pause"><div class="gr-pause-box"><p>ゲームをやめる？</p><button type="button" class="gr-resume">つづける</button><button type="button" class="gr-quit">やめる</button><a class="gr-applink" href="/game/">ゲームだけのアプリ（あいぼうラン！）→</a></div></div>
             </div>
           </div>
         </div>

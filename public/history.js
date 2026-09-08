@@ -640,12 +640,12 @@ function renderDayList(days) {
   });
 }
 
-// --- 期間の表示（今週 / 月ごと） ---
-// ふだんは「今週」（月曜はじまりの7日分）だけを見せる。月まるごと並べると
-// 記録が多すぎて目的の日にたどり着きにくいため。それより前は「月ごと」に
-// 切り替えて、月を送りながら振り返る
+// --- 期間の表示（月 / 週 / 日） ---
+// ふだんは「週」（月曜はじまりの今週7日分）だけを見せる。月まるごと並べると
+// 記録が多すぎて目的の日にたどり着きにくいため。それより前は「月」に
+// 切り替えて、月を送りながら振り返る。「日」は今日の記録だけを見る
 let allDays = [];
-let viewMode = 'week'; // 'week' | 'month'
+let viewMode = 'week'; // 'month' | 'week' | 'day'
 let viewYear = null;
 let viewMonth = null; // 0-indexed
 
@@ -683,12 +683,12 @@ function shortDateOf(d) {
   return `${d.getMonth() + 1}/${d.getDate()}（${WEEKDAY_JA[d.getDay()]}）`;
 }
 
-// 空の時の文言に使う（「今週の記録はありません」「この月の記録はありません」）
+// 空の時の文言に使う（「今日の記録はありません」「今週の…」「この月の…」）
 function periodWord() {
-  return viewMode === 'week' ? '今週' : 'この月';
+  return viewMode === 'day' ? '今日' : viewMode === 'week' ? '今週' : 'この月';
 }
 
-// 「今週 / 月ごと」の切り替え。月送りの行（.month-nav）の上に置く
+// 「月 / 週 / 日」の切り替え。月送りの行（.month-nav）の上に置く
 function setupPeriodTabs() {
   const nav = document.querySelector('.month-nav');
   if (!nav || document.querySelector('.period-tabs')) return;
@@ -696,8 +696,9 @@ function setupPeriodTabs() {
   tabs.className = 'period-tabs';
   tabs.setAttribute('role', 'tablist');
   tabs.innerHTML = `
-    <button type="button" role="tab" data-mode="week">今週</button>
-    <button type="button" role="tab" data-mode="month">月ごと</button>`;
+    <button type="button" role="tab" data-mode="month">月</button>
+    <button type="button" role="tab" data-mode="week">週</button>
+    <button type="button" role="tab" data-mode="day">日</button>`;
   tabs.querySelectorAll('button').forEach((b) => {
     b.addEventListener('click', () => {
       if (viewMode === b.dataset.mode) return;
@@ -720,9 +721,23 @@ function renderPeriod() {
     b.classList.toggle('active', on);
     b.setAttribute('aria-selected', String(on));
   });
+  // 月送りの矢印があるのは「月」だけ。「週」「日」は今週・今日だけを見せる
   const nav = document.querySelector('.month-nav');
-  if (nav) nav.classList.toggle('week', viewMode === 'week');
-  if (viewMode === 'week') renderWeek(); else renderMonth();
+  if (nav) nav.classList.toggle('no-arrows', viewMode !== 'month');
+  if (viewMode === 'day') renderToday();
+  else if (viewMode === 'week') renderWeek();
+  else renderMonth();
+}
+
+function renderToday() {
+  const now = new Date();
+  const label = document.getElementById('monthLabel');
+  if (label) label.innerHTML = `今日<small>${shortDateOf(now)}</small>`;
+  const key = ymd(now);
+  const todayDays = allDays.filter((d) => d.dateStr === key);
+  renderSleepChart(todayDays);
+  renderLevelChart(todayDays);
+  renderDayList(todayDays);
 }
 
 function renderWeek() {

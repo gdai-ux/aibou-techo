@@ -84,8 +84,8 @@
   text-align: center;
   letter-spacing: -0.2px;
 }
-/* 「今週」の時は月送りの矢印を出さず、週の名前と日付の範囲だけを見せる */
-.month-nav.week button { display: none; }
+/* 「週」「日」の時は月送りの矢印を出さず、期間の名前と日付だけを見せる */
+.month-nav.no-arrows button { display: none; }
 .month-nav .month-label small {
   display: block;
   margin-top: 2px;
@@ -94,7 +94,7 @@
   color: var(--muted);
   letter-spacing: 0;
 }
-/* 今週 / 月ごと の切り替え */
+/* 月 / 週 / 日 の切り替え */
 .period-tabs {
   display: flex;
   justify-content: center;
@@ -110,7 +110,7 @@
   appearance: none;
   border: 0;
   border-radius: 999px;
-  padding: 6px 18px;
+  padding: 6px 22px;
   font-size: 13px;
   font-weight: 700;
   color: var(--muted);

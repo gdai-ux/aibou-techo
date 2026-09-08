@@ -250,8 +250,7 @@ html.font-large body { zoom: 1.12; }
    （点滅は睡眠グラフの段階の言葉と同じ animation: wordBlink を使い、
    アプリ全体で「まだ確定していない・注目してほしい」の意味をそろえている）。 */
 .score-chart-svg .score-line-today { stroke-dasharray: 5 4; }
-.score-chart-svg .score-dot-today,
-.score-chart-svg .today-label { animation: wordBlink 1.6s ease-in-out infinite; }
+.score-chart-svg .score-dot-today { animation: wordBlink 1.6s ease-in-out infinite; }
 .score-chart-svg .today-label { fill: var(--muted); font-size: 8.5px; font-weight: 700; font-style: italic; }
 .score-chart-tip .tip-live { color: var(--muted); font-weight: 700; }
 .score-chart-tip {
@@ -1194,7 +1193,10 @@ body.timemenu-open { overflow: hidden; }
 
 /* グラフの見出しの右に出す「今日 55/100 GREAT!!」 */
 .card h2.has-today { display: flex; align-items: baseline; gap: 8px; }
-.card h2 .chart-today { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.card h2 .chart-today { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap;
+  /* 今日はまだ点数が増えるので、そっと明滅させて「進行中」を伝える（文字の「進行中」は点滅させない） */
+  animation: wordBlink 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .card h2 .chart-today { animation: none; } }
 .card h2 .chart-today b { font-size: 15px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .card h2 .chart-today small { font-size: 10px; opacity: 0.75; }
 .card h2 .chart-today em { font-style: normal; font-weight: 800; }

@@ -684,7 +684,6 @@
     font-size: 10px;
     font-weight: 700;
     color: var(--muted);
-    animation: wordBlink 1.6s ease-in-out infinite;
   }
   @media (prefers-reduced-motion: reduce) {
     .review-score .review-live { animation: none; }

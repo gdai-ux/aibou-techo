@@ -1972,3 +1972,32 @@
   .quote-card .quote-text { font-size: 13px; line-height: 1.55; }
   .quote-card .quote-author { margin-top: 3px; font-size: 11px; }
   .quote-card .quote-actions { position: static; flex: 0 0 auto; }
+
+  /* --- 時刻欄のたたみ表示。ふだんは「13:30 に記録  変える」の1行、押すと欄が開く --- */
+  .time-summary {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .time-summary b { color: var(--text); font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .time-summary span { color: var(--accent); font-weight: 600; }
+  .form:not(.time-open) .time-label, .form:not(.time-open) .time-row { display: none; }
+  .form.time-open .time-summary { display: none; }
+  .form:not(.time-open) .time-row + label { margin-top: 0; }
+  /* 演出ひかえめ（設定）。キラキラと成長の光を出さない */
+  html.fx-calm .submit-sparkles, html.fx-calm .gohan-grow-fx { display: none !important; }
+  /* ヘッダーの景色を出さない（設定）。地面・土管・丘・雲を消し、相棒だけが歩く */
+  html.header-plain .page-header.gohan-roam .gohan-ground,
+  html.header-plain .page-header.gohan-roam .gohan-pipe,
+  html.header-plain .page-header.gohan-roam .gohan-hill,
+  html.header-plain .page-header.gohan-roam .gohan-block,
+  html.header-plain .page-header.gohan-roam .gohan-cloud { display: none; }
+  html.header-plain .page-header.gohan-roam { background: var(--bg-blur) !important; }

@@ -275,7 +275,11 @@ function renderTodayStats(days) {
       if (mm) kcal += Number(mm[1].replace(/,/g, ''));
     }));
   }
-  set('todayKcal', kcal ? `${kcal.toLocaleString('ja-JP')}<em>kcal</em>` : '<em>まだ</em>');
+  // 目安（からだの設定）があれば「摂取 / 目安」で出す
+  const kcalTarget = typeof bodyTargetKcal === 'function' ? bodyTargetKcal() : null;
+  set('todayKcal', kcal
+    ? `${kcal.toLocaleString('ja-JP')}<em>${kcalTarget && kcalTarget.kcal ? ` / ${kcalTarget.kcal.toLocaleString('ja-JP')}` : ''}</em>`
+    : '<em>まだ</em>');
 }
 window.renderTodayStats = renderTodayStats;
 
@@ -504,7 +508,7 @@ function playLevelUpSound() {
 // （「身体が飛び出した」ように見せるため）。
 // 出せなかった時はfalseを返し、呼び出し側は普通の芸に切り替える。
 function launchGohanRocket(kun) {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || fxCalm()) return false;
   if (document.querySelector('.gohan-fly-overlay')) return false;
   const home = kun.closest('.app-icon, .review-avatar');
   const r = kun.getBoundingClientRect();
@@ -625,7 +629,7 @@ function launchGohanRocket(kun) {
 // （緑のオーラ・リング・+Npt付き）。
 // ヘッダーのSVGをそのまま複製するので、着せ替えやレベルの飾りも引き継がれる
 function showGohanBig(deltaPts) {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || fxCalm()) return;
   if (document.querySelector('.gohan-big-overlay')) return;
   const src = document.querySelector('.app-icon .gohan-kun');
   if (!src) return;
@@ -829,6 +833,7 @@ function celebrateGohan(cat) {
 // 記録完了時、ボタンの上に金色のキラキラを撒く。
 // テキストを差し替えると一緒に消えるので、後片付けは不要
 function spawnSubmitSparkles(btn) {
+  if (fxCalm()) return;
   const fx = document.createElement('span');
   fx.className = 'submit-sparkles';
   let html = '';
@@ -847,7 +852,7 @@ function spawnSubmitSparkles(btn) {
 // 「LEVEL UP!」と「Lv.4 → Lv.5」が出て、紙吹雪が舞う。
 // 記録のたびに出る「成長」（緑）とはっきり別物に見えるようにしている。
 function showLevelUpCelebration(fromLevel = 0, deltaPts = 0) {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || fxCalm()) return;
   if (document.querySelector('.lvup-overlay')) return;
   const src = document.querySelector('.app-icon .gohan-kun');
   if (!src) return;
@@ -1062,7 +1067,9 @@ function startGohanRoam() {
       if (t >= idleUntil) {
         idleUntil = t + 2000 + Math.random() * 3000;
         const r = Math.random();
-        if (!tired && r < 0.3) {
+        if (fxCalm()) {
+          // ひかえめ: 走るだけで、跳んだり芸をしたりしない
+        } else if (!tired && r < 0.3) {
           walker.classList.add('gohan-floating');
           setTimeout(() => walker.classList.remove('gohan-floating'), 1600);
         } else if (!tired && r < 0.5) {
@@ -1143,6 +1150,7 @@ function positionSegThumb(activeItem) {
 function setCategory(cat, step = 0) {
   if (cat === currentCat) return;
   currentCat = cat;
+  refreshTimeFields();
   const activeItem = Array.from(segItems).find((t) => t.dataset.cat === cat);
   segItems.forEach((t) => t.classList.toggle('active', t.dataset.cat === cat));
   positionSegThumb(activeItem);
@@ -1304,6 +1312,48 @@ function setStool(v) {
 stoolChips.forEach(c => c.addEventListener('click', () => setStool(c.dataset.stool)));
 setConditionLevel('普通');
 
+// --- 演出の量とヘッダーの景色（設定画面のスイッチ。history.js から呼ばれる） ---
+// 「ひかえめ」では、画面いっぱいのお祝い・キラキラ・飛び回る芸・走りながらの芸を出さず、
+// 記録ボタンの戻りも早くする。走る相棒と小さな反応は残す
+const FX_KEY = 'fxLevel';
+function fxCalm() {
+  try { return localStorage.getItem(FX_KEY) === 'calm'; } catch (e) { return false; }
+}
+function setFxCalm(on) {
+  try { localStorage.setItem(FX_KEY, on ? 'calm' : 'full'); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  document.documentElement.classList.toggle('fx-calm', on);
+}
+window.fxCalm = fxCalm;
+window.setFxCalm = setFxCalm;
+document.documentElement.classList.toggle('fx-calm', fxCalm());
+// ヘッダーの景色（地面・土管・丘・雲）。OFFにすると相棒だけが歩く落ち着いたヘッダーになる
+const HEADER_SCENE_KEY = 'headerScene';
+function headerSceneOn() {
+  try { return localStorage.getItem(HEADER_SCENE_KEY) !== 'off'; } catch (e) { return true; }
+}
+function setHeaderScene(on) {
+  try { localStorage.setItem(HEADER_SCENE_KEY, on ? 'on' : 'off'); } catch (e) { /* 同上 */ }
+  document.documentElement.classList.toggle('header-plain', !on);
+}
+window.headerSceneOn = headerSceneOn;
+window.setHeaderScene = setHeaderScene;
+document.documentElement.classList.toggle('header-plain', !headerSceneOn());
+
+// 記録ボタンの下の一言（保存先の説明）は、慣れるまで（最初の3回）だけ出す
+const RECORD_COUNT_KEY = 'recordCount';
+function recordCount() {
+  try { return Number(localStorage.getItem(RECORD_COUNT_KEY) || 0) || 0; } catch (e) { return 0; }
+}
+function bumpRecordCount() {
+  try { localStorage.setItem(RECORD_COUNT_KEY, String(recordCount() + 1)); } catch (e) { /* 同上 */ }
+  updateSaveHint();
+}
+function updateSaveHint() {
+  const h = document.getElementById('saveHint');
+  if (h) h.hidden = recordCount() >= 3;
+}
+updateSaveHint();
+
 function nowHHMM() {
   const d = new Date();
   // 5分刻みの時刻欄に合わせて、現在時刻も一番近い5分単位に丸める
@@ -1311,7 +1361,54 @@ function nowHHMM() {
   const wrapped = ((rounded % 1440) + 1440) % 1440;
   return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
 }
-document.querySelectorAll('input[type="time"][name="time"]').forEach(i => i.value = nowHHMM());
+// 時刻欄を「いま」にそろえる。開きっぱなしのアプリで古い時刻のまま記録されないよう、
+// 画面に戻った時・カテゴリを切り替えた時・1分ごと・記録した後にも呼ぶ。
+// 自分で変えた欄（touched）は、記録するまでそのまま
+function refreshTimeFields(force = false) {
+  document.querySelectorAll('input[type="time"][name="time"]').forEach((i) => {
+    if (force || !i.dataset.touched) i.value = nowHHMM();
+    if (force) delete i.dataset.touched;
+  });
+  updateTimeSummaries();
+}
+// 音声入力などが時刻を入れた時は、自動で「いま」に戻さない
+function setTimeField(id, value) {
+  const i = document.getElementById(id);
+  if (!i) return;
+  i.value = value;
+  i.dataset.touched = '1';
+  updateTimeSummaries();
+}
+// 時刻欄は、ふだんは「13:30 に記録  変える」の1行にたたんでおき、押した時だけ欄を開く
+function updateTimeSummaries() {
+  document.querySelectorAll('.time-summary').forEach((b) => {
+    const input = document.getElementById(b.dataset.for);
+    const v = input && input.value ? input.value : nowHHMM();
+    b.innerHTML = `<b>${v}</b> に記録 <span>変える</span>`;
+  });
+}
+document.querySelectorAll('input[type="time"][name="time"]').forEach((input) => {
+  input.value = nowHHMM();
+  const row = input.closest('.field-row');
+  const form = input.closest('form');
+  input.addEventListener('input', () => { input.dataset.touched = '1'; updateTimeSummaries(); });
+  if (!row || !form) return;
+  const label = row.previousElementSibling;
+  row.classList.add('time-row');
+  if (label && label.tagName === 'LABEL') label.classList.add('time-label');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'time-summary';
+  btn.dataset.for = input.id;
+  btn.setAttribute('aria-label', '記録する時刻を変える');
+  btn.addEventListener('click', () => { form.classList.add('time-open'); input.focus(); });
+  const anchor = (label && label.tagName === 'LABEL') ? label : row;
+  anchor.parentNode.insertBefore(btn, anchor);
+});
+updateTimeSummaries();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshTimeFields(); });
+window.addEventListener('focus', () => refreshTimeFields());
+setInterval(() => refreshTimeFields(), 60 * 1000);
 
 function calcSleepDuration(bedtime, wake) {
   const [bh, bm] = bedtime.split(':').map(Number);
@@ -1500,6 +1597,9 @@ setInterval(flushEntryQueue, 15 * 1000);
 
 // 記録成功・キュー保存の後に入力欄を空にする（共通処理）
 function clearFormAfterRecord(form) {
+  // 時刻は「いま」に戻し、たたんだ状態にする
+  refreshTimeFields(true);
+  form.classList.remove('time-open');
   if (currentCat === 'meal') {
     form.querySelector('textarea[name="items"]').value = '';
   } else if (currentCat === 'exercise' || currentCat === 'memo') {
@@ -1570,8 +1670,9 @@ submitBtn.addEventListener('click', async () => {
           statusEl.textContent = '';
           setTimeout(() => submitBtn.classList.remove('returned'), 400);
         }, 260);
-      }, 3000);
+      }, fxCalm() ? 1400 : 3000);
       clearFormAfterRecord(form);
+      bumpRecordCount();
       // 記録直後は「これまでの記録」「カレンダー」「今週の運動」がまだ
       // ページ読み込み時点のデータのままなので、最新の状態に更新する
       loadHistory();
@@ -1756,7 +1857,7 @@ function applyParsedEntry(parsed) {
       refitTextarea(contentEl); // 行数に合わせて背を伸ばす
     }
   } else if (cat === 'meal') {
-    if (parsed.time) document.getElementById('mealTime').value = parsed.time;
+    if (parsed.time) setTimeField('mealTime', parsed.time);
     if (parsed.mealType) setMealType(parsed.mealType);
     if (parsed.items && parsed.items.length) {
       document.getElementById('mealItems').value = parsed.items.join('\n');
@@ -1766,7 +1867,7 @@ function applyParsedEntry(parsed) {
     if (parsed.wake) wakeInput.value = parsed.wake;
     updateSleepDuration();
   } else if (cat === 'condition') {
-    if (parsed.time) document.getElementById('conditionTime').value = parsed.time;
+    if (parsed.time) setTimeField('conditionTime', parsed.time);
     if (parsed.level) setConditionLevel(parsed.level);
     if (parsed.stool) setStool(parsed.stool);
     if (parsed.note) document.getElementById('conditionNote').value = parsed.note;

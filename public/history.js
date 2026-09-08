@@ -1245,6 +1245,20 @@ function openSettingsMenu() {
               <span class="hs-knob"></span>
             </label>
           </div>
+          <div class="settings-menu-item settings-switch-item" id="settingsItemFx" hidden>
+            <span class="settings-menu-title">演出をひかえめに</span>
+            <label class="hs-switch">
+              <input type="checkbox" id="fxCalmToggle" />
+              <span class="hs-knob"></span>
+            </label>
+          </div>
+          <div class="settings-menu-item settings-switch-item" id="settingsItemHeaderScene" hidden>
+            <span class="settings-menu-title">ヘッダーの景色</span>
+            <label class="hs-switch">
+              <input type="checkbox" id="headerSceneToggle" />
+              <span class="hs-knob"></span>
+            </label>
+          </div>
           <div class="settings-menu-item settings-theme-item">
             <span class="settings-menu-title">テーマ</span>
             <div class="theme-choice" id="themeChoice">
@@ -1294,6 +1308,12 @@ function openSettingsMenu() {
     document.getElementById('soundToggle').addEventListener('change', (e) => {
       if (window.setTapSoundEnabled) setTapSoundEnabled(e.target.checked);
     });
+    document.getElementById('fxCalmToggle').addEventListener('change', (e) => {
+      if (window.setFxCalm) setFxCalm(e.target.checked);
+    });
+    document.getElementById('headerSceneToggle').addEventListener('change', (e) => {
+      if (window.setHeaderScene) setHeaderScene(e.target.checked);
+    });
     document.getElementById('settingsItemMigrate').addEventListener('click', runDbMigration);
   }
   refreshThemeChoice();
@@ -1302,6 +1322,11 @@ function openSettingsMenu() {
   const soundItem = document.getElementById('settingsItemSound');
   soundItem.hidden = !window.tapSoundEnabled;
   if (window.tapSoundEnabled) document.getElementById('soundToggle').checked = tapSoundEnabled();
+  // 演出の量とヘッダーの景色も、相棒が歩くトップ画面だけの設定
+  document.getElementById('settingsItemFx').hidden = !window.setFxCalm;
+  if (window.fxCalm) document.getElementById('fxCalmToggle').checked = fxCalm();
+  document.getElementById('settingsItemHeaderScene').hidden = !window.setHeaderScene;
+  if (window.headerSceneOn) document.getElementById('headerSceneToggle').checked = headerSceneOn();
   // Web版（ログインあり）: 保存先の設定は要らないので「天気の地域」だけにし、アカウントの項目を出す
   const authMode = !!window.authRequired;
   document.getElementById('settingsItemNotionTitle').textContent = authMode ? '天気の地域' : 'Notion連携と天気の地域';

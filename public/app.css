@@ -1918,3 +1918,57 @@
   .voice-btn:not(.recording) { background: transparent; }
   /* 日付の行の編集ボタンは、押すまでは目立たせない */
   .day-title .day-edit-btn:not(.active) { opacity: 0.55; }
+
+  /* --- 「今日」カード：記録フォームのすぐ下。時計、今日の数字、相棒の一言を1枚に --- */
+  .today-card .clock-card {
+    padding: 4px 0 14px;
+    border-radius: 0;
+    /* 天気の色は weather.js が背景に重ねるが、このカードでは色を使わず、アイコンと文字だけにする */
+    background: none !important;
+    box-shadow: none !important;
+  }
+  .today-card .clock-time { font-size: 34px; }
+  .today-card .day-progress { margin-top: 12px; }
+  .today-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .today-stat small {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .today-stat b {
+    display: block;
+    margin-top: 3px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .today-stat b em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+  /* 点数は上の数字に出すので、一言の見出しの右の点数は出さない */
+  .today-card .review-score { display: none; }
+  html.hs-off-clock .today-stats { border-top: none; padding-top: 0; }
+  html.hs-off-review .today-stats { border-bottom: none; margin-bottom: 0; padding-bottom: 4px; }
+  /* 格言は1行の小さなカードに（文はそのまま、余白と文字を小さく、ボタンは右に並べる） */
+  .quote-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    padding: 12px 10px 12px 16px;
+  }
+  .quote-card .quote-body { align-items: flex-start; text-align: left; }
+  .quote-card .quote-text { font-size: 13px; line-height: 1.55; }
+  .quote-card .quote-author { margin-top: 3px; font-size: 11px; }
+  .quote-card .quote-actions { position: static; flex: 0 0 auto; }

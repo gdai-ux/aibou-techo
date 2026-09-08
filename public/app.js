@@ -240,6 +240,45 @@ function syncRingBlink() {
   });
 }
 
+// 「今日」カードの数字（スコア・睡眠・今週の運動・摂取）。
+// 履歴（history.js の loadHistory）が読めるたびに呼ばれ、記録の直後も更新される
+function renderTodayStats(days) {
+  const box = document.getElementById('todayStats');
+  if (!box || !Array.isArray(days)) return;
+  const now = new Date();
+  const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const todayStr = key(now);
+  const today = days.find((d) => d.dateStr === todayStr);
+  const set = (id, html, color) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = html;
+    el.style.color = color || '';
+  };
+  // スコア（育成のポイントと同じ計算。growth.js）
+  const score = today && typeof gohanDayScore === 'function' ? gohanDayScore(today) : null;
+  set('todayScore', score && score.score ? `${score.score}<em>/${score.max}</em>` : '<em>まだ</em>', score && score.score ? score.color : '');
+  // 睡眠
+  const mins = today && today.sleep ? today.sleep.totalMinutes : 0;
+  set('todaySleep', mins ? `${Math.floor(mins / 60)}<em>時間</em>${mins % 60}<em>分</em>` : '<em>まだ</em>');
+  // 今週の運動（月曜はじまり）。目標は設定の週目標
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  const from = key(monday);
+  const target = window.exerciseWeeklyTarget ? exerciseWeeklyTarget() : 5;
+  const done = days.filter((d) => d.dateStr >= from && d.dateStr <= todayStr && Array.isArray(d.exercise) && d.exercise.length > 0).length;
+  set('todayExercise', `${done}<em>/${target}日</em>`);
+  // 摂取。品目の末尾の「（約Nkcal）」を足す（書式は lib/calories.js と同じ）
+  let kcal = 0;
+  if (today) {
+    (today.meals || []).forEach((m) => (m.items || []).forEach((it) => {
+      const mm = /（約([\d,]+)kcal）\s*$/.exec(String(it));
+      if (mm) kcal += Number(mm[1].replace(/,/g, ''));
+    }));
+  }
+  set('todayKcal', kcal ? `${kcal.toLocaleString('ja-JP')}<em>kcal</em>` : '<em>まだ</em>');
+}
+window.renderTodayStats = renderTodayStats;
+
 async function loadExerciseRing() {
   try {
     const resp = await fetch('/api/history?days=14', { headers: notionHeaders() });

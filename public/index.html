@@ -53,99 +53,6 @@ try {
     </div>
   </div>
 
-  <div class="card clock-card" data-hs="clock">
-    <div class="clock-row">
-      <div id="clockTime" class="clock-time">--:--:--</div>
-      <div id="weatherIcon" class="weather-icon"></div>
-    </div>
-    <div id="clockDate" class="clock-date">----年--月--日（-）</div>
-    <div id="weatherLabel" class="weather-label"></div>
-    <!-- 1日のうちどこまで進んだかのゲージ。時計と同じ1秒ごとに更新する -->
-    <div class="day-progress">
-      <div class="day-progress-track"><div class="day-progress-fill" id="dayProgressFill"></div></div>
-      <div class="day-progress-label" id="dayProgressLabel"></div>
-    </div>
-  </div>
-
-  <div class="card quote-card" id="quoteCard" data-hs="quote"></div>
-
-  <div class="card review-card" data-hs="review">
-    <div class="review-row">
-      <div class="review-avatar" aria-hidden="true"><svg class="gohan-kun" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="0" width="6" height="1" fill="#f4f1e8"/><rect x="2" y="1" width="8" height="1" fill="#f4f1e8"/><rect x="1" y="2" width="10" height="1" fill="#f4f1e8"/><rect x="1" y="3" width="10" height="1" fill="#f4f1e8"/><rect x="0" y="4" width="12" height="1" fill="#4a8fd9"/><rect x="1" y="5" width="2" height="1" fill="#4a8fd9"/><rect x="3" y="5" width="1" height="1" fill="#1b2b3d"/><rect x="4" y="5" width="4" height="1" fill="#4a8fd9"/><rect x="8" y="5" width="1" height="1" fill="#1b2b3d"/><rect x="9" y="5" width="2" height="1" fill="#4a8fd9"/><rect x="1" y="6" width="4" height="1" fill="#4a8fd9"/><rect x="5" y="6" width="2" height="1" fill="#1b2b3d"/><rect x="7" y="6" width="4" height="1" fill="#4a8fd9"/><rect x="1" y="7" width="10" height="1" fill="#4a8fd9"/><rect x="2" y="8" width="8" height="1" fill="#4a8fd9"/><rect x="3" y="9" width="6" height="1" fill="#4a8fd9"/><rect x="4" y="10" width="1" height="1" fill="#4a8fd9"/><rect x="7" y="10" width="1" height="1" fill="#4a8fd9"/><rect x="4" y="11" width="1" height="1" fill="#4a8fd9"/><rect x="7" y="11" width="1" height="1" fill="#4a8fd9"/><g class="gohan-deco gohan-deco-cheeks"><rect x="1" y="6" width="1" height="1" fill="#f79bb1"/><rect x="10" y="6" width="1" height="1" fill="#f79bb1"/></g><g class="gohan-deco gohan-deco-ume"><rect x="3" y="1" width="2" height="2" fill="#e4574f"/></g><g class="gohan-deco gohan-deco-nori"><rect x="7" y="0" width="2" height="2" fill="#2c4030"/></g></svg></div>
-      <div class="review-bubble">
-        <div class="review-head">
-          <div class="review-label" id="reviewLabel">今日の活動</div>
-          <div class="review-score" id="reviewScore" hidden></div>
-        </div>
-        <div class="review-text" id="reviewText">読み込み中…</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card" data-hs="chart">
-    <h2>ポイントの推移</h2>
-    <div class="score-chart" id="homeScoreChart"><div class="loading">読み込み中…</div></div>
-  </div>
-
-  <div class="card exercise-ring-card" data-hs="exercise">
-    <h2>今日の運動</h2>
-    <div class="exercise-ring-wrap">
-      <div class="ring-stack">
-        <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
-          <circle class="ring-track" cx="50" cy="50" r="42"></circle>
-          <circle class="ring-progress" id="exerciseRingProgress" cx="50" cy="50" r="42"></circle>
-        </svg>
-        <!-- 運動した日数が増えるほど大きくなる炎。外側の赤・中間のオレンジ・
-             芯の黄色の3枚を重ね、後ろに光を敷いている。大きさはJS側から
-             --flame-scale で渡し、週の目標を達成するとリングを超えて燃え上がる。 -->
-        <!-- 箱（.ring-flame-box）が大きさ、SVG本体（.ring-flame）がゆらぎを担当する。
-             SVGの中の要素にCSSのtransformを掛けると、Safariでは軸の位置の計算が
-             Chromeと違い、炎が大きくなるほどずれてviewBoxの外で四角く切れる。
-             ゆらぎはHTML要素であるSVGの根元に掛けて、中の層は濃さだけ揺らす。 -->
-        <span class="ring-flame-box">
-        <svg class="ring-flame" viewBox="0 0 100 100" aria-hidden="true">
-          <defs>
-            <radialGradient id="flameGlow">
-              <stop offset="0" stop-color="#ff6b1a" stop-opacity=".55"></stop>
-              <stop offset="1" stop-color="#ff3b30" stop-opacity="0"></stop>
-            </radialGradient>
-          </defs>
-          <ellipse class="flame-glow" cx="50" cy="60" rx="46" ry="42" fill="url(#flameGlow)"></ellipse>
-          <path class="flame-lay flame-outer" d="M50 4c8 20 24 28 24 50 0 20-11 36-24 36S26 74 26 54c0-16 10-24 14-38 4 12 6 18 10 24 5-10 2-24 0-36Z"></path>
-          <!-- 中間の層の縮小はpathではなく<g>の属性に置く。pathに置くと、
-               CSSのアニメーションのtransformに上書きされて効かなくなる -->
-          <g transform="translate(50 90) scale(.72) translate(-50 -90)">
-            <path class="flame-lay flame-mid" d="M50 4c8 20 24 28 24 50 0 20-11 36-24 36S26 74 26 54c0-16 10-24 14-38 4 12 6 18 10 24 5-10 2-24 0-36Z"></path>
-          </g>
-          <path class="flame-lay flame-core" d="M50 34c6 12 12 16 12 28 0 12-5 20-12 20s-12-8-12-20c0-10 7-16 12-28Z"></path>
-        </svg>
-        </span>
-        <!-- 今日まだ運動していない日は、炎の代わりに雨雲から雨が降る。
-             運動を記録すると炎に切り替わる（ring-no-fireクラスで出し分け）。 -->
-        <svg class="ring-rain" viewBox="0 0 100 100" aria-hidden="true">
-          <g class="rain-cloud">
-            <ellipse cx="40" cy="36" rx="14" ry="10"></ellipse>
-            <ellipse cx="58" cy="33" rx="12" ry="9"></ellipse>
-            <ellipse cx="50" cy="41" rx="20" ry="10"></ellipse>
-          </g>
-          <g class="rain-drops">
-            <line class="rd rd-1" x1="38" y1="56" x2="35" y2="64"></line>
-            <line class="rd rd-2" x1="52" y1="58" x2="49" y2="66"></line>
-            <line class="rd rd-3" x1="65" y1="56" x2="62" y2="64"></line>
-          </g>
-        </svg>
-      </div>
-      <div class="exercise-ring-info">
-        <!-- 段階の言葉。炎が大きくなるとリングの中では読めなくなるので、
-             リングの外（この列の一番上）に出している。 -->
-        <div class="ring-word" id="exerciseRingWord"></div>
-        <div class="main" id="exerciseRingMain">週の目標</div>
-        <div class="sub" id="exerciseRingSub"></div>
-      </div>
-    </div>
-    <div class="exercise-ring-days" id="exerciseRingDays"></div>
-  </div>
-
   <!-- カテゴリのタブ・入力フォーム・記録ボタンは「記録する」ための一連の操作なので、
        カードを分けずに1つの枠にまとめている -->
   <div class="card input-panel">
@@ -265,6 +172,108 @@ try {
     </div>
     <div class="hint" id="saveHint">記録は自動で保存されます</div>
   </div>
+  </div>
+
+  <!-- 「今日」カード：時計と天気、今日の数字（スコア・睡眠・運動・摂取）、相棒の一言を1枚にまとめる。
+       時計の部分と相棒の一言は、設定の「ホーム画面の表示」で個別に隠せる（data-hs） -->
+  <div class="card today-card">
+    <div class="today-top clock-card" data-hs="clock">
+      <div class="clock-row">
+        <div id="clockTime" class="clock-time">--:--:--</div>
+        <div id="weatherIcon" class="weather-icon"></div>
+      </div>
+      <div id="clockDate" class="clock-date">----年--月--日（-）</div>
+      <div id="weatherLabel" class="weather-label"></div>
+      <!-- 1日のうちどこまで進んだかのゲージ。時計と同じ1秒ごとに更新する -->
+      <div class="day-progress">
+        <div class="day-progress-track"><div class="day-progress-fill" id="dayProgressFill"></div></div>
+        <div class="day-progress-label" id="dayProgressLabel"></div>
+      </div>
+    </div>
+    <div class="today-stats" id="todayStats" aria-label="今日の数字">
+      <div class="today-stat"><small>スコア</small><b id="todayScore">–</b></div>
+      <div class="today-stat"><small>睡眠</small><b id="todaySleep">–</b></div>
+      <div class="today-stat"><small>今週の運動</small><b id="todayExercise">–</b></div>
+      <div class="today-stat"><small>摂取</small><b id="todayKcal">–</b></div>
+    </div>
+    <div class="today-review" data-hs="review">
+      <div class="review-row">
+        <div class="review-avatar" aria-hidden="true"><svg class="gohan-kun" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="0" width="6" height="1" fill="#f4f1e8"/><rect x="2" y="1" width="8" height="1" fill="#f4f1e8"/><rect x="1" y="2" width="10" height="1" fill="#f4f1e8"/><rect x="1" y="3" width="10" height="1" fill="#f4f1e8"/><rect x="0" y="4" width="12" height="1" fill="#4a8fd9"/><rect x="1" y="5" width="2" height="1" fill="#4a8fd9"/><rect x="3" y="5" width="1" height="1" fill="#1b2b3d"/><rect x="4" y="5" width="4" height="1" fill="#4a8fd9"/><rect x="8" y="5" width="1" height="1" fill="#1b2b3d"/><rect x="9" y="5" width="2" height="1" fill="#4a8fd9"/><rect x="1" y="6" width="4" height="1" fill="#4a8fd9"/><rect x="5" y="6" width="2" height="1" fill="#1b2b3d"/><rect x="7" y="6" width="4" height="1" fill="#4a8fd9"/><rect x="1" y="7" width="10" height="1" fill="#4a8fd9"/><rect x="2" y="8" width="8" height="1" fill="#4a8fd9"/><rect x="3" y="9" width="6" height="1" fill="#4a8fd9"/><rect x="4" y="10" width="1" height="1" fill="#4a8fd9"/><rect x="7" y="10" width="1" height="1" fill="#4a8fd9"/><rect x="4" y="11" width="1" height="1" fill="#4a8fd9"/><rect x="7" y="11" width="1" height="1" fill="#4a8fd9"/><g class="gohan-deco gohan-deco-cheeks"><rect x="1" y="6" width="1" height="1" fill="#f79bb1"/><rect x="10" y="6" width="1" height="1" fill="#f79bb1"/></g><g class="gohan-deco gohan-deco-ume"><rect x="3" y="1" width="2" height="2" fill="#e4574f"/></g><g class="gohan-deco gohan-deco-nori"><rect x="7" y="0" width="2" height="2" fill="#2c4030"/></g></svg></div>
+        <div class="review-bubble">
+          <div class="review-head">
+            <div class="review-label" id="reviewLabel">今日の活動</div>
+            <div class="review-score" id="reviewScore" hidden></div>
+          </div>
+          <div class="review-text" id="reviewText">読み込み中…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card quote-card" id="quoteCard" data-hs="quote"></div>
+
+  <div class="card" data-hs="chart">
+    <h2>ポイントの推移</h2>
+    <div class="score-chart" id="homeScoreChart"><div class="loading">読み込み中…</div></div>
+  </div>
+
+  <div class="card exercise-ring-card" data-hs="exercise">
+    <h2>今日の運動</h2>
+    <div class="exercise-ring-wrap">
+      <div class="ring-stack">
+        <svg class="ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="ring-track" cx="50" cy="50" r="42"></circle>
+          <circle class="ring-progress" id="exerciseRingProgress" cx="50" cy="50" r="42"></circle>
+        </svg>
+        <!-- 運動した日数が増えるほど大きくなる炎。外側の赤・中間のオレンジ・
+             芯の黄色の3枚を重ね、後ろに光を敷いている。大きさはJS側から
+             --flame-scale で渡し、週の目標を達成するとリングを超えて燃え上がる。 -->
+        <!-- 箱（.ring-flame-box）が大きさ、SVG本体（.ring-flame）がゆらぎを担当する。
+             SVGの中の要素にCSSのtransformを掛けると、Safariでは軸の位置の計算が
+             Chromeと違い、炎が大きくなるほどずれてviewBoxの外で四角く切れる。
+             ゆらぎはHTML要素であるSVGの根元に掛けて、中の層は濃さだけ揺らす。 -->
+        <span class="ring-flame-box">
+        <svg class="ring-flame" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <radialGradient id="flameGlow">
+              <stop offset="0" stop-color="#ff6b1a" stop-opacity=".55"></stop>
+              <stop offset="1" stop-color="#ff3b30" stop-opacity="0"></stop>
+            </radialGradient>
+          </defs>
+          <ellipse class="flame-glow" cx="50" cy="60" rx="46" ry="42" fill="url(#flameGlow)"></ellipse>
+          <path class="flame-lay flame-outer" d="M50 4c8 20 24 28 24 50 0 20-11 36-24 36S26 74 26 54c0-16 10-24 14-38 4 12 6 18 10 24 5-10 2-24 0-36Z"></path>
+          <!-- 中間の層の縮小はpathではなく<g>の属性に置く。pathに置くと、
+               CSSのアニメーションのtransformに上書きされて効かなくなる -->
+          <g transform="translate(50 90) scale(.72) translate(-50 -90)">
+            <path class="flame-lay flame-mid" d="M50 4c8 20 24 28 24 50 0 20-11 36-24 36S26 74 26 54c0-16 10-24 14-38 4 12 6 18 10 24 5-10 2-24 0-36Z"></path>
+          </g>
+          <path class="flame-lay flame-core" d="M50 34c6 12 12 16 12 28 0 12-5 20-12 20s-12-8-12-20c0-10 7-16 12-28Z"></path>
+        </svg>
+        </span>
+        <!-- 今日まだ運動していない日は、炎の代わりに雨雲から雨が降る。
+             運動を記録すると炎に切り替わる（ring-no-fireクラスで出し分け）。 -->
+        <svg class="ring-rain" viewBox="0 0 100 100" aria-hidden="true">
+          <g class="rain-cloud">
+            <ellipse cx="40" cy="36" rx="14" ry="10"></ellipse>
+            <ellipse cx="58" cy="33" rx="12" ry="9"></ellipse>
+            <ellipse cx="50" cy="41" rx="20" ry="10"></ellipse>
+          </g>
+          <g class="rain-drops">
+            <line class="rd rd-1" x1="38" y1="56" x2="35" y2="64"></line>
+            <line class="rd rd-2" x1="52" y1="58" x2="49" y2="66"></line>
+            <line class="rd rd-3" x1="65" y1="56" x2="62" y2="64"></line>
+          </g>
+        </svg>
+      </div>
+      <div class="exercise-ring-info">
+        <!-- 段階の言葉。炎が大きくなるとリングの中では読めなくなるので、
+             リングの外（この列の一番上）に出している。 -->
+        <div class="ring-word" id="exerciseRingWord"></div>
+        <div class="main" id="exerciseRingMain">週の目標</div>
+        <div class="sub" id="exerciseRingSub"></div>
+      </div>
+    </div>
+    <div class="exercise-ring-days" id="exerciseRingDays"></div>
   </div>
 
   <div class="section-title" data-hs="records"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>これまでの記録</div>

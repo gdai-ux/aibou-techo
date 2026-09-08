@@ -791,6 +791,8 @@ async function loadHistory() {
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || '取得に失敗しました');
     allDays = data.days;
+    // ホーム画面の「今日」カードの数字も同じデータから更新する
+    if (typeof renderTodayStats === 'function') renderTodayStats(allDays);
 
     // ハッシュ指定(#day-YYYY-MM-DD)があれば、その日が今週なら「今週」、
     // それより前ならその月の「月ごと」を初期表示にする（記録直後の再読み込みでは

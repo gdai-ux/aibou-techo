@@ -549,7 +549,8 @@ function launchGohanRocket(kun) {
   let x = startX;
   let y = startY;
   const points = [{ x, y }];
-  for (let i = 0; i < 5; i++) {
+  // 跳ね返る回数と飛ぶ時間。短いとあっという間に戻ってしまうので、たっぷり飛び回らせる
+  for (let i = 0; i < 9; i++) {
     const dist = 240 + Math.random() * 300;
     x += vx * dist;
     y += vy * dist;
@@ -612,10 +613,10 @@ function launchGohanRocket(kun) {
     count.textContent = '';
     flyer.classList.remove('winding');
     playLaunchSound();
-    const anim = flyer.animate(frames, { duration: 1700, fill: 'forwards' });
+    const anim = flyer.animate(frames, { duration: 4000, fill: 'forwards' });
     anim.onfinish = land;
     // 何かの理由でアニメーションが終わらなくても、必ず片付ける
-    setTimeout(land, 2400);
+    setTimeout(land, 4800);
   }, 1000);
   return true;
 }

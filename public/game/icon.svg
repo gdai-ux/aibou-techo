@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6d55e6"/>
+      <stop offset="100%" stop-color="#4b35b8"/>
+    </linearGradient>
+  </defs>
+  <!-- 携帯ゲーム機の本体（紫）に、ゲーム画面と相棒 -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="56" y="84" width="400" height="312" rx="28" fill="#2a2530"/>
+  <rect x="80" y="108" width="352" height="264" rx="10" fill="#5c94fc"/>
+  <rect x="80" y="324" width="352" height="48" fill="#8b5e34"/>
+  <rect x="80" y="324" width="352" height="8" fill="#4a9b3f"/>
+  <ellipse cx="150" cy="160" rx="34" ry="14" fill="#fff" opacity="0.9"/>
+  <ellipse cx="172" cy="150" rx="22" ry="14" fill="#fff" opacity="0.9"/>
+  <rect x="322" y="170" width="56" height="56" fill="#e0a030" stroke="#8a5a10" stroke-width="4"/>
+  <text x="350" y="212" font-family="Arial, sans-serif" font-size="40" font-weight="900" fill="#fff" text-anchor="middle">?</text>
+  <g transform="translate(150 180) scale(12)" shape-rendering="crispEdges"><rect x="3" y="0" width="6" height="1" fill="#f4f1e8"/><rect x="2" y="1" width="8" height="1" fill="#f4f1e8"/><rect x="1" y="2" width="10" height="1" fill="#f4f1e8"/><rect x="1" y="3" width="10" height="1" fill="#f4f1e8"/><rect x="0" y="4" width="12" height="1" fill="#4a8fd9"/><rect x="1" y="5" width="2" height="1" fill="#4a8fd9"/><rect x="3" y="5" width="1" height="1" fill="#1b2b3d"/><rect x="4" y="5" width="4" height="1" fill="#4a8fd9"/><rect x="8" y="5" width="1" height="1" fill="#1b2b3d"/><rect x="9" y="5" width="2" height="1" fill="#4a8fd9"/><rect x="1" y="6" width="4" height="1" fill="#4a8fd9"/><rect x="5" y="6" width="2" height="1" fill="#1b2b3d"/><rect x="7" y="6" width="4" height="1" fill="#4a8fd9"/><rect x="1" y="7" width="10" height="1" fill="#4a8fd9"/><rect x="2" y="8" width="8" height="1" fill="#4a8fd9"/><rect x="3" y="9" width="6" height="1" fill="#4a8fd9"/><rect x="4" y="10" width="1" height="1" fill="#4a8fd9"/><rect x="7" y="10" width="1" height="1" fill="#4a8fd9"/><rect x="4" y="11" width="1" height="1" fill="#4a8fd9"/><rect x="7" y="11" width="1" height="1" fill="#4a8fd9"/></g>
+  <circle cx="404" cy="440" r="22" fill="#e04a5a"/>
+  <circle cx="352" cy="456" r="22" fill="#e04a5a"/>
+</svg>

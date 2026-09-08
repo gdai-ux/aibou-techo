@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#4b35b8" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="あいぼうラン" />
+<title>あいぼうラン</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<style>
+  /* あいぼう手帳のゲームだけを切り出した、独立したアプリ。手帳のCSS（app.css）は
+     読まず、この画面に必要な分だけをここに持つ。相棒の描画（mascot.js）と
+     ゲーム本体（gohan-run.js）は手帳と同じファイルを共有する */
+  :root {
+    --bg: #1c1a20; --card: #2a2530; --text: #f2f2f7; --muted: #a9a4b8; --accent: #6d55e6; --accent-2: #4b35b8;
+    --sprite-outline: rgba(255, 255, 255, 0.32);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif; -webkit-font-smoothing: antialiased;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+  .ga-wrap { max-width: 460px; margin: 0 auto; }
+  .ga-head { text-align: center; padding: 8px 0 14px; }
+  .ga-head h1 { margin: 0; font-size: 28px; font-weight: 900; letter-spacing: 0.02em;
+    background: linear-gradient(90deg, #c9b8ff, #fff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .ga-sub { margin: 6px 0 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .ga-hero { position: relative; overflow: hidden; border-radius: 22px; padding: 22px 16px 18px; text-align: center;
+    background: linear-gradient(180deg, #5c94fc, #a7dcff 70%, #4a9b3f 70%, #4a9b3f 74%, #8b5e34 74%);
+    box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.8); }
+  .ga-avatar { display: inline-block; width: 96px; height: 96px; margin-top: 8px; }
+  .ga-avatar .gohan-kun { display: block; width: 96px; height: 96px; animation: gaBob 0.6s ease-in-out infinite; transform-origin: 50% 100%; }
+  @keyframes gaBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  .ga-name { margin-top: 6px; font-size: 16px; font-weight: 900; color: #1c1c1e; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+  .ga-records { display: flex; justify-content: center; gap: 10px; margin: 14px 0 4px; }
+  .ga-records div { min-width: 120px; padding: 8px 12px; border-radius: 12px; background: rgba(28, 26, 32, 0.78); color: #fff; }
+  .ga-records small { display: block; font-size: 11px; color: #cfc9e6; }
+  .ga-records b { display: block; font-size: 18px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .ga-play { appearance: none; border: 0; margin-top: 16px; padding: 14px 40px; border-radius: 999px; font-size: 18px; font-weight: 900; cursor: pointer;
+    color: #fff; background: linear-gradient(180deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 24px -8px rgba(77, 53, 184, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+  .ga-play:active { transform: translateY(1px) scale(0.98); }
+  .ga-card { margin-top: 14px; padding: 14px 16px; border-radius: 18px; background: var(--card); }
+  .ga-card h2 { margin: 0 0 10px; font-size: 14px; font-weight: 800; color: var(--muted); }
+  .ga-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ga-cell { appearance: none; border: 2px solid transparent; border-radius: 14px; padding: 8px 4px 6px; background: rgba(255, 255, 255, 0.06); color: var(--text); cursor: pointer; }
+  .ga-cell .gohan-kun { display: block; width: 44px; height: 44px; margin: 0 auto; }
+  .ga-cell span { display: block; margin-top: 4px; font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ga-cell.selected { border-color: #c9b8ff; background: rgba(109, 85, 230, 0.35); }
+  .ga-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+  .ga-row label { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .ga-row input { width: 20px; height: 20px; accent-color: var(--accent); }
+  .ga-link { color: #c9b8ff; font-weight: 700; text-decoration: none; }
+  .ga-howto ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.8; color: #d8d3ea; }
+  .ga-howto b { color: #fff; }
+  .ga-install { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(109, 85, 230, 0.18); font-size: 12px; line-height: 1.7; color: #d8d3ea; }
+  .ga-install.hidden { display: none; }
+  /* 相棒のドット絵の輪郭と、レベルの節目で増える飾り（手帳のhistory.cssと同じ規則） */
+  .gohan-kun { transform-origin: 50% 100%;
+    filter: drop-shadow(1px 0 0 var(--sprite-outline)) drop-shadow(-1px 0 0 var(--sprite-outline)) drop-shadow(0 1px 0 var(--sprite-outline)) drop-shadow(0 -1px 0 var(--sprite-outline)); }
+  .gohan-deco { display: none; }
+  .gohan-stage-1 .gohan-deco-cheeks { display: block; }
+  .gohan-stage-2 .gohan-deco-ume { display: block; }
+  .gohan-stage-3 .gohan-deco-nori { display: block; }
+  .gohan-kun.gohan-stage-4 { filter: drop-shadow(1px 0 0 var(--sprite-outline)) drop-shadow(-1px 0 0 var(--sprite-outline)) drop-shadow(0 1px 0 var(--sprite-outline)) drop-shadow(0 -1px 0 var(--sprite-outline)) drop-shadow(0 0 3px rgba(255, 214, 10, 0.85)); }
+  /* ゲームの走る動き（gohan-run.jsは .gohan-walking を付けるだけで、動きは手帳のCSSにある） */
+  .gohan-walking .gohan-kun { animation: gaWalkBob 0.26s ease-in-out infinite; transform-origin: bottom center; }
+  @keyframes gaWalkBob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-3px) rotate(3deg); } }
+  @media (prefers-reduced-motion: reduce) { .ga-avatar .gohan-kun, .gohan-walking .gohan-kun { animation: none; } }
+</style>
+</head>
+<body>
+<main class="ga-wrap">
+  <header class="ga-head">
+    <h1>あいぼうラン</h1>
+    <p class="ga-sub">相棒といっしょに走って、跳んで。<br>5つのステージのさきで、サボリ魔王がまっている。</p>
+  </header>
+
+  <section class="ga-hero">
+    <div class="status-avatar ga-avatar"><svg class="gohan-kun" viewBox="0 0 12 12" aria-hidden="true"></svg></div>
+    <div class="ga-name" id="gaName">ごはんくん</div>
+    <div class="ga-records">
+      <div><small>ハイスコア</small><b id="gaBest">0</b></div>
+      <div><small>さいこう記録</small><b id="gaStage">まだ</b></div>
+    </div>
+    <button type="button" class="ga-play" id="gaPlay">▶ あそぶ</button>
+  </section>
+
+  <section class="ga-card">
+    <h2>相棒をえらぶ</h2>
+    <div class="ga-grid" id="gaGrid"></div>
+  </section>
+
+  <section class="ga-card ga-row">
+    <label><input type="checkbox" id="gaSound" /> 効果音を鳴らす</label>
+    <a href="../index.html" class="ga-link">あいぼう手帳へ →</a>
+  </section>
+
+  <section class="ga-card ga-howto">
+    <h2>あそびかた</h2>
+    <ul>
+      <li>画面か <b>A</b> を押すとジャンプ。<b>▼</b> でしゃがむ。</li>
+      <li>障害物にぶつかるとハートが1つ減る。ハートは3つ。</li>
+      <li>ゴールの旗にとどくとステージクリア。全部で5ステージ。</li>
+      <li>5つクリアすると <b>サボリ魔王 ダラーン</b> とのボス戦。十字キーで動いて、<b>B</b> でほのおだま。</li>
+    </ul>
+    <p class="ga-install" id="gaInstall">iPhoneなら、Safariの共有ボタン → 「ホーム画面に追加」で、ゲームだけのアプリとして置けます。相棒の選択は、あいぼう手帳と同じ端末なら共通です。</p>
+  </section>
+</main>
+
+<script src="../growth.js"></script>
+<script src="../mascot.js"></script>
+<script src="../gohan-run.js"></script>
+<script>
+  // --- 効果音（手帳のapp.jsと同じ作り。ゲームと相棒の演出が typeof で探して使う） ---
+  const SOUND_KEY = 'tapSound';
+  let audioCtx = null;
+  function tapSoundEnabled() {
+    try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) { return true; }
+  }
+  function setTapSoundEnabled(on) {
+    try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  }
+  function ensureAudio() {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function beep(ctx, freq, at, dur, type = 'square', peak = 0.07) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + at);
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+    gain.gain.exponentialRampToValueAtTime(peak, ctx.currentTime + at + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(ctx.currentTime + at);
+    osc.stop(ctx.currentTime + at + dur + 0.02);
+  }
+  function playTapSound() {
+    if (!tapSoundEnabled()) return;
+    const ctx = ensureAudio();
+    if (ctx) beep(ctx, 880, 0, 0.06, 'square', 0.05);
+  }
+  function playGrowSound() {
+    if (!tapSoundEnabled()) return;
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    beep(ctx, 440.00, 0, 0.16, 'sine', 0.09);
+    beep(ctx, 659.25, 0.11, 0.30, 'sine', 0.10);
+  }
+
+  // --- 相棒の見た目（レベルの飾りは、手帳が端末に残した「見たことのあるレベル」から） ---
+  function seenLevel() {
+    try { return Number(localStorage.getItem('gohanLevelSeen') || 1) || 1; } catch (e) { return 1; }
+  }
+  // mascot.js が相棒を描き替えた後に呼ぶ（手帳の index.html と同じ名前の関数）
+  function applyGohanVisualState() {
+    const stage = gohanDecoStage(seenLevel());
+    document.querySelectorAll('.gohan-kun').forEach((k) => {
+      for (let i = 1; i <= 4; i++) k.classList.toggle(`gohan-stage-${i}`, i <= stage);
+    });
+    document.getElementById('gaName').textContent = mascotName();
+    const cur = mascotLoadSettings().char;
+    document.querySelectorAll('.ga-cell').forEach((c) => c.classList.toggle('selected', c.dataset.char === cur));
+  }
+
+  function buildGrid() {
+    const grid = document.getElementById('gaGrid');
+    grid.textContent = '';
+    MASCOT_CHARS.forEach((char) => {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'ga-cell';
+      cell.dataset.char = char.id;
+      cell.innerHTML = mascotSvg(char);
+      const name = document.createElement('span');
+      name.textContent = char.name;
+      cell.appendChild(name);
+      cell.addEventListener('click', () => {
+        const s = mascotLoadSettings();
+        if (s.char === char.id) return;
+        const settings = { char: char.id, name: s.name || '' };
+        mascotSaveSettings(settings);
+        mascotPushToServer(settings); // 手帳と同じ保存先（ログインが要る環境では静かに失敗する）
+        mascotRenderAll({ animate: true }); // 相棒同士のバトンタッチ
+      });
+      grid.appendChild(cell);
+    });
+  }
+
+  function refreshRecords() {
+    let best = 0;
+    let stage = 0;
+    try {
+      best = Number(localStorage.getItem('gohanRunBest') || 0) || 0;
+      stage = Number(localStorage.getItem('gohanRunBestStage') || 0) || 0;
+    } catch (e) { /* プライベートモード等 */ }
+    document.getElementById('gaBest').textContent = String(best).padStart(5, '0');
+    document.getElementById('gaStage').textContent =
+      stage > 5 ? 'ボス撃破！' : stage >= 5 ? '5ステージ制覇' : stage > 0 ? `ステージ${stage}クリア` : 'まだ';
+  }
+
+  buildGrid();
+  mascotRenderAll();
+  refreshRecords();
+
+  const sound = document.getElementById('gaSound');
+  sound.checked = tapSoundEnabled();
+  sound.addEventListener('change', () => { setTapSoundEnabled(sound.checked); if (sound.checked) playTapSound(); });
+
+  document.getElementById('gaPlay').addEventListener('click', () => openGohanRunNow());
+  window.onGohanRunClosed = refreshRecords;
+
+  // すでにホーム画面のアプリとして開いている時は、追加のしかたを出さない
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+    document.getElementById('gaInstall').classList.add('hidden');
+  }
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  }
+</script>
+</body>
+</html>

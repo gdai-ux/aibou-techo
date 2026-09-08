@@ -1,0 +1,18 @@
+{
+  "name": "あいぼうラン",
+  "short_name": "あいぼうラン",
+  "description": "あいぼう手帳の相棒といっしょに走って跳ぶ、ちいさなアクションゲーム。5つのステージのさきで、サボリ魔王がまっている。",
+  "start_url": "/game/",
+  "scope": "/game/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1c1a20",
+  "theme_color": "#4b35b8",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

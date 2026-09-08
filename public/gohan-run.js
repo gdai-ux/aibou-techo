@@ -189,6 +189,8 @@
   .gr-pause-box button { appearance: none; border: 0; border-radius: 999px; padding: 9px 18px; margin: 0 5px; font-size: 13px; font-weight: 800; cursor: pointer; }
   .gr-pause-box .gr-resume { background: #0a84ff; color: #fff; }
   .gr-pause-box .gr-quit { background: rgba(255, 255, 255, 0.14); color: #f2f2f7; }
+  .gr-pause-box .gr-applink { display: block; margin-top: 12px; font-size: 11px; color: #c9b8ff; text-decoration: none; }
+  .gr-pause-box .gr-applink.hidden { display: none; }
   /* ボタン類 */
   .gr-controls { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 12px; margin-top: 18px; padding: 0 8px; }
   .gr-left { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding-top: 6px; }
@@ -316,7 +318,7 @@
               <div class="gr-hearts"></div>
               <div class="gr-boss-hp"><b></b><i><span></span></i></div>
               <div class="gr-msg"></div>
-              <div class="gr-pause"><div class="gr-pause-box"><p>ゲームをやめる？</p><button type="button" class="gr-resume">つづける</button><button type="button" class="gr-quit">やめる</button></div></div>
+              <div class="gr-pause"><div class="gr-pause-box"><p>ゲームをやめる？</p><button type="button" class="gr-resume">つづける</button><button type="button" class="gr-quit">やめる</button><a class="gr-applink" href="/game/">ゲームだけのアプリ（あいぼうラン）→</a></div></div>
             </div>
           </div>
         </div>
@@ -339,6 +341,8 @@
         <div class="gr-bottom"><button type="button" class="gr-close">とじる</button></div>
       </div>`;
     document.body.appendChild(overlay);
+    // ゲームだけのアプリ（/game/）で開いている時は、そこへの案内は要らない
+    if (location.pathname.startsWith('/game')) overlay.querySelector('.gr-applink').classList.add('hidden');
     els = {
       device: overlay.querySelector('.gr-device'),
       wrap: overlay.querySelector('.gr-screen-wrap'),
@@ -976,9 +980,13 @@
       els.pause.classList.remove('show');
     }
     document.body.style.overflow = '';
+    // ゲームだけのアプリは、閉じた後にハイスコアの表示を更新したいので知らせる
+    if (typeof window.onGohanRunClosed === 'function') { try { window.onGohanRunClosed(); } catch (e) { /* 任意 */ } }
   }
 
   window.openGohanRun = askToPlay;
+  // 「あそぶ？」の吹き出しを挟まず、すぐにゲーム機を開く（ゲームだけのアプリ用）
+  window.openGohanRunNow = openGame;
   window.closeGohanRun = close;
   // 動作確認用：開いている時に呼ぶとすぐボス戦になる
   window.gohanRunSkipToBoss = () => { if (open && els) startBoss(); };

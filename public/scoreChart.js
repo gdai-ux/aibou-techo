@@ -69,6 +69,14 @@ function renderScoreChart(container, days, today) {
   const todayLabelY = todayPoint.score >= 55 ? yAt(todayPoint.score) + 14 : yAt(todayPoint.score) - 9;
   const todayLabel = `<text class="today-label" x="${xAt(n - 1) - 6}" y="${todayLabelY}" text-anchor="end">進行中</text>`;
 
+  // 段階の帯。点がどの帯に乗っているかで NICE〜EXCELLENT が読み取れる（境目は growth.js と同じ）
+  const bands = [
+    [0, 30, 'var(--grade-nice)', 'NICE'], [30, 55, 'var(--grade-good)', 'GOOD'],
+    [55, 85, 'var(--grade-great)', 'GREAT'], [85, 100, 'var(--grade-excellent)', 'EXCELLENT'],
+  ].map(([a, b, c, w]) => `
+    <rect class="score-band" x="${left}" y="${yAt(b).toFixed(1)}" width="${plotW}" height="${(yAt(a) - yAt(b)).toFixed(1)}" fill="${c}"></rect>
+    <text class="band-label" x="${SCORE_CHART_W - right - 3}" y="${(yAt(b) + 8).toFixed(1)}" text-anchor="end" fill="${c}">${w}</text>`).join('');
+
   const gridLines = [0, 50, 100].map((v) => `
     <line class="grid-line" x1="${left}" x2="${SCORE_CHART_W - right}" y1="${yAt(v)}" y2="${yAt(v)}"></line>
     <text class="axis-label" x="${left - 4}" y="${yAt(v) + 3}" text-anchor="end">${v}</text>`).join('');
@@ -87,11 +95,12 @@ function renderScoreChart(container, days, today) {
     // .score-dot のCSS（stroke: var(--card)）に負けないよう、色はインラインstyleで直接指定する。
     return isToday
       ? `<circle class="score-dot score-dot-today" data-i="${i}" cx="${xAt(i)}" cy="${yAt(p.score)}" r="4" fill="var(--card)" style="stroke:${p.color};stroke-width:2.5px"></circle>`
-      : `<circle class="score-dot" data-i="${i}" cx="${xAt(i)}" cy="${yAt(p.score)}" r="4" fill="${p.color}"></circle>`;
+      : `<circle class="score-dot" data-i="${i}" cx="${xAt(i)}" cy="${yAt(p.score)}" r="4.5" fill="${p.color}"></circle>`;
   }).join('');
 
   container.innerHTML = `
     <svg class="score-chart-svg" viewBox="0 0 ${SCORE_CHART_W} ${SCORE_CHART_H}">
+      ${bands}
       ${gridLines}
       ${xLabels}
       <path class="score-area" d="${areaPath}"></path>
@@ -102,7 +111,11 @@ function renderScoreChart(container, days, today) {
       <line class="score-crosshair" y1="${top}" y2="${top + plotH}"></line>
       <rect class="score-hit" x="${left}" y="${top}" width="${plotW}" height="${plotH}"></rect>
     </svg>
-    <div class="score-chart-tip"></div>`;
+    <div class="score-chart-tip"></div>
+    <div class="score-chart-legend">
+      <span style="--c:var(--grade-nice)">NICE 〜29</span><span style="--c:var(--grade-good)">GOOD 30〜54</span>
+      <span style="--c:var(--grade-great)">GREAT 55〜84</span><span style="--c:var(--grade-excellent)">EXCELLENT 85〜</span>
+    </div>`;
 
   attachScoreChartScrub(container, points, { left, plotW, n });
 }

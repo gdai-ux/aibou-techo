@@ -25,12 +25,18 @@
   --level-悪い: #c98a5c;
   --level-最悪: #d4675c;
 
-  /* 睡眠時間の段階（NICE / GOOD / GREAT!! / EXCELLENT!!）。運動リングと同じ目盛り */
+  /* 点数の段階（NICE / GOOD / GREAT!! / EXCELLENT!!）の色。1日の点数・睡眠・運動リングで
+     共通に使う。青の濃淡だけだと段階の違いが読み取れなかったので、この4つだけは
+     はっきり違う色にする（灰青 → 青 → 緑 → 金）。他の色は引き続き抑える */
+  --grade-nice: #7d8ba1;
+  --grade-good: var(--accent, #3d8bff);
+  --grade-great: #34c759;
+  --grade-excellent: #ffd60a;
   --sleep-more: var(--stage-0);
-  --sleep-nice: var(--stage-1);
-  --sleep-good: var(--stage-2);
-  --sleep-great: var(--stage-3);
-  --sleep-excellent: var(--stage-4);
+  --sleep-nice: var(--grade-nice);
+  --sleep-good: var(--grade-good);
+  --sleep-great: var(--grade-great);
+  --sleep-excellent: var(--grade-excellent);
 }
 /* 白いテーマでは「良いほど明るく」が白地に溶けるので、上の段階は濃い側へ寄せる */
 :root.theme-light {
@@ -44,7 +50,12 @@
   --stage-7: #0b2a5c;
   --level-悪い: #b8743f;
   --level-最悪: #c4463a;
+  --grade-nice: #8a94a6;
+  --grade-great: #28a745;
+  --grade-excellent: #d4a000;
 }
+/* 文字を大きめに（設定）。px指定が多いので、画面全体をひとまわり拡大する */
+html.font-large body { zoom: 1.12; }
 
 /* 睡眠時間・体調・毎日の記録を1枚のカードにまとめた時の、区画の仕切り */
 .record-section + .record-section {
@@ -224,7 +235,12 @@
 .score-chart-svg { display: block; width: 100%; height: auto; overflow: visible; }
 .score-chart-svg .grid-line { stroke: var(--border); stroke-width: 1; }
 .score-chart-svg .axis-label { fill: var(--muted); font-size: 8.5px; }
-.score-chart-svg .score-area { fill: var(--accent); fill-opacity: 0.12; }
+.score-chart-svg .score-area { fill: var(--accent); fill-opacity: 0.06; }
+/* 点数の段階の帯（NICE / GOOD / GREAT / EXCELLENT）。どの帯に点が乗っているかで段階が分かる */
+.score-chart-svg .score-band { fill-opacity: 0.09; }
+.score-chart-svg .band-label { font-size: 7.5px; font-weight: 800; letter-spacing: 0.04em; opacity: 0.9; }
+.score-chart-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 10.5px; font-weight: 700; color: var(--muted); }
+.score-chart-legend span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--c); vertical-align: 0; }
 .score-chart-svg .score-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .score-chart-svg .score-dot { stroke: var(--card); stroke-width: 2; }
 .score-chart-svg .score-crosshair { stroke: var(--border-strong); stroke-width: 1; opacity: 0; }

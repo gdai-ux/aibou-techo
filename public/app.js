@@ -3,6 +3,112 @@
 // 共通の部品は history.js / growth.js / scoreChart.js / mascot.js にある。
 // --- 時計 ---
 const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
+// --- サーバーの起き上がり待ち ---
+// Render の無料プランは、しばらく使っていないと最初の1回の応答に20〜30秒かかる。
+// 2.5秒たっても /api/ の応答が無ければ「起こしています」と知らせ、応答が来たら消す
+(function watchServerWake() {
+  let alive = false;
+  let el = null;
+  const origFetch = window.fetch;
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    const p = origFetch.apply(this, arguments);
+    if (url.startsWith('/api/')) p.then(() => { alive = true; hide(); }, () => {});
+    return p;
+  };
+  function show() {
+    if (alive || el) return;
+    el = document.createElement('div');
+    el.className = 'wake-notice';
+    el.innerHTML = '<span class="wake-spin" aria-hidden="true"></span><span>サーバーを起こしています… 最初の1回は20〜30秒かかることがあります</span>';
+    const panel = document.querySelector('.input-panel');
+    if (panel) panel.parentNode.insertBefore(el, panel); else document.body.appendChild(el);
+  }
+  function hide() { if (el) { el.remove(); el = null; } }
+  setTimeout(show, 2500);
+  setTimeout(hide, 90 * 1000);
+})();
+
+// --- はじめての人への案内（最初の1回だけ） ---
+(function showOnboardingOnce() {
+  let seen = false;
+  try { seen = localStorage.getItem('onboardingSeen') === '1'; } catch (e) { /* プライベートモード等 */ }
+  if (seen) return;
+  const panel = document.querySelector('.input-panel');
+  if (!panel) return;
+  const card = document.createElement('div');
+  card.className = 'card onboard';
+  card.innerHTML = `
+    <div class="onboard-title">はじめまして！記録は3ステップです</div>
+    <ol class="onboard-steps">
+      <li><b>1</b><span>下のタブで <strong>メモ・運動・飲食・睡眠・体調</strong> を選ぶ</span></li>
+      <li><b>2</b><span>書くか、マイクで話す。青いマイクは話すだけで種類も内容も自動で入ります</span></li>
+      <li><b>3</b><span><strong>記録する</strong> を押す。記録するほど相棒が育ちます</span></li>
+    </ol>
+    <button type="button" class="onboard-ok">わかった</button>`;
+  card.querySelector('.onboard-ok').addEventListener('click', () => {
+    try { localStorage.setItem('onboardingSeen', '1'); } catch (e) { /* 同上 */ }
+    card.remove();
+  });
+  panel.parentNode.insertBefore(card, panel);
+})();
+
+// --- 飲食の候補チップ（よく食べるもの・前回と同じ） ---
+// 履歴（history.js の loadHistory）が読めるたびに作り直す。押すと品目の欄に1行足す
+function renderMealChips(days) {
+  const area = document.getElementById('mealItems');
+  if (!area || !Array.isArray(days)) return;
+  let box = document.getElementById('mealChips');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'mealChips';
+    box.className = 'meal-chips';
+    const row = area.closest('.field-row');
+    (row || area).parentNode.insertBefore(box, (row || area).nextSibling);
+  }
+  const strip = (it) => String(it).replace(/^\d{1,2}:\d{2}\s+/, '').replace(/（(約[\d,]+kcal|kcal不明)）\s*$/, '').trim();
+  const count = new Map();
+  const recent = days.slice(0, 60);
+  recent.forEach((d) => (d.meals || []).forEach((m) => (m.items || []).forEach((it) => {
+    const t = strip(it);
+    if (t) count.set(t, (count.get(t) || 0) + 1);
+  })));
+  const top = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
+  const addLine = (text) => {
+    const lines = area.value.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (!lines.includes(text)) lines.push(text);
+    area.value = lines.join('\n');
+    area.dataset.touched = '1';
+    area.dispatchEvent(new Event('input', { bubbles: true }));
+    if (typeof refitTextarea === 'function') refitTextarea(area);
+  };
+  box.textContent = '';
+  // 「前回と同じ」: いま選んでいる種類（朝食など）の直近の食事をまとめて入れる
+  const same = document.createElement('button');
+  same.type = 'button';
+  same.className = 'chip meal-chip meal-chip-same';
+  same.textContent = '前回と同じ';
+  same.addEventListener('click', () => {
+    const form = area.closest('form');
+    const typeInput = form && form.querySelector('[name="mealType"]');
+    const type = typeInput ? typeInput.value : '';
+    const last = recent.flatMap((d) => d.meals || []).find((m) => !type || m.mealType === type);
+    if (!last) return;
+    (last.items || []).map(strip).filter(Boolean).forEach(addLine);
+  });
+  box.appendChild(same);
+  top.forEach((t) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip meal-chip';
+    b.textContent = t;
+    b.addEventListener('click', () => addLine(t));
+    box.appendChild(b);
+  });
+  box.hidden = !top.length && !recent.some((d) => (d.meals || []).length);
+}
+window.renderMealChips = renderMealChips;
+
 function updateClock() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
@@ -192,14 +298,14 @@ const DAY_RAIN_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50
 // 色はリング・言葉・曜日ドットで共通に使う（--ring-color）。
 // 色は history.css の段階の目盛り（--stage-0〜7）。日数が増えるほど青→白へ明るくなる
 const RING_STAGES = [
-  { word: "LET'S MOVE",  color: 'var(--stage-0)' },  // 0/7 グレー
-  { word: 'NICE',        color: 'var(--stage-1)' },  // 1/7
-  { word: 'GOOD',        color: 'var(--stage-2)' },  // 2/7
-  { word: 'GREAT!!',     color: 'var(--stage-3)' },  // 3/7 アクセント
-  { word: 'EXCELLENT!!', color: 'var(--stage-4)' },  // 4/7
-  { word: 'AMAZING!!',   color: 'var(--stage-5)' },  // 5/7
-  { word: 'AWESOME!!',   color: 'var(--stage-6)' },  // 6/7
-  { word: 'PERFECT!!!',  color: 'var(--stage-7)' },  // 7/7 白
+  { word: "LET'S MOVE",  color: 'var(--stage-0)' },        // 0/7 グレー
+  { word: 'NICE',        color: 'var(--grade-nice)' },      // 1/7 灰青
+  { word: 'GOOD',        color: 'var(--grade-good)' },      // 2/7 青
+  { word: 'GREAT!!',     color: 'var(--grade-great)' },     // 3/7 緑
+  { word: 'EXCELLENT!!', color: 'var(--grade-excellent)' }, // 4/7 金
+  { word: 'AMAZING!!',   color: 'var(--warn)' },            // 5/7 オレンジ
+  { word: 'AWESOME!!',   color: 'var(--pink)' },            // 6/7 ピンク
+  { word: 'PERFECT!!!',  color: 'var(--purple)' },          // 7/7 紫
 ];
 function ringStage(days) {
   return RING_STAGES[Math.min(Math.max(days, 0), RING_STAGES.length - 1)];

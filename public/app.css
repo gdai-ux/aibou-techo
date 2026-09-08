@@ -2001,3 +2001,21 @@
   html.header-plain .page-header.gohan-roam .gohan-block,
   html.header-plain .page-header.gohan-roam .gohan-cloud { display: none; }
   html.header-plain .page-header.gohan-roam { background: var(--bg-blur) !important; }
+
+  /* --- はじめての案内（最初の1回だけ） --- */
+  .onboard { border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+  .onboard-title { font-size: 15px; font-weight: 800; margin-bottom: 10px; }
+  .onboard-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .onboard-steps li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; line-height: 1.6; color: var(--text); }
+  .onboard-steps li b { flex: 0 0 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .onboard-steps strong { font-weight: 800; }
+  .onboard-ok { appearance: none; border: 0; margin-top: 12px; width: 100%; padding: 11px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--accent-text); background: var(--accent); cursor: pointer; }
+  /* --- サーバーを起こしている間の知らせ --- */
+  .wake-notice { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; font-size: 12.5px; line-height: 1.5; color: var(--muted); background: var(--card); }
+  .wake-spin { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: wakeSpin 0.9s linear infinite; }
+  @keyframes wakeSpin { to { transform: rotate(360deg); } }
+  /* --- 飲食の候補チップ --- */
+  .meal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .meal-chips[hidden] { display: none; }
+  .meal-chips .meal-chip { padding: 6px 11px; font-size: 12px; border-radius: 999px; font-weight: 600; }
+  .meal-chips .meal-chip-same { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }

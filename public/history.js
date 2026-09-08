@@ -793,6 +793,7 @@ async function loadHistory() {
     allDays = data.days;
     // ホーム画面の「今日」カードの数字も同じデータから更新する
     if (typeof renderTodayStats === 'function') renderTodayStats(allDays);
+    if (typeof renderMealChips === 'function') renderMealChips(allDays);
 
     // ハッシュ指定(#day-YYYY-MM-DD)があれば、その日が今週なら「今週」、
     // それより前ならその月の「月ごと」を初期表示にする（記録直後の再読み込みでは
@@ -1192,6 +1193,51 @@ function refreshThemeChoice() {
 
 // ⚙️ボタンから開く「設定」メニュー。キャラクターの着せ替え（トップ画面のみ）と
 // Notion連携を、それぞれ一項目として並べる。
+// --- 文字の大きさ（設定）。どの画面でも効くよう、共通のここで持つ ---
+const FONT_LARGE_KEY = 'fontLarge';
+function fontLargeOn() {
+  try { return localStorage.getItem(FONT_LARGE_KEY) === 'on'; } catch (e) { return false; }
+}
+function setFontLarge(on) {
+  try { localStorage.setItem(FONT_LARGE_KEY, on ? 'on' : 'off'); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  document.documentElement.classList.toggle('font-large', on);
+}
+document.documentElement.classList.toggle('font-large', fontLargeOn());
+
+// --- 記録の書き出し（CSV）。バックアップや、表計算で自分なりに眺めるために ---
+async function exportHistoryCsv() {
+  const resp = await fetch('/api/history?days=730', { headers: notionHeaders() });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || '取得に失敗しました');
+  const rows = [['日付', '曜日', '種類', '時刻', '内容', 'kcal']];
+  const timeOf = (s) => (String(s).match(/^(\d{1,2}:\d{2})\s/) || [])[1] || '';
+  (data.days || []).forEach((d) => {
+    const base = [d.dateStr, d.weekday];
+    if (d.sleep && d.sleep.bedtime) rows.push([...base, '睡眠', `${d.sleep.bedtime}→${d.sleep.wake}`, `${d.sleep.hours}時間${d.sleep.minutes}分`, '']);
+    (d.meals || []).forEach((m) => (m.items || []).forEach((it) => {
+      const k = splitKcal(String(it).replace(/^\d{1,2}:\d{2}\s+/, ''));
+      rows.push([...base, m.mealType || '食事', timeOf(it), k.text, k.kcal == null ? '' : k.kcal]);
+    }));
+    (d.exercise || []).forEach((e) => {
+      const b = splitBurnedKcal(e.content || '');
+      rows.push([...base, '運動', e.time || '', (b && b.text) || e.content || '', b && b.kcal != null ? `-${b.kcal}` : '']);
+    });
+    (d.condition || []).forEach((c) => rows.push([...base, '体調', c.time || '', [c.level, c.stool ? `排便:${c.stool}` : '', c.note].filter(Boolean).join(' '), '']));
+    (d.memo || []).forEach((m) => rows.push([...base, 'メモ', m.time || '', m.content || '', '']));
+    if (d.review && d.review.content) rows.push([...base, 'ふりかえり', '', d.review.content, '']);
+  });
+  // Excelでも文字化けしないよう BOM を付ける
+  const csv = '\uFEFF' + rows.map((r) => r.map((v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = URL.createObjectURL(blob);
+  a.download = `kiroku-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
 function openSettingsMenu() {
   let overlay = document.getElementById('settingsMenuModal');
   if (!overlay) {
@@ -1238,6 +1284,17 @@ function openSettingsMenu() {
             <span class="settings-menu-title">データベース形式へ移行</span>
             <span class="settings-menu-desc" id="migrateDesc">記録をNotionデータベースにコピーします（元のページは残ります）</span>
           </button>
+          <button type="button" class="settings-menu-item" id="settingsItemExport">
+            <span class="settings-menu-title">記録を書き出す</span>
+            <span class="settings-menu-desc">これまでの記録をCSVファイルで保存します（バックアップや表計算に）</span>
+          </button>
+          <div class="settings-menu-item settings-switch-item" id="settingsItemFont">
+            <span class="settings-menu-title">文字を大きめに</span>
+            <label class="hs-switch">
+              <input type="checkbox" id="fontLargeToggle" />
+              <span class="hs-knob"></span>
+            </label>
+          </div>
           <div class="settings-menu-item settings-switch-item" id="settingsItemSound" hidden>
             <span class="settings-menu-title">効果音</span>
             <label class="hs-switch">
@@ -1315,6 +1372,11 @@ function openSettingsMenu() {
       if (window.setHeaderScene) setHeaderScene(e.target.checked);
     });
     document.getElementById('settingsItemMigrate').addEventListener('click', runDbMigration);
+    document.getElementById('settingsItemExport').addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      exportHistoryCsv().catch((e) => alert(`書き出せませんでした: ${e.message}`));
+    });
+    document.getElementById('fontLargeToggle').addEventListener('change', (e) => setFontLarge(e.target.checked));
   }
   refreshThemeChoice();
   refreshMigrateItem();
@@ -1327,6 +1389,7 @@ function openSettingsMenu() {
   if (window.fxCalm) document.getElementById('fxCalmToggle').checked = fxCalm();
   document.getElementById('settingsItemHeaderScene').hidden = !window.setHeaderScene;
   if (window.headerSceneOn) document.getElementById('headerSceneToggle').checked = headerSceneOn();
+  document.getElementById('fontLargeToggle').checked = fontLargeOn();
   // Web版（ログインあり）: 保存先の設定は要らないので「天気の地域」だけにし、アカウントの項目を出す
   const authMode = !!window.authRequired;
   document.getElementById('settingsItemNotionTitle').textContent = authMode ? '天気の地域' : 'Notion連携と天気の地域';

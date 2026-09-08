@@ -25,6 +25,7 @@ try {
   // 演出ひかえめ・ヘッダーの景色OFFも、描画前に付けてちらつかせない
   if (localStorage.getItem('fxLevel') === 'calm') document.documentElement.classList.add('fx-calm');
   if (localStorage.getItem('headerScene') === 'off') document.documentElement.classList.add('header-plain');
+  if (localStorage.getItem('fontLarge') === 'on') document.documentElement.classList.add('font-large');
   for (var hsKey in hsOff) {
     if (hsOff[hsKey] === false && /^[a-z]+$/.test(hsKey)) document.documentElement.classList.add('hs-off-' + hsKey);
   }

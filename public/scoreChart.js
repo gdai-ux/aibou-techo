@@ -67,7 +67,7 @@ function renderScoreChart(container, days, today) {
   const todayPoint = points[n - 1];
   // 上下どちらに置いても軸のラベルや枠にぶつからないよう、点の高さで出す向きを変える
   const todayLabelY = todayPoint.score >= 55 ? yAt(todayPoint.score) + 14 : yAt(todayPoint.score) - 9;
-  const todayLabel = `<text class="today-label" x="${xAt(n - 1) - 6}" y="${todayLabelY}" text-anchor="end">進行中</text>`;
+  const todayLabel = ''; // 「進行中」の文字は出さない（点線と輪っかの点で伝える）
 
   // 段階の帯。点がどの帯に乗っているかで NICE〜EXCELLENT が読み取れる（境目は growth.js と同じ）
   const bands = [
@@ -167,7 +167,7 @@ function attachScoreChartScrub(container, points, { left, plotW, n }) {
     crosshair.style.opacity = '1';
 
     const isToday = i === points.length - 1;
-    tip.innerHTML = `<div class="tip-date">${scoreChartEsc(p.label)}${isToday ? '<span class="tip-live">・進行中</span>' : ''}</div>`
+    tip.innerHTML = `<div class="tip-date">${scoreChartEsc(p.label)}</div>`
       + `<span class="tip-score">${p.score}<small>/100</small></span>`
       + (p.word ? `<span class="tip-word" style="color:${p.color}">${scoreChartEsc(p.word)}</span>` : '');
     tip.style.left = `${cx}px`;

@@ -831,7 +831,7 @@ function renderTodayScore() {
   if (!el || !gohanState || !gohanState.todayScore) return;
   const s = gohanState.todayScore;
   el.style.color = s.color;
-  el.innerHTML = `${s.score}<small>/${s.max}</small>${s.word ? ` <b>${s.word}</b>` : ''} <span class="review-live">・進行中</span>`;
+  el.innerHTML = `${s.score}<small>/${s.max}</small>${s.word ? ` <b>${s.word}</b>` : ''}`;
   el.hidden = false;
 }
 

@@ -84,6 +84,46 @@
   text-align: center;
   letter-spacing: -0.2px;
 }
+/* 「今週」の時は月送りの矢印を出さず、週の名前と日付の範囲だけを見せる */
+.month-nav.week button { display: none; }
+.month-nav .month-label small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+/* 今週 / 月ごと の切り替え */
+.period-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 auto 12px;
+  padding: 3px;
+  width: max-content;
+  border-radius: 999px;
+  background: var(--fill);
+  border: 1px solid var(--border);
+}
+.period-tabs button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s ease, color .15s ease;
+}
+.period-tabs button.active {
+  color: var(--text);
+  background: var(--card);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
 
 .card h2 {
   font-size: 12px;

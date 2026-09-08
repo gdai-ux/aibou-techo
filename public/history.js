@@ -387,7 +387,7 @@ function renderSleepChart(days) {
   const recent = days.filter((d) => d.sleep && d.sleep.totalMinutes);
   const el = document.getElementById('sleepChart');
   if (!recent.length) {
-    el.innerHTML = '<div class="empty">この月の睡眠記録はありません</div>';
+    el.innerHTML = `<div class="empty">${periodWord()}の睡眠記録はありません</div>`;
     return;
   }
   const max = Math.max(...recent.map((d) => d.sleep.totalMinutes), 8 * 60);
@@ -407,7 +407,7 @@ function renderLevelChart(days) {
   const recent = days.filter((d) => d.condition.some((c) => c.level));
   const el = document.getElementById('levelChart');
   if (!recent.length) {
-    el.innerHTML = '<div class="empty">この月の体調レベル記録はありません</div>';
+    el.innerHTML = `<div class="empty">${periodWord()}の体調レベル記録はありません</div>`;
     return;
   }
   el.innerHTML = recent.slice().reverse().map((d) => {
@@ -464,7 +464,7 @@ function entryHead(label, time, meta = '', typed = false) {
 function renderDayList(days) {
   const el = document.getElementById('dayList');
   if (!days.length) {
-    el.innerHTML = '<div class="empty">この月の記録はありません</div>';
+    el.innerHTML = `<div class="empty">${periodWord()}の記録はありません</div>`;
     return;
   }
   el.innerHTML = days.map((d) => {
@@ -640,13 +640,103 @@ function renderDayList(days) {
   });
 }
 
-// --- 月別表示 ---
+// --- 期間の表示（今週 / 月ごと） ---
+// ふだんは「今週」（月曜はじまりの7日分）だけを見せる。月まるごと並べると
+// 記録が多すぎて目的の日にたどり着きにくいため。それより前は「月ごと」に
+// 切り替えて、月を送りながら振り返る
 let allDays = [];
+let viewMode = 'week'; // 'week' | 'month'
 let viewYear = null;
 let viewMonth = null; // 0-indexed
 
 function monthKey(y, m) {
   return `${y}-${String(m + 1).padStart(2, '0')}`;
+}
+
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function mondayOf(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+// 週は月曜はじまり。月をまたぐ週が「何月の第何週」かは木曜日の属する月で決める
+// （7日のうち多い方の月に入る。9/1が火曜なら 8/31〜9/6 が「9月 第1週」）。
+// 第n週の n は、その月に属する週を頭から数えた番号
+function weekOf(date) {
+  const mon = mondayOf(date);
+  const sun = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6);
+  const thu = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 3);
+  // その月に属する最初の週の月曜を探す（1日を含む週の木曜が前月なら、次の週が第1週）
+  let firstMon = mondayOf(new Date(thu.getFullYear(), thu.getMonth(), 1));
+  const firstThu = new Date(firstMon.getFullYear(), firstMon.getMonth(), firstMon.getDate() + 3);
+  if (firstThu.getMonth() !== thu.getMonth()) firstMon = new Date(firstMon.getFullYear(), firstMon.getMonth(), firstMon.getDate() + 7);
+  const n = Math.round((mon - firstMon) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return { mon, sun, year: thu.getFullYear(), month: thu.getMonth(), n };
+}
+
+const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'];
+function shortDateOf(d) {
+  return `${d.getMonth() + 1}/${d.getDate()}（${WEEKDAY_JA[d.getDay()]}）`;
+}
+
+// 空の時の文言に使う（「今週の記録はありません」「この月の記録はありません」）
+function periodWord() {
+  return viewMode === 'week' ? '今週' : 'この月';
+}
+
+// 「今週 / 月ごと」の切り替え。月送りの行（.month-nav）の上に置く
+function setupPeriodTabs() {
+  const nav = document.querySelector('.month-nav');
+  if (!nav || document.querySelector('.period-tabs')) return;
+  const tabs = document.createElement('div');
+  tabs.className = 'period-tabs';
+  tabs.setAttribute('role', 'tablist');
+  tabs.innerHTML = `
+    <button type="button" role="tab" data-mode="week">今週</button>
+    <button type="button" role="tab" data-mode="month">月ごと</button>`;
+  tabs.querySelectorAll('button').forEach((b) => {
+    b.addEventListener('click', () => {
+      if (viewMode === b.dataset.mode) return;
+      viewMode = b.dataset.mode;
+      if (viewMode === 'month' && viewYear === null) {
+        const now = new Date();
+        viewYear = now.getFullYear();
+        viewMonth = now.getMonth();
+      }
+      renderPeriod();
+    });
+  });
+  nav.parentNode.insertBefore(tabs, nav);
+}
+
+function renderPeriod() {
+  setupPeriodTabs();
+  document.querySelectorAll('.period-tabs button').forEach((b) => {
+    const on = b.dataset.mode === viewMode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+  const nav = document.querySelector('.month-nav');
+  if (nav) nav.classList.toggle('week', viewMode === 'week');
+  if (viewMode === 'week') renderWeek(); else renderMonth();
+}
+
+function renderWeek() {
+  const w = weekOf(new Date());
+  const label = document.getElementById('monthLabel');
+  if (label) {
+    label.innerHTML = `${w.month + 1}月 第${w.n}週<small>${shortDateOf(w.mon)}〜${shortDateOf(w.sun)}</small>`;
+  }
+  const from = ymd(w.mon);
+  const to = ymd(w.sun);
+  const weekDays = allDays.filter((d) => d.dateStr >= from && d.dateStr <= to);
+  renderSleepChart(weekDays);
+  renderLevelChart(weekDays);
+  renderDayList(weekDays);
 }
 
 function renderMonth() {
@@ -687,18 +777,26 @@ async function loadHistory() {
     if (!resp.ok) throw new Error(data.error || '取得に失敗しました');
     allDays = data.days;
 
-    // ハッシュ指定(#day-YYYY-MM-DD)があれば、その日付が属する月を初期表示にする
-    const hashMatch = location.hash.match(/^#day-(\d{4})-(\d{2})-\d{2}$/);
+    // ハッシュ指定(#day-YYYY-MM-DD)があれば、その日が今週なら「今週」、
+    // それより前ならその月の「月ごと」を初期表示にする（記録直後の再読み込みでは
+    // 今の表示（今週 / 見ていた月）をそのまま保つ）
+    const hashMatch = location.hash.match(/^#day-(\d{4})-(\d{2})-(\d{2})$/);
     const now = new Date();
-    if (hashMatch) {
-      viewYear = Number(hashMatch[1]);
-      viewMonth = Number(hashMatch[2]) - 1;
-    } else {
+    if (viewYear === null) {
       viewYear = now.getFullYear();
       viewMonth = now.getMonth();
+      if (hashMatch) {
+        const w = weekOf(now);
+        const target = `${hashMatch[1]}-${hashMatch[2]}-${hashMatch[3]}`;
+        if (target < ymd(w.mon) || target > ymd(w.sun)) {
+          viewMode = 'month';
+          viewYear = Number(hashMatch[1]);
+          viewMonth = Number(hashMatch[2]) - 1;
+        }
+      }
     }
 
-    renderMonth();
+    renderPeriod();
     updateBackfillButton();
 
     if (location.hash) {

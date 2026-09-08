@@ -75,7 +75,7 @@ function renderScoreChart(container, days, today) {
     [55, 85, 'var(--grade-great)', 'GREAT'], [85, 100, 'var(--grade-excellent)', 'EXCELLENT'],
   ].map(([a, b, c, w]) => `
     <rect class="score-band" x="${left}" y="${yAt(b).toFixed(1)}" width="${plotW}" height="${(yAt(a) - yAt(b)).toFixed(1)}" fill="${c}"></rect>
-    <text class="band-label" x="${SCORE_CHART_W - right - 3}" y="${(yAt(b) + 8).toFixed(1)}" text-anchor="end" fill="${c}">${w}</text>`).join('');
+    <text class="band-label" x="${left + 9}" y="${(yAt(b) + 8).toFixed(1)}" fill="${c}">${w}</text>`).join('');
 
   const gridLines = [0, 50, 100].map((v) => `
     <line class="grid-line" x1="${left}" x2="${SCORE_CHART_W - right}" y1="${yAt(v)}" y2="${yAt(v)}"></line>

@@ -3,28 +3,32 @@
    共通の部品（履歴・設定シート・チャートなど）は history.css にある。 */
   :root {
     color-scheme: dark;
-    --bg: #000000;
-    --bg-blur: rgba(0, 0, 0, 0.72);
-    --card: #1c1c1e;
-    --fill: rgba(140, 140, 150, 0.32);
+    /* 純黒ではなく、少し浮かせた墨色。面（カード）はそこからさらに一段明るいだけで、
+       線や影で囲まない。色はアクセント1色＋グレーの濃淡で組む */
+    --bg: #0e0e11;
+    --bg-blur: rgba(14, 14, 17, 0.78);
+    --card: #17171b;
+    --fill: rgba(255, 255, 255, 0.07);
     --text: #f2f2f7;
-    --muted: #98989f;
-    --accent: #0a84ff;
-    --accent-2: #64d2ff;
+    --muted: #8e8e96;
+    --accent: #3d8bff;
+    --accent-2: color-mix(in srgb, var(--accent) 70%, #ffffff);
     --accent-text: #ffffff;
     /* 境界線は「線で囲む」のではなく「面の境目をうっすら示す」太さにする。
        操作できるもの（入力欄・ボタン）だけ少し強い線を使う。 */
-    --border: rgba(255, 255, 255, 0.09);
-    --border-strong: rgba(255, 255, 255, 0.16);
+    --border: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.1);
     --ok: #34c759;
-    --record-ok: #ffd60a;
+    /* 記録できた時の色。以前は黄色だったが、色数を減らすためアクセントの明るい側にする */
+    --record-ok: var(--accent-2);
     --err: #ff453a;
     --warn: #ff9f0a;
     --pink: #ff375f;
     --purple: #bf5af2;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 36px -22px rgba(0, 0, 0, 0.9);
-    /* カード上端のごく淡いハイライト。面が光を受けているように見せる */
-    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    /* 影とハイライトは使わない（面の明るさの差だけで段を作る）。
+       他の場所で box-shadow: var(--shadow) と書けるよう、透明の影を置いておく */
+    --shadow: 0 0 0 0 transparent;
+    --edge: 0 0 0 0 transparent;
     --ease: cubic-bezier(.32, .72, 0, 1);
     /* 時計カードは背景に天気の色が乗るため、--muted ではなく専用トークンで
        文字色を作る（ホワイトテーマでは黒の透明度に切り替わる） */
@@ -33,7 +37,7 @@
     --clock-track: rgba(255, 255, 255, 0.16);
     --clock-fill: rgba(255, 255, 255, 0.85);
     /* カテゴリタブの選択つまみ（ホワイトテーマでは白いつまみに変わる） */
-    --seg-thumb: #303034;
+    --seg-thumb: #2a2a30;
     /* マスコットの縁取り。背景と同系色のキャラクター（黒地のダンベルくん、
        白地のもちくん等）でも輪郭が沈まないよう、ドット絵風に1px縁取る */
     --sprite-outline: rgba(255, 255, 255, 0.32);
@@ -56,17 +60,17 @@
     --fill: rgba(120, 120, 128, 0.12);
     --text: #1c1c1e;
     --muted: #6e6e73;
-    --accent: #007aff;
-    --accent-2: #32ade6;
-    --border: rgba(0, 0, 0, 0.08);
-    --border-strong: rgba(0, 0, 0, 0.16);
-    --record-ok: #d4a000; /* 白地では黄色の文字が読めないので少し濃く */
+    --accent: #2f7cf6;
+    --accent-2: color-mix(in srgb, var(--accent) 80%, #000000);
+    --border: rgba(0, 0, 0, 0.06);
+    --border-strong: rgba(0, 0, 0, 0.1);
+    --record-ok: var(--accent-2);
     --warn: #ff9500;
     --err: #ff3b30;
     --pink: #ff2d55;
     --purple: #af52de;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 18px 36px -22px rgba(0, 0, 0, 0.25);
-    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --shadow: 0 0 0 0 transparent;
+    --edge: 0 0 0 0 transparent;
     --clock-sub: rgba(0, 0, 0, 0.6);
     --clock-sub2: rgba(0, 0, 0, 0.52);
     --clock-track: rgba(0, 0, 0, 0.14);
@@ -95,9 +99,9 @@
     body { max-width: 760px; }
   }
   h1 {
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: -0.4px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
     margin: 0;
   }
   .section-title {
@@ -162,7 +166,7 @@
     height: 36px;
     border-radius: 50%;
     background: var(--fill);
-    border: 1px solid var(--border);
+    border: none;
     text-decoration: none;
     font-size: 16px;
     color: var(--text);
@@ -184,8 +188,8 @@
     grid-template-columns: repeat(5, 1fr);
     gap: 2px;
     background: var(--fill);
-    border: 1px solid var(--border);
-    border-radius: 13px;
+    border: none;
+    border-radius: 12px;
     padding: 3px;
     margin-bottom: 16px;
   }
@@ -196,9 +200,8 @@
     width: calc(20% - 2.4px);
     height: calc(100% - 6px);
     background: var(--seg-thumb);
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: none;
+    border-radius: 9px;
     transition: left .28s var(--ease), width .28s var(--ease);
     z-index: 0;
   }
@@ -250,12 +253,12 @@
 
   .card {
     background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    /* 余白・角丸・間隔はカードごとに変えず、ここで一括してそろえる */
+    border: none;
+    border-radius: 16px;
+    /* 余白・角丸・間隔はカードごとに変えず、ここで一括してそろえる。
+       線と影は付けない（背景との明るさの差だけで面を見せる） */
     padding: 18px;
     margin-bottom: 12px;
-    box-shadow: var(--shadow), var(--edge);
   }
   label {
     display: block;
@@ -272,7 +275,7 @@
     width: 100%;
     padding: 13px 14px;
     font-size: 16px;
-    border: 1px solid var(--border-strong);
+    border: 1px solid transparent;
     border-radius: 12px;
     background: var(--fill);
     color: var(--text);
@@ -304,7 +307,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border-strong);
+    border: none;
     border-radius: 12px;
     background: var(--fill);
     cursor: pointer;
@@ -332,7 +335,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border-strong);
+    border: none;
     border-radius: 12px;
     background: var(--fill);
     cursor: pointer;
@@ -361,16 +364,16 @@
     font-size: 15px;
     font-weight: 700;
     letter-spacing: -0.1px;
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
-    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-    border-radius: 16px;
+    color: var(--accent-text);
+    background: var(--accent);
+    border: 1px solid transparent;
+    border-radius: 14px;
     cursor: pointer;
     transition: transform .1s var(--ease), background .15s ease, color .15s ease, border-color .15s ease;
   }
   button.submit:active {
     transform: scale(0.98);
-    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    background: color-mix(in srgb, var(--accent) 85%, #000000);
   }
   button.submit:disabled { opacity: 0.5; }
   /* 記録成功時は、ボタン自体を一時的に黄色にして「記録が完了しました」を表示する。
@@ -380,9 +383,9 @@
     transition: color 0.5s ease, background-color 0.5s ease, border-color 0.5s ease;
   }
   button.submit.success {
-    color: var(--record-ok);
-    background: color-mix(in srgb, var(--record-ok) 14%, transparent);
-    border-color: color-mix(in srgb, var(--record-ok) 50%, transparent);
+    color: var(--accent-text);
+    background: var(--record-ok);
+    border-color: transparent;
   }
   /* 戻る直前に中身（マスコット・文字）をふわっと消す */
   button.submit .submit-msg, button.submit .gohan-kun { transition: opacity 0.25s ease; }
@@ -503,9 +506,7 @@
   .clock-card {
     text-align: center;
     padding: 24px 18px 20px;
-    background:
-      radial-gradient(130% 150% at 50% -40%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, transparent 62%),
-      var(--card);
+    background: var(--card);
   }
   .clock-row {
     display: flex;
@@ -1907,3 +1908,13 @@
     -webkit-tap-highlight-color: transparent;
   }
   .smart-voice-status-row.show-dismiss .smart-voice-dismiss { display: block; }
+
+  /* --- しずかな見た目（線と影を減らし、色をアクセント1色に寄せる）の仕上げ。
+     個別のルールを全部書き換えるより、ここでまとめて上書きする方が追いやすい --- */
+  .smart-voice-btn { border-color: transparent; }
+  .gohan-lv { border-color: transparent; }
+  .cal-nav { border: none; }
+  /* 入力欄の横のマイクは、押せることが分かる程度に沈めておく（録音中は赤いまま） */
+  .voice-btn:not(.recording) { background: transparent; }
+  /* 日付の行の編集ボタンは、押すまでは目立たせない */
+  .day-title .day-edit-btn:not(.active) { opacity: 0.55; }

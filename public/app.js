@@ -190,15 +190,16 @@ const DAY_RAIN_SVG = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50
 
 // リングの中に出す言葉と、その段階の色。週7日のうち何日運動したかで1日ずつ上がる。
 // 色はリング・言葉・曜日ドットで共通に使う（--ring-color）。
+// 色は history.css の段階の目盛り（--stage-0〜7）。日数が増えるほど青→白へ明るくなる
 const RING_STAGES = [
-  { word: "LET'S MOVE",  color: 'var(--muted)' },      // 0/7 グレー
-  { word: 'NICE',        color: 'var(--accent)' },     // 1/7 青
-  { word: 'GOOD',        color: 'var(--accent-2)' },   // 2/7 水色
-  { word: 'GREAT!!',     color: 'var(--ok)' },         // 3/7 緑
-  { word: 'EXCELLENT!!', color: 'var(--record-ok)' },  // 4/7 黄色
-  { word: 'AMAZING!!',   color: 'var(--warn)' },       // 5/7 オレンジ
-  { word: 'AWESOME!!',   color: 'var(--pink)' },       // 6/7 ピンク
-  { word: 'PERFECT!!!',  color: 'var(--purple)' },     // 7/7 紫
+  { word: "LET'S MOVE",  color: 'var(--stage-0)' },  // 0/7 グレー
+  { word: 'NICE',        color: 'var(--stage-1)' },  // 1/7
+  { word: 'GOOD',        color: 'var(--stage-2)' },  // 2/7
+  { word: 'GREAT!!',     color: 'var(--stage-3)' },  // 3/7 アクセント
+  { word: 'EXCELLENT!!', color: 'var(--stage-4)' },  // 4/7
+  { word: 'AMAZING!!',   color: 'var(--stage-5)' },  // 5/7
+  { word: 'AWESOME!!',   color: 'var(--stage-6)' },  // 6/7
+  { word: 'PERFECT!!!',  color: 'var(--stage-7)' },  // 7/7 白
 ];
 function ringStage(days) {
   return RING_STAGES[Math.min(Math.max(days, 0), RING_STAGES.length - 1)];

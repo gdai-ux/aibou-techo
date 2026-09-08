@@ -19,22 +19,22 @@ try {
 <style>
   :root {
     color-scheme: dark;
-    --bg: #000000;
-    --bg-blur: rgba(0, 0, 0, 0.72);
-    --card: #1c1c1e;
-    --fill: rgba(140, 140, 150, 0.32);
+    --bg: #0e0e11;
+    --bg-blur: rgba(14, 14, 17, 0.78);
+    --card: #17171b;
+    --fill: rgba(255, 255, 255, 0.07);
     --text: #f2f2f7;
-    --muted: #98989f;
-    --accent: #0a84ff;
-    --accent-2: #64d2ff;
+    --muted: #8e8e96;
+    --accent: #3d8bff;
+    --accent-2: color-mix(in srgb, var(--accent) 70%, #ffffff);
     --accent-text: #ffffff;
     /* 境界線・影・角丸はホーム画面（index.html）と同じ値にそろえている */
-    --border: rgba(255, 255, 255, 0.09);
-    --border-strong: rgba(255, 255, 255, 0.16);
+    --border: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.1);
     --ok: #34c759;
     --err: #ff453a;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 36px -22px rgba(0, 0, 0, 0.9);
-    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --shadow: 0 0 0 0 transparent;
+    --edge: 0 0 0 0 transparent;
     --ease: cubic-bezier(.32, .72, 0, 1);
   }
   /* ホワイトテーマ（トップ画面の設定 → テーマと連動） */
@@ -45,13 +45,13 @@ try {
     --fill: rgba(120, 120, 128, 0.12);
     --text: #1c1c1e;
     --muted: #6e6e73;
-    --accent: #007aff;
-    --accent-2: #32ade6;
-    --border: rgba(0, 0, 0, 0.08);
-    --border-strong: rgba(0, 0, 0, 0.16);
+    --accent: #2f7cf6;
+    --accent-2: color-mix(in srgb, var(--accent) 80%, #000000);
+    --border: rgba(0, 0, 0, 0.06);
+    --border-strong: rgba(0, 0, 0, 0.1);
     --err: #ff3b30;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 18px 36px -22px rgba(0, 0, 0, 0.25);
-    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    --shadow: 0 0 0 0 transparent;
+    --edge: 0 0 0 0 transparent;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html {
@@ -112,11 +112,10 @@ try {
   .back-link:active { transform: scale(0.95); background: var(--border-strong); }
   .card {
     background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
+    border: none;
+    border-radius: 16px;
     padding: 18px;
     margin-bottom: 12px;
-    box-shadow: var(--shadow), var(--edge);
   }
 </style>
 </head>

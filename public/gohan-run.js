@@ -613,8 +613,7 @@
     const cleared = g.stage + 1;
     if (cleared > g.bestStage) { g.bestStage = cleared; saveBestStage(cleared); }
     updateBest();
-    // ステージをクリアするとハートが1つ回復する
-    if (g.hearts < PLAYER_HEARTS) { g.hearts += 1; renderHearts(); }
+    // ハートはステージごとに回復せず、ボス戦まで通しで3つ（減ったぶんはそのまま持ち越す）
     g.state = 'clear';
     if (cleared >= STAGES.length) showMsg(`STAGE ${cleared} クリア！`, 'タップで…ボスがあらわれる');
     else showMsg(`STAGE ${cleared} クリア！`, `タップで次のステージ（${STAGES[cleared].name}）へ`);

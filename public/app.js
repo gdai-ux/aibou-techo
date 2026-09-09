@@ -1384,6 +1384,14 @@ document.addEventListener('keydown', (event) => {
 
 const mealChips = document.querySelectorAll('.meal-types .chip');
 const mealTypeInput = document.querySelector('input[name="mealType"]');
+const mealItemsInput = document.getElementById('mealItems');
+const MEAL_ITEM_PLACEHOLDERS = {
+  '朝食': '白米\n味噌汁\n卵豆腐',
+  '昼食': '白米\n味噌汁\n卵豆腐',
+  '夕食': '白米\n味噌汁\n卵豆腐',
+  '間食': 'ヨーグルト\nおせんべい',
+  '飲み物': 'コーヒー\n水\nお茶',
+};
 function defaultMealType() {
   const h = new Date().getHours();
   if (h < 10) return '朝食';
@@ -1394,6 +1402,7 @@ function defaultMealType() {
 function setMealType(v) {
   mealTypeInput.value = v;
   mealChips.forEach(c => c.classList.toggle('active', c.dataset.meal === v));
+  if (mealItemsInput) mealItemsInput.placeholder = MEAL_ITEM_PLACEHOLDERS[v] || MEAL_ITEM_PLACEHOLDERS['朝食'];
 }
 mealChips.forEach(c => c.addEventListener('click', () => setMealType(c.dataset.meal)));
 setMealType(defaultMealType());

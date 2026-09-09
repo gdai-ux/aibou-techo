@@ -1517,7 +1517,13 @@ document.querySelectorAll('input[type="time"][name="time"]').forEach((input) => 
   btn.className = 'time-summary';
   btn.dataset.for = input.id;
   btn.setAttribute('aria-label', '記録する時刻を変える');
-  btn.addEventListener('click', () => { form.classList.add('time-open'); input.focus(); });
+  // 隠した入力欄に直接 focus() すると iPhone では標準の（1分刻みの）ピッカーが
+  // 開いてしまうため、代わりに openTimeWheelFor 経由でホイールを開く
+  btn.addEventListener('click', () => {
+    form.classList.add('time-open');
+    if (typeof openTimeWheelFor === 'function') openTimeWheelFor(input);
+    else input.focus();
+  });
   const anchor = (label && label.tagName === 'LABEL') ? label : row;
   anchor.parentNode.insertBefore(btn, anchor);
 });

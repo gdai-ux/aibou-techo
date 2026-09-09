@@ -65,7 +65,7 @@
   // 誤爆しないようにするため。個別のIDではなく共通クラスで見ることで、
   // 今後モーダルが増えても対応漏れが起きないようにしている
   function isModalOpen() {
-    return !!document.querySelector('.modal-overlay:not(.hidden), .timemenu-overlay:not(.hidden)');
+    return !!document.querySelector('.modal-overlay:not(.hidden), .timewheel-overlay:not(.hidden)');
   }
 
   // 引っ張った量(0〜1)に応じて、リングを満たしつつ帯を出す。

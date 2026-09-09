@@ -736,88 +736,43 @@ html.font-large body { zoom: 1.12; }
 }
 .modal-panel .now-btn:active { transform: scale(0.95); }
 
-/* --- 時刻入力（5分刻みselect） ---
-   iOS Safariのinput[type="time"]はホイールピッカーがstep属性を無視して1分刻みに
-   なってしまうため、「時」「分（5分刻み）」の2つのselect（ネイティブのホイール
-   ピッカーとして表示される）に置き換えている。元のinput自体は値の保持・フォーム送信・
-   既存コードとの互換のために残し、視覚的にのみ隠す（history.jsのenhanceTimeInputAsFiveMinuteSelects参照）。
-   display:noneにすると必須項目の入力チェックがスキップされてしまうため、
-   表示だけを消す手法（visually-hidden）を使う。 */
-/* input[type="time"] { width: 100% } の方がこのクラス単体より詳細度が高く、
-   width指定を上書きされてページ全体の横幅がはみ出す原因になっていたため、
-   ここだけは確実に効くよう!importantを付ける。 */
-.time-input-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-  opacity: 0 !important;
-}
 .time-select-wrap {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  gap: 2px;
-  padding: 0;
-  font-size: 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--fill);
-}
-.time-tap {
-  /* 枠の半分ずつが「時」「分」のタップ領域。押すと画面中央のメニューが開く。
+  /* 見えている時刻の欄。押すと画面中央にホイールが開く。
      ボタン要素なのでブラウザ既定の枠・背景・フォントを打ち消しておく */
   appearance: none;
   -webkit-appearance: none;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
   display: flex;
   align-items: center;
-  flex: 1 1 0;
-  min-width: 0;
+  justify-content: center;
+  width: 100%;
   margin: 0;
+  padding: 12px 14px;
   font-family: inherit;
-  font-size: inherit;
-  font-weight: normal;
-  color: inherit;
-  padding: 12px 0;
+  font-size: 16px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--fill);
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 .time-select-display {
   /* 実際に見える数字。ボタンの中に置くだけなので、フォントサイズも
      位置もこちら側で完全に制御できる */
-  width: 100%;
-  color: var(--text);
-  font-size: 16px;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
-.time-tap-hour .time-select-display { text-align: right; }
-.time-tap-minute .time-select-display { text-align: left; }
-.time-select-wrap .time-select-colon {
-  display: flex;
-  align-items: center;
-  padding: 12px 0;
-  color: var(--muted);
-}
-.time-tap:active .time-select-display { opacity: .55; }
-.time-tap:focus-visible {
+.time-select-wrap:active .time-select-display { opacity: .55; }
+.time-select-wrap:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 11px;
 }
 
-/* --- 時刻メニュー（画面中央に出す、標準メニュー風のリスト） ---
-   iOSの標準selectのメニューは開く位置を制御できないため、見た目と操作感を
-   標準メニューに寄せた自前のリストをposition:fixedで画面の中央に出す。 */
-.timemenu-overlay {
+/* --- 時刻ホイール（画面中央に出す、iPhone標準ピッカー風のドラム） ---
+   iOSの標準ピッカーはstep属性を無視して1分刻みになるため、見た目と操作感を
+   標準ピッカーに寄せた自前のホイールをposition:fixedで画面の中央に出す。
+   「時」「分」の2本のドラムを指で回し（scroll-snapで1行ごとに止まる）、✓で確定する。 */
+.timewheel-overlay {
   position: fixed;
   inset: 0;
   z-index: 120; /* 編集モーダル（z-index:50）より前に出す */
@@ -830,61 +785,128 @@ html.font-large body { zoom: 1.12; }
   /* いきなり現れるとびっくりするので、背景の暗転はゆっくりめに入れる */
   animation: fadeIn .28s ease;
 }
-.timemenu-overlay.hidden { display: none; }
+.timewheel-overlay.hidden { display: none; }
 /* 閉じる時もすっと消える（JSがclosingを付け、終わってからhiddenにする） */
-.timemenu-overlay.closing { animation: fadeOut .18s ease forwards; }
-.timemenu-overlay.closing .timemenu-panel { animation: timeMenuOut .18s ease forwards; }
+.timewheel-overlay.closing { animation: fadeOut .18s ease forwards; }
+.timewheel-overlay.closing .timewheel-panel { animation: timeWheelOut .18s ease forwards; }
 @keyframes fadeOut { to { opacity: 0; } }
-@keyframes timeMenuOut { to { opacity: 0; transform: scale(0.94); } }
-body.timemenu-open { overflow: hidden; }
-.timemenu-panel {
-  width: 240px;
-  max-height: 60vh;
-  overflow-y: auto;
+@keyframes timeWheelOut { to { opacity: 0; transform: scale(0.94); } }
+body.timewheel-open { overflow: hidden; }
+.timewheel-panel {
+  width: min(320px, calc(100vw - 40px));
+  padding: 10px 14px 14px;
   background: color-mix(in srgb, var(--card) 90%, #ffffff 10%);
-  border-radius: 14px;
-  padding: 5px 0;
+  border-radius: 18px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
   /* 小さめの状態から、少し下からふわっと浮かび上がる */
-  animation: timeMenuIn .3s cubic-bezier(.32, .72, 0, 1);
+  animation: timeWheelIn .3s cubic-bezier(.32, .72, 0, 1);
   transform-origin: 50% 60%;
 }
-@keyframes timeMenuIn {
+@keyframes timeWheelIn {
   from { opacity: 0; transform: scale(.85) translateY(14px); }
   to { opacity: 1; transform: none; }
 }
-.timemenu-item {
-  appearance: none;
-  -webkit-appearance: none;
+.timewheel-cols {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 4px;
+  height: 220px; /* 1行44px（history.jsのWHEEL_ITEM_HEIGHT）× 5行 */
+}
+.timewheel-col {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 96px;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  touch-action: pan-y;
+  /* 上下の端をうっすら消して、ドラムが奥へ回り込んでいるように見せる */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 72%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 72%, transparent);
+}
+.timewheel-col::-webkit-scrollbar { display: none; }
+.timewheel-spacer { height: 88px; } /* 上下2行ぶん（(5 - 1) / 2 × 44px） */
+.timewheel-item {
+  height: 44px; /* history.jsのWHEEL_ITEM_HEIGHTと合わせる */
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 11px 20px;
-  background: none;
-  border: 0;
-  font-family: inherit;
-  font-size: 20px;
-  color: var(--text);
+  justify-content: center;
+  scroll-snap-align: center;
+  font-size: 23px;
   font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .12s ease, transform .12s ease;
+}
+.timewheel-item.is-center { color: var(--text); font-weight: 600; transform: scale(1.08); }
+.timewheel-colon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  font-size: 23px;
+  font-weight: 600;
+  color: var(--text);
+}
+/* 中央の帯（いま選ばれている行の目印）。ドラムの後ろに敷く */
+.timewheel-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+  border-radius: 10px;
+  background: var(--fill);
+  pointer-events: none;
+}
+.timewheel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.timewheel-now,
+.timewheel-ok {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: transform .1s ease;
 }
-.timemenu-item:active { background: var(--fill); }
-.timemenu-item + .timemenu-item { border-top: 0.5px solid var(--border); }
-.timemenu-item:focus-visible {
+.timewheel-now {
+  padding: 9px 16px;
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.timewheel-ok {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text, #ffffff);
+  font-size: 22px;
+  font-weight: 700;
+}
+.timewheel-now:active, .timewheel-ok:active { transform: scale(.96); }
+.timewheel-now:focus-visible, .timewheel-ok:focus-visible {
   outline: none;
-  background: var(--fill);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
 }
-.timemenu-check {
-  width: 18px;
-  font-size: 16px;
-  opacity: 0;
-}
-.timemenu-item.selected .timemenu-check { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .timemenu-overlay, .timemenu-panel,
-  .timemenu-overlay.closing, .timemenu-overlay.closing .timemenu-panel { animation: none; }
+  .timewheel-overlay, .timewheel-panel,
+  .timewheel-overlay.closing, .timewheel-overlay.closing .timewheel-panel { animation: none; }
+  .timewheel-item { transition: none; }
 }
 
 .chip-row {

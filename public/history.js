@@ -5,14 +5,11 @@
 
 // iOS Safariの<input type="time">は、stepを指定してもホイールピッカー自体は
 // 1分刻みのまま（実機で確認済みの制限で、Web側からは変更できない）。また、
-// 「時」「分」の<select>に置き換えても、iOSのselectのメニューはselect要素の
-// 位置に張り付いて開き、開く位置をWeb側から制御する手段が無い（selectを
-// position:fixedで画面中央に固定しても、メニューはiOS側の都合で画面上部に
-// 寄ってしまう。実機で確認済み）。
+// 隠した欄に直接focus()するとその標準ピッカーが開いてしまう（now-btnや
+// 「変える」ボタンから開く時はopenTimeWheelFor経由にしているのはこのため）。
 //
-// そこで、見た目と操作感を標準メニューに寄せた自前のリストを、確実に
-// 画面の中央に出す。タップした値をすぐ確定して閉じる挙動・チェックマーク・
-// すりガラス風の背景も標準メニューと同じにしている。
+// そこで、見た目と操作感を標準ピッカー（「時」「分」を指で回すドラム）に
+// 寄せた自前のホイールを、確実に画面の中央に出す。
 //
 // 置き換え後も既存コード（buildPayload、now-btn、音声入力の反映、編集モーダルなど）が
 // そのまま動くよう、入力欄の.value自体は消さずに視覚的にだけ隠して残し、
@@ -34,80 +31,165 @@ function roundToStepMinutes(value, stepMinutes, allow24) {
   return `${String(Math.floor(wrapped / 60)).padStart(2, '0')}:${String(wrapped % 60).padStart(2, '0')}`;
 }
 
-// --- 時刻メニュー（画面中央に出す、標準メニュー風のリスト） ----------------
+// --- 時刻ホイール（画面中央に出す、iPhone標準ピッカー風の「時」「分」ドラム） ---
 // 実体は画面に1つだけ作って使い回す（開くたびに中身を差し替える）。
-let timeMenuEl = null;
-let timeMenuOpener = null;
+const WHEEL_ITEM_HEIGHT = 44;  // 1行の高さ（px）。history.css の .timewheel-item と合わせる
+let timeWheelEl = null;
+let timeWheelOpener = null;
+let timeWheelState = null; // 開いている間だけ { hours, minutes, onPick }
 
-function buildTimeMenu() {
-  if (timeMenuEl) return timeMenuEl;
+function buildTimeWheel() {
+  if (timeWheelEl) return timeWheelEl;
   const overlay = document.createElement('div');
-  overlay.className = 'timemenu-overlay hidden';
-  overlay.id = 'timeMenuOverlay';
+  overlay.className = 'timewheel-overlay hidden';
+  overlay.id = 'timeWheelOverlay';
   const panel = document.createElement('div');
-  panel.className = 'timemenu-panel';
-  panel.setAttribute('role', 'listbox');
+  panel.className = 'timewheel-panel';
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-modal', 'true');
   panel.setAttribute('aria-label', '時刻を選ぶ');
+
+  const cols = document.createElement('div');
+  cols.className = 'timewheel-cols';
+  const hourCol = document.createElement('div');
+  hourCol.className = 'timewheel-col timewheel-col-hour';
+  hourCol.setAttribute('aria-label', '時');
+  const colon = document.createElement('div');
+  colon.className = 'timewheel-colon';
+  colon.setAttribute('aria-hidden', 'true');
+  colon.textContent = ':';
+  const minCol = document.createElement('div');
+  minCol.className = 'timewheel-col timewheel-col-minute';
+  minCol.setAttribute('aria-label', '分');
+  const band = document.createElement('div');
+  band.className = 'timewheel-band';
+  band.setAttribute('aria-hidden', 'true');
+  cols.append(hourCol, colon, minCol, band);
+
+  const actions = document.createElement('div');
+  actions.className = 'timewheel-actions';
+  const nowBtn = document.createElement('button');
+  nowBtn.type = 'button';
+  nowBtn.className = 'timewheel-now';
+  nowBtn.textContent = 'いま';
+  const okBtn = document.createElement('button');
+  okBtn.type = 'button';
+  okBtn.className = 'timewheel-ok';
+  okBtn.setAttribute('aria-label', '決定');
+  okBtn.textContent = '✓';
+  actions.append(nowBtn, okBtn);
+
+  panel.append(cols, actions);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
-  // 背景（リストの外側）をタップしたら、何も選ばずに閉じる（標準メニューと同じ）
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeTimeMenu(); });
+
+  // 背景（パネルの外側）をタップしたら、何も変えずに閉じる（標準ピッカーと同じ）
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeTimeWheel(); });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !overlay.classList.contains('hidden')) closeTimeMenu();
+    if (e.key === 'Escape' && !overlay.classList.contains('hidden')) closeTimeWheel();
   });
-  timeMenuEl = overlay;
+  // 「いま」: 現在時刻（5分刻みに丸めたもの）までドラムを回す。確定は✓で
+  nowBtn.addEventListener('click', () => {
+    if (!timeWheelState) return;
+    const [h, m] = nowHHMM().split(':');
+    scrollWheelTo(hourCol, timeWheelState.hours.indexOf(h), true);
+    scrollWheelTo(minCol, timeWheelState.minutes.indexOf(m), true);
+  });
+  okBtn.addEventListener('click', () => {
+    if (!timeWheelState) return;
+    const h = timeWheelState.hours[wheelIndex(hourCol, timeWheelState.hours.length)];
+    const m = timeWheelState.minutes[wheelIndex(minCol, timeWheelState.minutes.length)];
+    const onPick = timeWheelState.onPick;
+    closeTimeWheel();
+    onPick(`${h}:${m}`);
+  });
+  // 回している間、中央に来ている行だけを濃く出す
+  [hourCol, minCol].forEach((col) => {
+    let ticking = false;
+    col.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => { ticking = false; highlightWheelCenter(col); });
+    }, { passive: true });
+  });
+  timeWheelEl = overlay;
   return overlay;
 }
 
-function openTimeMenu(values, selected, onPick) {
-  const overlay = buildTimeMenu();
-  const panel = overlay.querySelector('.timemenu-panel');
-  panel.textContent = '';
-  let selectedRow = null;
-  values.forEach((v) => {
-    const row = document.createElement('button');
-    row.type = 'button';
-    row.className = 'timemenu-item' + (v === selected ? ' selected' : '');
-    row.setAttribute('role', 'option');
-    row.setAttribute('aria-selected', v === selected ? 'true' : 'false');
-    const check = document.createElement('span');
-    check.className = 'timemenu-check';
-    check.setAttribute('aria-hidden', 'true');
-    check.textContent = '✓';
-    const label = document.createElement('span');
-    label.textContent = v;
-    row.append(check, label);
-    // 標準メニューと同じく、タップした値をすぐ確定して閉じる
-    row.addEventListener('click', () => { closeTimeMenu(); onPick(v); });
-    panel.appendChild(row);
-    if (v === selected) selectedRow = row;
-  });
-  timeMenuOpener = document.activeElement;
-  overlay.classList.remove('hidden', 'closing');
-  // 開いている間は後ろの画面が動かないようにする
-  document.body.classList.add('timemenu-open');
-  // いま選ばれている値がリストの中央に来るようにスクロールしておく
-  if (selectedRow) {
-    panel.scrollTop = selectedRow.offsetTop - (panel.clientHeight - selectedRow.offsetHeight) / 2;
-    selectedRow.focus({ preventScroll: true });
-  }
+// いま中央に止まっている行の番号（スクロール位置から逆算する）
+function wheelIndex(col, count) {
+  const i = Math.round(col.scrollTop / WHEEL_ITEM_HEIGHT);
+  return Math.max(0, Math.min(count - 1, i));
 }
 
-function closeTimeMenu() {
-  if (!timeMenuEl || timeMenuEl.classList.contains('hidden') || timeMenuEl.classList.contains('closing')) return;
+function scrollWheelTo(col, index, smooth) {
+  if (index < 0) return;
+  const top = index * WHEEL_ITEM_HEIGHT;
+  if (smooth) col.scrollTo({ top, behavior: 'smooth' });
+  else col.scrollTop = top;
+}
+
+function highlightWheelCenter(col) {
+  const items = col.querySelectorAll('.timewheel-item');
+  const center = wheelIndex(col, items.length);
+  items.forEach((el, i) => el.classList.toggle('is-center', i === center));
+}
+
+function fillWheelColumn(col, values, selected) {
+  col.textContent = '';
+  // 上下に空きを置いて、最初と最後の行も中央まで持ってこられるようにする
+  const spacer = () => {
+    const s = document.createElement('div');
+    s.className = 'timewheel-spacer';
+    s.setAttribute('aria-hidden', 'true');
+    return s;
+  };
+  col.appendChild(spacer());
+  values.forEach((v, i) => {
+    const item = document.createElement('div');
+    item.className = 'timewheel-item';
+    item.textContent = v;
+    // 行をタップしたら、その行が中央に来るように回す
+    item.addEventListener('click', () => scrollWheelTo(col, i, true));
+    col.appendChild(item);
+  });
+  col.appendChild(spacer());
+  scrollWheelTo(col, Math.max(0, values.indexOf(selected)), false);
+  highlightWheelCenter(col);
+}
+
+function openTimeWheel(hours, minutes, selected, onPick) {
+  const overlay = buildTimeWheel();
+  const hourCol = overlay.querySelector('.timewheel-col-hour');
+  const minCol = overlay.querySelector('.timewheel-col-minute');
+  timeWheelState = { hours, minutes, onPick };
+  timeWheelOpener = document.activeElement;
+  overlay.classList.remove('hidden', 'closing');
+  // 開いている間は後ろの画面が動かないようにする
+  document.body.classList.add('timewheel-open');
+  // display:none の間はスクロール位置を決められないので、表示してから行を並べる
+  const [h, m] = (selected || '00:00').split(':');
+  fillWheelColumn(hourCol, hours, h);
+  fillWheelColumn(minCol, minutes, m);
+  overlay.querySelector('.timewheel-ok').focus({ preventScroll: true });
+}
+
+function closeTimeWheel() {
+  if (!timeWheelEl || timeWheelEl.classList.contains('hidden') || timeWheelEl.classList.contains('closing')) return;
+  timeWheelState = null;
   // すっと消えるアニメーションを見せてから隠す
-  const el = timeMenuEl;
+  const el = timeWheelEl;
   el.classList.add('closing');
   setTimeout(() => {
     el.classList.remove('closing');
     el.classList.add('hidden');
   }, 190);
-  document.body.classList.remove('timemenu-open');
-  if (timeMenuOpener && typeof timeMenuOpener.focus === 'function') timeMenuOpener.focus({ preventScroll: true });
-  timeMenuOpener = null;
+  document.body.classList.remove('timewheel-open');
+  if (timeWheelOpener && typeof timeWheelOpener.focus === 'function') timeWheelOpener.focus({ preventScroll: true });
+  timeWheelOpener = null;
 }
 
-function enhanceTimeInputAsCenteredMenu(input) {
+function enhanceTimeInputAsWheel(input) {
   if (input.dataset.enhanced) return;
   input.dataset.enhanced = '1';
 
@@ -120,43 +202,28 @@ function enhanceTimeInputAsCenteredMenu(input) {
   const minutes = [];
   for (let m = 0; m < 60; m += TIME_STEP_MINUTES) minutes.push(String(m).padStart(2, '0'));
 
-  const wrap = document.createElement('div');
-  wrap.className = 'time-select-wrap';
-
-  const hourTap = document.createElement('button');
-  hourTap.type = 'button';
-  hourTap.className = 'time-tap time-tap-hour';
-  hourTap.setAttribute('aria-label', '時');
-  const hourDisplay = document.createElement('span');
-  hourDisplay.className = 'time-select-display';
-  hourTap.appendChild(hourDisplay);
-
-  const colon = document.createElement('span');
-  colon.className = 'time-select-colon';
-  colon.textContent = ':';
-
-  const minTap = document.createElement('button');
-  minTap.type = 'button';
-  minTap.className = 'time-tap time-tap-minute';
-  minTap.setAttribute('aria-label', '分');
-  const minDisplay = document.createElement('span');
-  minDisplay.className = 'time-select-display';
-  minTap.appendChild(minDisplay);
-
-  wrap.append(hourTap, colon, minTap);
-  input.insertAdjacentElement('afterend', wrap);
+  // 見えている時刻の欄。押すと画面中央にホイールが開く
+  const tap = document.createElement('button');
+  tap.type = 'button';
+  tap.className = 'time-select-wrap';
+  tap.setAttribute('aria-label', '時刻を選ぶ');
+  const display = document.createElement('span');
+  display.className = 'time-select-display';
+  tap.appendChild(display);
+  input.insertAdjacentElement('afterend', tap);
   // display:noneにすると「必須」項目のチェックがスキップされてしまうため、
-  // 見た目だけを消すクラスを使う（history.css参照）
+  // 見た目だけを消すクラスを使う（history.css参照）。
+  // 隠した欄にフォーカスが行くとiPhoneでは標準の（1分刻みの）ピッカーが
+  // 開いてしまうので、タブ移動の対象からも外しておく
   input.classList.add('time-input-hidden');
+  input.tabIndex = -1;
 
   function currentValue() {
     return roundToStepMinutes(nativeValueProp.get.call(input), TIME_STEP_MINUTES, allow24) || '00:00';
   }
 
   function updateDisplay() {
-    const [h, m] = currentValue().split(':');
-    hourDisplay.textContent = h;
-    minDisplay.textContent = m;
+    display.textContent = currentValue();
   }
 
   function applyValue(v) {
@@ -166,14 +233,12 @@ function enhanceTimeInputAsCenteredMenu(input) {
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  hourTap.addEventListener('click', () => {
-    const [h, m] = currentValue().split(':');
-    openTimeMenu(hours, h, (v) => applyValue(`${v}:${m}`));
-  });
-  minTap.addEventListener('click', () => {
-    const [h, m] = currentValue().split(':');
-    openTimeMenu(minutes, m, (v) => applyValue(`${h}:${v}`));
-  });
+  function open() {
+    openTimeWheel(hours, minutes, currentValue(), applyValue);
+  }
+  tap.addEventListener('click', open);
+  // 呼び出し側（「変える」ボタンなど）が、欄を経由せずに直接ホイールを開けるようにしておく
+  input.openTimeWheel = open;
 
   Object.defineProperty(input, 'value', {
     get() { return nativeValueProp.get.call(input); },
@@ -193,10 +258,18 @@ function enhanceTimeInputAsCenteredMenu(input) {
   // 未入力の段階で走ってしまわないようにするため）。
   if (!nativeValueProp.get.call(input)) nativeValueProp.set.call(input, currentValue());
 }
+// 「変える」ボタンなど、欄の外からホイールを開く時の入口。
+// 隠した入力欄に focus() すると iPhone では標準の1分刻みピッカーが開いてしまうので、
+// 呼び出し側は focus() ではなくこちらを使う（ホイール化されていない欄では通常のフォーカスに落とす）
+function openTimeWheelFor(input) {
+  if (!input) return;
+  if (typeof input.openTimeWheel === 'function') input.openTimeWheel();
+  else input.focus();
+}
 // 就寝欄は24:00を保持する必要があり、ネイティブのtime入力は24:00を受け付けない
 // （実際にブラウザで確認済み。値が空になる）ため type="text" にしてある。
-// そちらもピッカー化の対象に含める。
-document.querySelectorAll('input[type="time"][step], input[data-allow-24]').forEach(enhanceTimeInputAsCenteredMenu);
+// そちらもホイール化の対象に含める。
+document.querySelectorAll('input[type="time"][step], input[data-allow-24]').forEach(enhanceTimeInputAsWheel);
 
 // --- ボトムシートの下スワイプで閉じる -------------------------------------
 // すべてのモーダル（.modal-panel）共通。iOSのシートと同じく、

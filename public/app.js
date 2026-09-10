@@ -407,8 +407,10 @@ function renderTodayStats(days) {
   }
   // 目安（からだの設定）があれば「摂取 / 目安」で出す
   const kcalTarget = typeof bodyTargetKcal === 'function' ? bodyTargetKcal() : null;
+  // スラッシュの前後に空白を入れると4列に収まらず、枠からはみ出していた。
+  // 他の数字（65/100、2/5日）と同じく空白なしで詰める
   set('todayKcal', kcal
-    ? `${kcal.toLocaleString('ja-JP')}<em>${kcalTarget && kcalTarget.kcal ? ` / ${kcalTarget.kcal.toLocaleString('ja-JP')}` : ''}</em>`
+    ? `${kcal.toLocaleString('ja-JP')}<em>${kcalTarget && kcalTarget.kcal ? `/${kcalTarget.kcal.toLocaleString('ja-JP')}` : ''}</em>`
     : '<em>まだ</em>');
 }
 window.renderTodayStats = renderTodayStats;

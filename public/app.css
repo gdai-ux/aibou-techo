@@ -1935,13 +1935,22 @@
   .today-stat b {
     display: block;
     margin-top: 3px;
-    font-size: 18px;
+    /* 4列に等分するので1列あたりの幅が狭い。「1,913/2,600」のように桁数が
+       多い値でも収まるよう、狭い画面では自動で小さくする（nowrap のままだと
+       収まらない時に枠の外へはみ出してしまう） */
+    font-size: clamp(15px, 4.6vw, 18px);
     font-weight: 800;
     letter-spacing: -0.4px;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .today-stat b em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+  .today-stat b em { font-style: normal; font-size: clamp(10px, 2.8vw, 11px); font-weight: 700; color: var(--muted); letter-spacing: 0; }
+  /* 320px級の狭い端末では、上の clamp の下限（15px）でもまだ4列に収まらない。
+     ここだけさらに小さくする（通常の端末の見た目は変えない） */
+  @media (max-width: 340px) {
+    .today-stat b { font-size: 13px; }
+    .today-stat b em { font-size: 8.5px; }
+  }
   /* 点数は上の数字に出すので、一言の見出しの右の点数は出さない */
   .today-card .review-score { display: none; }
   html.hs-off-clock .today-stats { border-top: none; padding-top: 0; }

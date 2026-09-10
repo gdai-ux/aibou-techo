@@ -1362,6 +1362,10 @@ function openSettingsMenu() {
             <span class="settings-menu-title">運動の週目標</span>
             <span class="settings-menu-desc">週に何日運動したら達成にするか</span>
           </button>
+          <button type="button" class="settings-menu-item" id="settingsItemImport" hidden>
+            <span class="settings-menu-title">Notionの記録を取り込む</span>
+            <span class="settings-menu-desc" id="importDesc">以前Notionに記録していた分を、このアカウントへコピーします</span>
+          </button>
           <button type="button" class="settings-menu-item" id="settingsItemMigrate" hidden>
             <span class="settings-menu-title">データベース形式へ移行</span>
             <span class="settings-menu-desc" id="migrateDesc">記録をNotionデータベースにコピーします（元のページは残ります）</span>
@@ -1457,6 +1461,7 @@ function openSettingsMenu() {
       if (window.setHeaderScene) setHeaderScene(e.target.checked);
     });
     document.getElementById('settingsItemMigrate').addEventListener('click', runDbMigration);
+    document.getElementById('settingsItemImport').addEventListener('click', openNotionImportModal);
     document.getElementById('settingsItemExport').addEventListener('click', () => {
       overlay.classList.add('hidden');
       exportHistoryCsv().catch((e) => alert(`書き出せませんでした: ${e.message}`));
@@ -1488,16 +1493,105 @@ function openSettingsMenu() {
   overlay.classList.remove('hidden');
 }
 
-// 保存形式がページ本文のままの時だけ「データベース形式へ移行」を出す
+// 保存形式がページ本文のままの時だけ「データベース形式へ移行」を出す。
+// 自前DBに保存するモードの時だけ「Notionの記録を取り込む」を出す。
 async function refreshMigrateItem() {
   const item = document.getElementById('settingsItemMigrate');
+  const importItem = document.getElementById('settingsItemImport');
   if (!item) return;
   try {
     const resp = await fetch('/api/status', { headers: notionHeaders() });
     const data = await resp.json();
     item.hidden = !(resp.ok && data.notionConfigured && data.storage === 'page');
+    if (importItem) importItem.hidden = !(resp.ok && data.storage === 'pg');
   } catch (e) {
     item.hidden = true;
+    if (importItem) importItem.hidden = true;
+  }
+}
+
+// --- Notionの過去の記録を、このアカウントの自前DBへ取り込む -----------------
+// 保存先が自前DBに変わったため、以前Notionに書いていた記録はそのままでは見えない。
+// ここでNotionの連携情報を一度だけ受け取り、サーバー（/api/import-notion）に
+// 渡して少しずつコピーする。連携情報は端末にもサーバーにも保存せず、
+// この取り込みのリクエストのヘッダーに載せるだけ。
+function buildNotionImportModal() {
+  if (document.getElementById('notionImportModal')) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay hidden';
+  overlay.id = 'notionImportModal';
+  overlay.innerHTML = `
+    <div class="modal-panel">
+      <h3>Notionの記録を取り込む</h3>
+      <p class="notion-settings-hint">
+        以前Notionに記録していた分を、いまのアカウントへコピーします。Notion側の記録はそのまま残ります。
+        すでに同じ日付の記録がある日は飛ばすので、途中で止まってももう一度押せば続きから再開できます。
+      </p>
+      <label>Notionの「Internal Integration Secret」</label>
+      <input type="text" id="notionImportToken" placeholder="ntn_... または secret_..." autocomplete="off" spellcheck="false" />
+      <label>Notion ページID</label>
+      <input type="text" id="notionImportPageId" placeholder="1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d" autocomplete="off" spellcheck="false" />
+      <p class="notion-settings-hint">
+        入力した連携情報は取り込みの時だけ使い、この端末にもサーバーにも保存しません。
+      </p>
+      <p class="hs-note" id="notionImportStatus"></p>
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" id="notionImportCancel">閉じる</button>
+        <button type="button" class="save-btn" id="notionImportStart">取り込みを始める</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.add('hidden'); });
+  document.getElementById('notionImportCancel').addEventListener('click', () => overlay.classList.add('hidden'));
+  document.getElementById('notionImportStart').addEventListener('click', runNotionImport);
+}
+
+function openNotionImportModal() {
+  buildNotionImportModal();
+  document.getElementById('notionImportStatus').textContent = '';
+  document.getElementById('notionImportModal').classList.remove('hidden');
+}
+
+// 1回の呼び出しで最大60日ぶん。残りが無くなるまで繰り返す
+let notionImportRunning = false;
+async function runNotionImport() {
+  if (notionImportRunning) return;
+  const token = document.getElementById('notionImportToken').value.trim();
+  const pageId = document.getElementById('notionImportPageId').value.trim();
+  const status = document.getElementById('notionImportStatus');
+  const startBtn = document.getElementById('notionImportStart');
+  if (!token || !pageId) {
+    status.textContent = 'Internal Integration Secret とページIDの両方を入れてください。';
+    return;
+  }
+  notionImportRunning = true;
+  startBtn.disabled = true;
+  let days = 0;
+  let entries = 0;
+  try {
+    for (let i = 0; i < 200; i++) {
+      status.textContent = days ? `取り込み中… ${days}日ぶん（${entries}件）` : '取り込み中…';
+      // 連携情報は保存せず、このリクエストのヘッダーにだけ載せる
+      const resp = await fetch('/api/import-notion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...notionHeaders(), 'X-Notion-Token': token, 'X-Notion-Page-Id': pageId },
+        body: '{}',
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || '取り込みに失敗しました');
+      days += data.importedDays;
+      entries += data.importedEntries;
+      if (data.remaining <= 0) break;
+    }
+    status.textContent = days
+      ? `完了しました。${days}日ぶん（${entries}件）を取り込みました。表示を更新します…`
+      : '取り込む記録がありませんでした（すでに全部入っているか、Notion側に記録がありません）。';
+    if (days) setTimeout(() => location.reload(), 1800);
+  } catch (e) {
+    status.textContent = `取り込みに失敗しました: ${e.message}（もう一度押すと続きから再開します）`;
+  } finally {
+    notionImportRunning = false;
+    startBtn.disabled = false;
   }
 }
 

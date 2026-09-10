@@ -1182,12 +1182,12 @@ function buildNotionSettingsModal() {
         <label>Notionの「Internal Integration Secret」</label>
         <input type="text" id="notionSettingsToken" placeholder="ntn_... または secret_..." autocomplete="off" spellcheck="false" />
         <label>Notion ページID</label>
-        <input type="text" id="notionSettingsPageId" placeholder="例）1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d" autocomplete="off" spellcheck="false" />
+        <input type="text" id="notionSettingsPageId" placeholder="1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d" autocomplete="off" spellcheck="false" />
         <p class="notion-settings-hint">空欄のまま保存すると連携設定を削除します。</p>
       </div>
 
       <label>天気を表示する地域</label>
-      <input type="text" id="weatherLocationInput" placeholder="例）大阪、東京、札幌" autocomplete="off" spellcheck="false" />
+      <input type="text" id="weatherLocationInput" placeholder="大阪、東京、札幌" autocomplete="off" spellcheck="false" />
       <p class="notion-settings-hint">空欄の場合は大阪の天気を表示します。</p>
 
       <details class="settings-privacy">
@@ -1719,11 +1719,11 @@ function openBodySettings() {
           <button type="button" data-sex="female">女性</button>
         </div>
         <label>年齢</label>
-        <div class="field-row"><input type="number" id="bodyAge" inputmode="numeric" min="1" max="120" placeholder="例）35" /><span class="body-unit">歳</span></div>
+        <div class="field-row"><input type="number" id="bodyAge" inputmode="numeric" min="1" max="120" placeholder="35" /><span class="body-unit">歳</span></div>
         <label>身長</label>
-        <div class="field-row"><input type="number" id="bodyHeight" inputmode="decimal" min="80" max="250" step="0.1" placeholder="例）172" /><span class="body-unit">cm</span></div>
+        <div class="field-row"><input type="number" id="bodyHeight" inputmode="decimal" min="80" max="250" step="0.1" placeholder="172" /><span class="body-unit">cm</span></div>
         <label>体重</label>
-        <div class="field-row"><input type="number" id="bodyWeight" inputmode="decimal" min="20" max="300" step="0.1" placeholder="例）65" /><span class="body-unit">kg</span></div>
+        <div class="field-row"><input type="number" id="bodyWeight" inputmode="decimal" min="20" max="300" step="0.1" placeholder="65" /><span class="body-unit">kg</span></div>
         <label>ふだんの活動量</label>
         <div class="body-choice" id="bodyActivity">` +
       Object.entries(BODY_ACTIVITY).map(([key, a]) =>
@@ -1833,7 +1833,7 @@ async function checkNotionSetupNeeded() {
     // （Web版はNotionもObsidianも使わないので、その名前を出さない）
     const hint = document.getElementById('saveHint');
     if (hint) {
-      if (data.authRequired) hint.textContent = '記録はあなたのアカウントに保存され、スマホでもPCでも同じ内容が見られます';
+      if (data.authRequired) hint.textContent = 'スマホとPCで同じ記録が見られます';
       else if (data.obsidianConfigured) hint.textContent = 'Obsidian と Notion の両方に自動で追記されます';
       else hint.textContent = 'Notion に自動で追記されます';
     }

@@ -238,10 +238,10 @@ html.font-large body { zoom: 1.12; }
 .score-chart-svg .score-area { fill: var(--accent); fill-opacity: 0.06; }
 /* 点数の段階の帯（NICE / GOOD / GREAT / EXCELLENT）。どの帯に点が乗っているかで段階が分かる */
 .score-chart-svg .score-band { fill-opacity: 0.09; }
-.score-chart-svg .band-label { font-size: 7.5px; font-weight: 800; letter-spacing: 0.04em; opacity: 0.9; }
-.score-chart-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 10.5px; font-weight: 700; color: var(--muted); }
-.score-chart-legend span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; background: var(--c); vertical-align: 0; }
-.score-chart-svg .score-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.score-chart-svg .band-label { font-size: 8px; font-weight: 700; letter-spacing: 0.04em; opacity: 0.85; }
+/* 線は点（＝その日の段階の色）をつなぐ役に徹する。線まで色を持つと、
+   帯の色・点の色と三つ巴になって、どれが意味を持つ色か読めなくなる */
+.score-chart-svg .score-line { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .score-chart-svg .score-dot { stroke: var(--card); stroke-width: 2; }
 .score-chart-svg .score-crosshair { stroke: var(--border-strong); stroke-width: 1; opacity: 0; }
 .score-chart-svg .score-hit { fill: transparent; cursor: pointer; }

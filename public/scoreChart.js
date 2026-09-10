@@ -10,7 +10,10 @@ const SCORE_CHART_WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 // 置かれたカードの横幅に合わせて縮む。左側はy軸の目盛り(0/50/100)ぶんだけ広めに取る。
 const SCORE_CHART_W = 320;
 const SCORE_CHART_H = 176;
-const SCORE_CHART_PAD = { left: 30, right: 8, top: 12, bottom: 22 };
+const SCORE_CHART_PAD = { left: 34, right: 8, top: 12, bottom: 22 };
+// 点は目盛りの文字と重ならないよう、描画域より内側に置く
+// （半径4.5pxの点が左端に来ると「0」の字に被って欠けていた）
+const SCORE_CHART_INSET = 7;
 
 function scoreChartEsc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -50,7 +53,8 @@ function renderScoreChart(container, days, today) {
   const plotW = SCORE_CHART_W - left - right;
   const plotH = SCORE_CHART_H - top - bottom;
   const n = points.length;
-  const xAt = (i) => left + (n > 1 ? (i / (n - 1)) * plotW : plotW / 2);
+  const lineW = Math.max(0, plotW - SCORE_CHART_INSET * 2);
+  const xAt = (i) => left + SCORE_CHART_INSET + (n > 1 ? (i / (n - 1)) * lineW : lineW / 2);
   const yAt = (score) => top + (1 - score / 100) * plotH;
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xAt(i).toFixed(1)},${yAt(p.score).toFixed(1)}`).join(' ');
@@ -70,12 +74,18 @@ function renderScoreChart(container, days, today) {
   const todayLabel = ''; // 「進行中」の文字は出さない（点線と輪っかの点で伝える）
 
   // 段階の帯。点がどの帯に乗っているかで NICE〜EXCELLENT が読み取れる（境目は growth.js と同じ）
+  // 帯の名前には点数の範囲も併記する。以前は同じ内容をグラフ下の凡例にも
+  // 並べていて、色と名前が二重に出るうえ4つが2行に折り返していた。
+  // 帯そのものに書けば、目盛りと名前と範囲が一箇所で読める
   const bands = [
     [0, 30, 'var(--grade-nice)', 'NICE'], [30, 55, 'var(--grade-good)', 'GOOD'],
     [55, 85, 'var(--grade-great)', 'GREAT'], [85, 100, 'var(--grade-excellent)', 'EXCELLENT'],
-  ].map(([a, b, c, w]) => `
+  ].map(([a, b, c, w], i, arr) => {
+    const range = i === 0 ? `〜${b - 1}` : (i === arr.length - 1 ? `${a}〜` : `${a}〜${b - 1}`);
+    return `
     <rect class="score-band" x="${left}" y="${yAt(b).toFixed(1)}" width="${plotW}" height="${(yAt(a) - yAt(b)).toFixed(1)}" fill="${c}"></rect>
-    <text class="band-label" x="${left + 9}" y="${(yAt(b) + 8).toFixed(1)}" fill="${c}">${w}</text>`).join('');
+    <text class="band-label" x="${left + 9}" y="${(yAt(b) + 8).toFixed(1)}" fill="${c}">${w} ${range}</text>`;
+  }).join('');
 
   const gridLines = [0, 50, 100].map((v) => `
     <line class="grid-line" x1="${left}" x2="${SCORE_CHART_W - right}" y1="${yAt(v)}" y2="${yAt(v)}"></line>
@@ -112,12 +122,9 @@ function renderScoreChart(container, days, today) {
       <rect class="score-hit" x="${left}" y="${top}" width="${plotW}" height="${plotH}"></rect>
     </svg>
     <div class="score-chart-tip"></div>
-    <div class="score-chart-legend">
-      <span style="--c:var(--grade-nice)">NICE 〜29</span><span style="--c:var(--grade-good)">GOOD 30〜54</span>
-      <span style="--c:var(--grade-great)">GREAT 55〜84</span><span style="--c:var(--grade-excellent)">EXCELLENT 85〜</span>
-    </div>`;
+    <div class="score-chart-tip-spacer"></div>`;
 
-  attachScoreChartScrub(container, points, { left, plotW, n });
+  attachScoreChartScrub(container, points, { left, plotW, lineW, n });
 
   // 見出し（「ポイントの推移」）の右に、今日の点数と段階を出す。グラフを読まなくても
   // 「今日は何点で、どの段階か」がすぐ分かるように
@@ -139,7 +146,7 @@ function renderScoreChart(container, days, today) {
 // 指でなぞる（マウスなら乗せる）と、なぞった位置に一番近い日の点数を
 // クロスヘアと吹き出しで出す。線チャートは「点を狙う」より「Xの位置」で
 // 拾うほうが指に優しいので、一番近い点にスナップする方式にしている。
-function attachScoreChartScrub(container, points, { left, plotW, n }) {
+function attachScoreChartScrub(container, points, { left, plotW, lineW, n }) {
   const svg = container.querySelector('svg');
   const hit = container.querySelector('.score-hit');
   const crosshair = container.querySelector('.score-crosshair');
@@ -150,7 +157,8 @@ function attachScoreChartScrub(container, points, { left, plotW, n }) {
     const rect = svg.getBoundingClientRect();
     const scale = SCORE_CHART_W / rect.width;
     const x = (clientX - rect.left) * scale;
-    const ratio = plotW > 0 ? (x - left) / plotW : 0;
+    // 点の位置（xAt）と同じ基準で戻さないと、指した日と拾う日がずれる
+    const ratio = lineW > 0 ? (x - left - SCORE_CHART_INSET) / lineW : 0;
     return Math.max(0, Math.min(n - 1, Math.round(ratio * (n - 1))));
   };
 

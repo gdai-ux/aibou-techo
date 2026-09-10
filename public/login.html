@@ -133,8 +133,36 @@ try {
     const params = new URLSearchParams(location.search);
     const next = (params.get('next') || 'index.html').replace(/[^a-zA-Z0-9_.\-]/g, '') || 'index.html';
 
+    // マジックリンクから戻ってきた時の情報は、クエリ（?…）とハッシュ（#…）の
+    // どちらに入ってくることもある（成功時はハッシュ、エラー時は両方）ので両方見る
+    function authParam(name) {
+      const q = new URLSearchParams(location.search);
+      const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+      return q.get(name) || h.get(name);
+    }
+    // 読み取ったあとはURLから消す。そのままだと再読み込みで同じエラーがまた出るため
+    function clearAuthParamsFromUrl() {
+      history.replaceState(null, '', `${location.pathname}?next=${encodeURIComponent(next)}`);
+    }
+    // Supabaseがリンクを弾いた時の理由。メールのリンクは一度開くと無効になるので、
+    // 「もう一度送れば直る」ことを必ず添える
+    const LINK_ERRORS = {
+      otp_expired: 'ログイン用のリンクの期限が切れていました。リンクは1回きりで、時間が経つと使えなくなります。お手数ですが、下からもう一度送ってください。',
+      access_denied: 'ログイン用のリンクが使えませんでした（すでに一度開かれたか、期限が切れています）。下からもう一度送ってください。',
+    };
+
     let client = null;
     async function setup() {
+      // マジックリンクから戻ってきたかどうかは、supabase-jsがURLを片付ける前に見ておく
+      const cameFromLink = !!(authParam('access_token') || authParam('code'));
+      const linkError = authParam('error_code') || authParam('error');
+      if (linkError) {
+        // 以前はここで何も出さずログイン画面に戻していたため、
+        // 「リンクを押しても何も起きない」ように見えていた
+        msg.className = 'msg err';
+        msg.textContent = LINK_ERRORS[linkError] || 'ログインできませんでした。下からもう一度リンクを送ってください。';
+        clearAuthParamsFromUrl();
+      }
       try {
         const resp = await fetch('/api/status');
         const status = await resp.json();
@@ -146,14 +174,16 @@ try {
           sendBtn.disabled = true;
           return;
         }
-        client = supabase.createClient(status.supabaseUrl, status.supabaseAnonKey, {
-          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
-        });
-        // マジックリンクから戻ってきた（?code=...）時は、ここでセッションに交換して次の画面へ
-        if (/[?&]code=/.test(location.search)) {
-          const { data, error } = await client.auth.getSession();
+        client = supabase.createClient(status.supabaseUrl, status.supabaseAnonKey, SUPABASE_AUTH_OPTIONS);
+        // マジックリンクから戻ってきた時は、URLに載っているトークンを supabase-js が
+        // セッションに変える（detectSessionInUrl）。createClientのあとに非同期で
+        // 走るので、getSession()で終わるのを待ってから判断する
+        if (cameFromLink && !linkError) {
+          const { data } = await client.auth.getSession();
           if (data && data.session) { location.replace(next); return; }
-          if (error) { msg.className = 'msg err'; msg.textContent = 'リンクの確認に失敗しました。もう一度送ってください。'; }
+          msg.className = 'msg err';
+          msg.textContent = 'リンクの確認に失敗しました。下からもう一度送ってください。';
+          clearAuthParamsFromUrl();
         }
       } catch (e) {
         msg.className = 'msg err';

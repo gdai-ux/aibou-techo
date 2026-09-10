@@ -27,6 +27,19 @@ function clearNotionSettings() {
   localStorage.removeItem(NOTION_SETTINGS_KEY);
 }
 
+// ログイン（Supabase Auth）の共通設定。login.html と auth-client.js の両方が
+// これを使って supabase-js を初期化する（片方だけ直すとログインが壊れるので一箇所にまとめる）。
+//
+// flowTypeは 'implicit'。既定の 'pkce' は、リンクを送った時にそのブラウザの
+// localStorageへ保存した合言葉（code_verifier）と照合する方式のため、
+// 「リンクを送ったブラウザ」と「リンクを開くブラウザ」が同じでないと成立しない。
+// スマホではメールアプリが自前のブラウザでリンクを開く（Safariで申し込んでも
+// Gmailアプリ内のブラウザで開かれる）ので、localStorageが別物になり必ず失敗していた。
+// 'implicit' はトークンがURLに直接載って返るので、どのブラウザで開いても通る。
+const SUPABASE_AUTH_OPTIONS = {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' },
+};
+
 function notionHeaders() {
   const headers = {};
   // Web版（ログインあり）: セッションのトークンを付ける（auth-client.js が用意する）

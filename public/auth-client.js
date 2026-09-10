@@ -36,9 +36,8 @@ let supabaseClient = null;
 function authClient(config) {
   if (supabaseClient) return supabaseClient;
   if (!window.supabase || !config || !config.supabaseUrl || !config.supabaseAnonKey) return null;
-  supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' },
-  });
+  // 設定は notion-client.js の SUPABASE_AUTH_OPTIONS に集約している（login.html と共通）
+  supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, SUPABASE_AUTH_OPTIONS);
   return supabaseClient;
 }
 
@@ -57,11 +56,14 @@ async function authBoot() {
 
   const client = authClient(status);
   if (!status.loggedIn) {
-    // マジックリンクから戻ってきた直後は、URLの code をセッションに交換してから判断する
-    if (client && /[?&]code=/.test(location.search)) {
+    // マジックリンクから戻ってきた直後は、URLに載っているトークンを
+    // セッションに変えてから判断する。トークンはハッシュ（#access_token=…）で
+    // 返るが、古いリンクなどでクエリ（?code=…）のこともあるので両方見る
+    const cameFromLink = /[?&]code=/.test(location.search) || /[#&]access_token=/.test(location.hash);
+    if (client && cameFromLink) {
       const { data } = await client.auth.getSession();
       if (data && data.session) {
-        // URLの code を消して、きれいに開き直す（記録の読み込みもやり直される）
+        // URLのトークンを消して、きれいに開き直す（記録の読み込みもやり直される）
         location.replace(location.pathname);
         return;
       }

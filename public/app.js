@@ -1560,7 +1560,9 @@ function calcSleepDuration(bedtime, wake) {
   const [bh, bm] = bedtime.split(':').map(Number);
   const [wh, wm] = wake.split(':').map(Number);
   let minutes = (wh * 60 + wm) - (bh * 60 + bm);
-  if (minutes <= 0) minutes += 24 * 60;
+  // 日付をまたいだ時（負）だけ24時間を足す。以前は「<= 0」だったため、
+  // 就寝と起床が同じ時刻だと0分ではなく24時間として扱われていた
+  if (minutes < 0) minutes += 24 * 60;
   return { hours: Math.floor(minutes / 60), minutes: minutes % 60 };
 }
 
@@ -1568,7 +1570,9 @@ const bedtimeInput = document.querySelector('#form-sleep input[name="bedtime"]')
 const wakeInput = document.querySelector('#form-sleep input[name="wake"]');
 const sleepDurationEl = document.getElementById('sleepDuration');
 function updateSleepDuration() {
-  if (!bedtimeInput.value || !wakeInput.value) {
+  // 就寝と起床が同じ時刻の間は、まだ入力されていないのと同じなので何も出さない
+  // （どちらの欄も既定では「いま」が入るため、開いた直後は必ず同じ時刻になる）
+  if (!bedtimeInput.value || !wakeInput.value || bedtimeInput.value === wakeInput.value) {
     sleepDurationEl.textContent = '';
     return;
   }

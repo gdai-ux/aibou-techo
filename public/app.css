@@ -34,8 +34,6 @@
        文字色を作る（ホワイトテーマでは黒の透明度に切り替わる） */
     --clock-sub: rgba(255, 255, 255, 0.68);
     --clock-sub2: rgba(255, 255, 255, 0.55);
-    --clock-track: rgba(255, 255, 255, 0.16);
-    --clock-fill: rgba(255, 255, 255, 0.85);
     /* カテゴリタブの選択つまみ（ホワイトテーマでは白いつまみに変わる） */
     --seg-thumb: #2a2a30;
     /* マスコットの縁取り。背景と同系色のキャラクター（黒地のダンベルくん、
@@ -73,8 +71,6 @@
     --edge: 0 0 0 0 transparent;
     --clock-sub: rgba(0, 0, 0, 0.6);
     --clock-sub2: rgba(0, 0, 0, 0.52);
-    --clock-track: rgba(0, 0, 0, 0.14);
-    --clock-fill: rgba(0, 0, 0, 0.65);
     --seg-thumb: #ffffff;
     --sprite-outline: rgba(40, 40, 44, 0.5);
   }
@@ -103,6 +99,14 @@
     font-weight: 700;
     letter-spacing: -0.3px;
     margin: 0;
+  }
+  /* 背景のドット絵も散歩中のキャラクターも、タイトルの上を通り得る。
+     アプリ名が隠れないよう文字を最前面に置き、後ろを何が通っても輪郭が
+     残るように軽く影を落とす（ゲームのロゴと同じ処理で世界観とも合う） */
+  .header-title h1 {
+    position: relative;
+    z-index: 3;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.25);
   }
   .section-title {
     display: flex;
@@ -136,6 +140,9 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    /* ここに position を足すと、散歩中のキャラクター（.app-icon の絶対配置）の
+       基準がヘッダーからこの箱に変わって位置がずれるので、付けないこと */
+    z-index: 2;
     /* キャラクターは歩き回る時に絶対配置へ切り替わり、ヘッダーの高さに
        効かなくなる。頭上のレベルバッジまで収まる高さを確保しておく
        （キャラクター50px＋バッジ16px） */
@@ -514,12 +521,15 @@
     justify-content: center;
     gap: 12px;
   }
+  /* 時刻は端末の時計と重複する情報なので、ここでは主役にしない。
+     日付と天気（その日を思い出す手がかり）を読ませる大きさに寄せる */
   .clock-time {
-    font-size: 42px;
+    font-size: 20px;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: -1px;
-    line-height: 1.05;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    color: var(--clock-sub);
   }
   .weather-icon {
     font-size: 28px;
@@ -528,39 +538,17 @@
   /* 背景に天気の色が乗るので、--muted ではなく白の透明度で色を作る
      （明るい空色の上でも暗い夜空の上でも読める） */
   .clock-date {
-    font-size: 13px;
-    color: var(--clock-sub);
-    margin-top: 8px;
-    font-weight: 500;
+    font-size: 17px;
+    color: #fff;
+    margin-top: 6px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
   .weather-label {
     font-size: 12px;
     color: var(--clock-sub);
     margin-top: 4px;
     font-weight: 500;
-  }
-  /* --- 1日の進み具合 --- */
-  .day-progress { margin-top: 14px; }
-  .day-progress-track {
-    height: 4px;
-    border-radius: 2px;
-    background: var(--clock-track);
-    overflow: hidden;
-  }
-  .day-progress-fill {
-    height: 100%;
-    width: 0;
-    border-radius: 2px;
-    background: var(--clock-fill);
-    /* 1秒ごとの更新でカクつかないよう、伸び方をなめらかにする */
-    transition: width 1s linear;
-  }
-  .day-progress-label {
-    margin-top: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--clock-sub2);
-    font-variant-numeric: tabular-nums;
   }
   /* 格言が短くても長くても上下中央に来るよう、本文(.quote-body)をflexで
      中央寄せする。アイコン行の分だけpadding-bottomで常に余白を確保しておく
@@ -1926,8 +1914,7 @@
     background: none !important;
     box-shadow: none !important;
   }
-  .today-card .clock-time { font-size: 34px; }
-  .today-card .day-progress { margin-top: 12px; }
+  .today-card .clock-time { font-size: 19px; }
   .today-stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));

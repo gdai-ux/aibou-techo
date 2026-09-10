@@ -144,8 +144,8 @@ function gohanTotalPoints(days) {
 const GOHAN_SCORE_STAGES = [
   { under: 30, word: 'NICE', color: 'var(--sleep-nice)' },            // 青
   { under: 55, word: 'GOOD', color: 'var(--sleep-good)' },            // 水色
-  { under: 85, word: 'GREAT!!', color: 'var(--sleep-great)' },        // 緑
-  { under: Infinity, word: 'EXCELLENT!!', color: 'var(--sleep-excellent)' }, // 黄色
+  { under: 85, word: 'GREAT', color: 'var(--sleep-great)' },        // 緑
+  { under: Infinity, word: 'EXCELLENT', color: 'var(--sleep-excellent)' }, // 黄色
 ];
 
 function gohanDayScore(day) {

@@ -112,38 +112,11 @@ window.renderMealChips = renderMealChips;
 function updateClock() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
-  document.getElementById('clockTime').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  // 秒は出さない。動き続ける数字は視線を奪うわりに、この画面では意味を持たない
+  document.getElementById('clockTime').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   document.getElementById('clockDate').textContent = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${WEEKDAYS_JA[d.getDay()]}）`;
-  updateDayProgress(d);
 }
 
-// その日の0時からの経過を、ゲージと「○% ・ 残り○時間○分」で表す。
-// 日付をまたぐ瞬間に100%→0%へ戻るので、そこだけアニメーションを切る。
-const DAY_SECONDS = 24 * 60 * 60;
-let lastProgressPercent = null;
-function updateDayProgress(d) {
-  const fill = document.getElementById('dayProgressFill');
-  const label = document.getElementById('dayProgressLabel');
-  if (!fill || !label) return;
-
-  const elapsed = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
-  const ratio = elapsed / DAY_SECONDS;
-  const percent = Math.floor(ratio * 100);
-
-  // 0時をまたいで巻き戻る時は、右から左へ縮む動きが見えないように一瞬で戻す
-  if (lastProgressPercent !== null && percent < lastProgressPercent) {
-    fill.style.transition = 'none';
-    requestAnimationFrame(() => { fill.style.transition = ''; });
-  }
-  lastProgressPercent = percent;
-
-  fill.style.width = `${(ratio * 100).toFixed(3)}%`;
-
-  const remain = DAY_SECONDS - elapsed;
-  const h = Math.floor(remain / 3600);
-  const m = Math.floor((remain % 3600) / 60);
-  label.textContent = `今日 ${percent}% ・ 残り ${h}時間${m}分`;
-}
 updateClock();
 setInterval(updateClock, 1000);
 
@@ -301,8 +274,8 @@ const RING_STAGES = [
   { word: "LET'S MOVE",  color: 'var(--stage-0)' },        // 0/7 グレー
   { word: 'NICE',        color: 'var(--grade-nice)' },      // 1/7 灰青
   { word: 'GOOD',        color: 'var(--grade-good)' },      // 2/7 青
-  { word: 'GREAT!!',     color: 'var(--grade-great)' },     // 3/7 緑
-  { word: 'EXCELLENT!!', color: 'var(--grade-excellent)' }, // 4/7 金
+  { word: 'GREAT',     color: 'var(--grade-great)' },     // 3/7 緑
+  { word: 'EXCELLENT', color: 'var(--grade-excellent)' }, // 4/7 金
   { word: 'AMAZING!!',   color: 'var(--warn)' },            // 5/7 オレンジ
   { word: 'AWESOME!!',   color: 'var(--pink)' },            // 6/7 ピンク
   { word: 'PERFECT!!!',  color: 'var(--purple)' },          // 7/7 紫

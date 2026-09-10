@@ -416,8 +416,8 @@ const SLEEP_STAGES = [
   { underHours: 5,        word: 'SLEEP MORE',  color: 'var(--sleep-more)' },       // 5時間未満：グレー
   { underHours: 6,        word: 'NICE',        color: 'var(--sleep-nice)' },       // 6時間未満：青
   { underHours: 7,        word: 'GOOD',        color: 'var(--sleep-good)' },       // 7時間未満：水色
-  { underHours: 8,        word: 'GREAT!!',     color: 'var(--sleep-great)' },      // 7〜8時間：緑
-  { underHours: Infinity, word: 'EXCELLENT!!', color: 'var(--sleep-excellent)' },  // 8時間以上：黄色
+  { underHours: 8,        word: 'GREAT',     color: 'var(--sleep-great)' },      // 7〜8時間：緑
+  { underHours: Infinity, word: 'EXCELLENT', color: 'var(--sleep-excellent)' },  // 8時間以上：黄色
 ];
 function sleepStage(totalMinutes) {
   return SLEEP_STAGES.find((s) => totalMinutes < s.underHours * 60)

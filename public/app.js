@@ -39,11 +39,11 @@ const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
   const card = document.createElement('div');
   card.className = 'card onboard';
   card.innerHTML = `
-    <div class="onboard-title">はじめまして！記録は3ステップです</div>
+    <div class="onboard-title">記録は3ステップ</div>
     <ol class="onboard-steps">
-      <li><b>1</b><span>下のタブで <strong>メモ・運動・飲食・睡眠・体調</strong> を選ぶ</span></li>
-      <li><b>2</b><span>書くか、マイクで話す。青いマイクは話すだけで種類も内容も自動で入ります</span></li>
-      <li><b>3</b><span><strong>記録する</strong> を押す。記録するほど相棒が育ちます</span></li>
+      <li><b>1</b><span>下のタブで種類を選ぶ</span></li>
+      <li><b>2</b><span>書く、またはマイクで話す</span></li>
+      <li><b>3</b><span>記録するを押す。続けるほど相棒が育つ</span></li>
     </ol>
     <button type="button" class="onboard-ok">わかった</button>`;
   card.querySelector('.onboard-ok').addEventListener('click', () => {

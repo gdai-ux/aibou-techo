@@ -11,9 +11,9 @@
     --fill: rgba(255, 255, 255, 0.07);
     --text: #f2f2f7;
     --muted: #8e8e96;
-    --accent: #3d8bff;
+    --accent: #cf9d43;
     --accent-2: color-mix(in srgb, var(--accent) 70%, #ffffff);
-    --accent-text: #ffffff;
+    --accent-text: #17150f;
     /* 境界線は「線で囲む」のではなく「面の境目をうっすら示す」太さにする。
        操作できるもの（入力欄・ボタン）だけ少し強い線を使う。 */
     --border: rgba(255, 255, 255, 0.06);
@@ -60,7 +60,7 @@
     --fill: rgba(120, 120, 128, 0.12);
     --text: #1c1c1e;
     --muted: #6e6e73;
-    --accent: #2f7cf6;
+    --accent: #96702a; --accent-text: #ffffff;
     --accent-2: color-mix(in srgb, var(--accent) 80%, #000000);
     --border: rgba(0, 0, 0, 0.06);
     --border-strong: rgba(0, 0, 0, 0.1);
@@ -2002,11 +2002,14 @@
   html.header-plain .page-header.gohan-roam { background: var(--bg-blur) !important; }
 
   /* --- はじめての案内（最初の1回だけ） --- */
-  .onboard { border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
-  .onboard-title { font-size: 15px; font-weight: 800; margin-bottom: 10px; }
+  /* 枠線で囲うと1枚だけ浮いて見えるので、他のカードと同じ面で揃える */
+  .onboard { border: 0; }
+  .onboard-title { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 12px; }
   .onboard-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
   .onboard-steps li { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; line-height: 1.6; color: var(--text); }
-  .onboard-steps li b { flex: 0 0 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  /* 番号は塗りつぶした丸だと3つ並んだ時に主張が強すぎるので、
+     数字そのものを控えめに置いて、本文の頭を揃える役だけを持たせる */
+  .onboard-steps li b { flex: 0 0 14px; color: var(--muted); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.6; }
   .onboard-steps strong { font-weight: 800; }
   .onboard-ok { appearance: none; border: 0; margin-top: 12px; width: 100%; padding: 11px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--accent-text); background: var(--accent); cursor: pointer; }
   /* --- サーバーを起こしている間の知らせ --- */

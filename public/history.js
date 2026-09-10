@@ -607,6 +607,14 @@ function renderDayList(days) {
         html: `<div class="entry-row"><span class="entry-main">${entryHead('運動', e.time, burnedLabel)}<span class="entry-text">${escapeHtml(ex.text)}</span></span>${actionButtons(e.blockId)}</div>`,
       });
     });
+    (d.nap || []).forEach((n) => {
+      if (!n.minutes) return;
+      entryIndex[n.blockId] = { dateStr: d.dateStr, category: 'nap', time: n.time, minutes: n.minutes };
+      entries.push({
+        sortMinutes: parseTimeMinutes(n.time),
+        html: `<div class="entry-row"><span class="entry-main">${entryHead('昼寝', n.time)}<span class="entry-text">${escapeHtml(String(n.minutes))}分</span></span>${actionButtons(n.blockId)}</div>`,
+      });
+    });
     d.memo.forEach((m) => {
       entryIndex[m.blockId] = { dateStr: d.dateStr, category: 'memo', time: m.time, content: m.content };
       entries.push({

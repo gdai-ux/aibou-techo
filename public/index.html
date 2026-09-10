@@ -66,6 +66,7 @@ try {
     <div class="seg-item" data-cat="exercise">運動</div>
     <div class="seg-item" data-cat="meal">飲食</div>
     <div class="seg-item" data-cat="sleep">睡眠</div>
+    <div class="seg-item" data-cat="nap">昼寝</div>
     <div class="seg-item" data-cat="condition">体調</div>
   </div>
 
@@ -120,6 +121,27 @@ try {
       </div>
     </form>
 
+
+    <form id="form-nap" class="form" hidden>
+      <label>時刻</label>
+      <div class="field-row">
+        <input type="time" name="time" id="napTime" step="300" />
+        <button type="button" class="now-btn" data-target="napTime"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg></button>
+      </div>
+      <label>長さ</label>
+      <div class="field-row">
+        <input type="number" name="minutes" id="napMinutes" inputmode="numeric" min="1" max="720" step="1" placeholder="30" required />
+        <span class="unit-suffix">分</span>
+      </div>
+      <div class="quick-chips" id="napChips">
+        <button type="button" class="chip quick-chip" data-min="15">15分</button>
+        <button type="button" class="chip quick-chip" data-min="20">20分</button>
+        <button type="button" class="chip quick-chip" data-min="30">30分</button>
+        <button type="button" class="chip quick-chip" data-min="45">45分</button>
+        <button type="button" class="chip quick-chip" data-min="60">60分</button>
+        <button type="button" class="chip quick-chip" data-min="90">90分</button>
+      </div>
+    </form>
     <form id="form-sleep" class="form" hidden>
       <label>就寝時刻</label>
       <div class="field-row">

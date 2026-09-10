@@ -1272,6 +1272,13 @@ let currentCat = 'memo';
 // パーセンテージ＋translateXの計算だと、gap分の誤差が右のタブほど積み重なって
 // ズレていた（右端の「体調」で特に目立った）ので、実際のレイアウト幅を測って
 // left/widthを直接指定する。
+// タブは後から増えることがあるので、列数はHTMLを数えて決める
+// （CSSに5と書いていた頃は、6つ目を足した時に折り返して崩れていた）
+(function setSegCount() {
+  const tabs = document.getElementById('categoryTabs');
+  if (tabs) tabs.style.setProperty('--seg-count', String(segItems.length));
+})();
+
 function positionSegThumb(activeItem) {
   if (!segThumb || !activeItem) return;
   segThumb.style.left = `${activeItem.offsetLeft}px`;
@@ -1601,10 +1608,27 @@ function buildPayload(cat) {
     const items = (data.get('items') || '').split('\n').map(s => s.trim()).filter(Boolean);
     return { mealType: data.get('mealType'), items, time: data.get('time') || '' };
   }
+  if (cat === 'nap') {
+    // 分数は数値で送る（FormDataは文字列で返すため）
+    return { time: data.get('time') || '', minutes: Number(data.get('minutes')) };
+  }
   const obj = {};
   for (const [k, v] of data.entries()) obj[k] = v;
   return obj;
 }
+
+// 昼寝の長さのボタン。押した値を欄に入れる（よく使う長さを一発で選べるように）
+(function setupNapChips() {
+  const box = document.getElementById('napChips');
+  const input = document.getElementById('napMinutes');
+  if (!box || !input) return;
+  box.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-min]');
+    if (!btn) return;
+    input.value = btn.dataset.min;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+})();
 
 const statusEl = document.getElementById('status');
 const submitBtn = document.getElementById('submitBtn');

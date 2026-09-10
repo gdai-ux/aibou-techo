@@ -18,6 +18,7 @@ CREATE INDEX IF NOT EXISTS users_email ON users (email);
 -- 記録。1行 = 1件（Notionデータベース形式の1行と同じ粒度）。
 -- category ごとの中身は payload(jsonb) に入れる:
 --   sleep     {bedtime, wake}
+--   nap       {time, minutes}  昼寝。長さ（分）だけ持つ
 --   exercise  {time, content}
 --   memo      {time, content}
 --   condition {time, level, stool, note}
@@ -27,7 +28,7 @@ CREATE TABLE IF NOT EXISTS entries (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   date        date NOT NULL,
-  category    text NOT NULL CHECK (category IN ('sleep','exercise','memo','condition','meal','review')),
+  category    text NOT NULL CHECK (category IN ('sleep','nap','exercise','memo','condition','meal','review')),
   payload     jsonb NOT NULL,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
@@ -67,3 +68,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS settings jsonb NOT NULL DEFAULT '{}':
 -- 無料トライアルの終了日時。新規登録時（Stripeを設定した後）だけ入る（lib/billing.js）。
 -- NULLの利用者（この機能を入れる前からの登録）はトライアルの対象にしない＝据え置きでずっと使える
 ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ends_at timestamptz;
+
+-- 記録の種類を増やした時は、既存のテーブルには CREATE TABLE IF NOT EXISTS が
+-- 効かない（表がすでにあるので中身は作り直されない）。制約だけ貼り直す。
+ALTER TABLE entries DROP CONSTRAINT IF EXISTS entries_category_check;
+ALTER TABLE entries ADD CONSTRAINT entries_category_check
+  CHECK (category IN ('sleep','nap','exercise','memo','condition','meal','review'));

@@ -192,7 +192,9 @@
   .segmented {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    /* 列数はタブの数から決める（app.js が --seg-count を入れる）。
+       5列と決め打ちにしていたため、6つ目を足した時に折り返してしまった */
+    grid-template-columns: repeat(var(--seg-count, 5), 1fr);
     gap: 2px;
     background: var(--fill);
     border: none;
@@ -2014,6 +2016,15 @@
   @keyframes wakeSpin { to { transform: rotate(360deg); } }
   /* --- 飲食の候補チップ --- */
   /* 飲食の品目と運動の内容で共通に使う、よく使う項目のボタン */
+  /* 数値の欄の右に添える単位（昼寝の「分」など） */
+  .unit-suffix {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    font-size: 14px;
+    color: var(--muted);
+  }
   .quick-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .quick-chips[hidden] { display: none; }
   .quick-chips .quick-chip { padding: 6px 11px; font-size: 12px; border-radius: 999px; font-weight: 600; }

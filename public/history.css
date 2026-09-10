@@ -5,17 +5,22 @@
    index.html 側は各グループのグリッド列数だけを定義する。 */
 
 :root {
-  /* 段階の色。虹色で分けるのをやめ、アクセント1色の濃淡で「良いほど明るく」表す
-     （0=グレー → 1〜3 は青に近づく → 4〜7 は白に近づく）。睡眠グラフ・運動リング・
-     ポイントの推移・体調の丸は、みなこの目盛りから色を取る。
+  /* 量や段階を表す色は、ボタンなどに使うアクセント色とは切り離して持つ。
+     以前はこの目盛りを var(--accent) から作っていたが、それだとアプリの
+     基調色を変えただけで、睡眠グラフ・運動リング・体調の丸・ポイントの推移まで
+     まとめて色が変わり、段階が読めなくなる（実際に一度そうなった）。
+     色で意味を示す場所は「見分けやすさ」で選ぶべきなので、ここは独立させる。
+
+     目盛りの考え方は据え置き: 0=グレー → 1〜3 は青に近づく → 4〜7 は白に近づく。
      index.html / history.html のどちらから読んでも同じ色になるよう、ここで持つ */
+  --data-base: #3d8bff;
   --stage-0: #6e6e78;
-  --stage-1: color-mix(in srgb, var(--accent, #3d8bff) 45%, #6e6e78);
-  --stage-2: color-mix(in srgb, var(--accent, #3d8bff) 72%, #6e6e78);
-  --stage-3: var(--accent, #3d8bff);
-  --stage-4: color-mix(in srgb, var(--accent, #3d8bff) 72%, #ffffff);
-  --stage-5: color-mix(in srgb, var(--accent, #3d8bff) 50%, #ffffff);
-  --stage-6: color-mix(in srgb, var(--accent, #3d8bff) 28%, #ffffff);
+  --stage-1: color-mix(in srgb, var(--data-base) 45%, #6e6e78);
+  --stage-2: color-mix(in srgb, var(--data-base) 72%, #6e6e78);
+  --stage-3: var(--data-base);
+  --stage-4: color-mix(in srgb, var(--data-base) 72%, #ffffff);
+  --stage-5: color-mix(in srgb, var(--data-base) 50%, #ffffff);
+  --stage-6: color-mix(in srgb, var(--data-base) 28%, #ffffff);
   --stage-7: #ffffff;
 
   /* 体調。良い側は青の目盛り、悪い側だけは落ち着いた暖色で「注意」を示す */
@@ -29,7 +34,7 @@
      共通に使う。青の濃淡だけだと段階の違いが読み取れなかったので、この4つだけは
      はっきり違う色にする（灰青 → 青 → 緑 → 金）。他の色は引き続き抑える */
   --grade-nice: #7d8ba1;
-  --grade-good: var(--accent, #3d8bff);
+  --grade-good: var(--data-base);
   --grade-great: #34c759;
   --grade-excellent: #ffd60a;
   --sleep-more: var(--stage-0);
@@ -40,13 +45,14 @@
 }
 /* 白いテーマでは「良いほど明るく」が白地に溶けるので、上の段階は濃い側へ寄せる */
 :root.theme-light {
+  --data-base: #2f7cf6;
   --stage-0: #8a8a92;
-  --stage-1: color-mix(in srgb, var(--accent, #2f7cf6) 50%, #8a8a92);
-  --stage-2: color-mix(in srgb, var(--accent, #2f7cf6) 75%, #8a8a92);
-  --stage-3: var(--accent, #2f7cf6);
-  --stage-4: color-mix(in srgb, var(--accent, #2f7cf6) 78%, #000000);
-  --stage-5: color-mix(in srgb, var(--accent, #2f7cf6) 62%, #000000);
-  --stage-6: color-mix(in srgb, var(--accent, #2f7cf6) 48%, #000000);
+  --stage-1: color-mix(in srgb, var(--data-base) 50%, #8a8a92);
+  --stage-2: color-mix(in srgb, var(--data-base) 75%, #8a8a92);
+  --stage-3: var(--data-base);
+  --stage-4: color-mix(in srgb, var(--data-base) 78%, #000000);
+  --stage-5: color-mix(in srgb, var(--data-base) 62%, #000000);
+  --stage-6: color-mix(in srgb, var(--data-base) 48%, #000000);
   --stage-7: #0b2a5c;
   --level-悪い: #b8743f;
   --level-最悪: #c4463a;

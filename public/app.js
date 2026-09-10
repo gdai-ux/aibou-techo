@@ -2119,7 +2119,7 @@ const HOME_SECTIONS = [
   { key: 'clock', label: '時計と天気' },
   { key: 'quote', label: '今日の格言' },
   { key: 'review', label: '今日の活動' },
-  { key: 'chart', label: 'ポイントの推移' },
+  { key: 'chart', label: 'スコアの推移' },
   { key: 'exercise', label: '今日の運動' },
   { key: 'voice', label: '音声で記録' },
   { key: 'records', label: 'これまでの記録' },

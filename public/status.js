@@ -72,7 +72,7 @@ function renderHero(state) {
   document.getElementById('statusBarFill').style.width = `${(ratio * 100).toFixed(1)}%`;
   const need = Math.max(0, state.nextAt - state.total);
   document.getElementById('statusBarLabel').textContent =
-    `${state.total.toLocaleString('ja-JP')}pt ・ 次のレベルまで あと${need.toLocaleString('ja-JP')}pt`;
+    `${state.total.toLocaleString('ja-JP')}点 ・ 次のレベルまで あと${need.toLocaleString('ja-JP')}点`;
 }
 
 function renderProfile() {
@@ -95,8 +95,8 @@ function renderToday(todayDay) {
     rows.map((r) => `<div class="status-row ${r.pts > 0 ? 'got' : 'miss'}">`
       + `<span class="rl">${esc(r.label)}</span>`
       + `<span class="rd">${esc(r.detail)}</span>`
-      + `<span class="rp">${r.pts > 0 ? '+' : ''}${r.pts}pt</span></div>`).join('')
-    + `<div class="status-total"><span>今日の合計</span><span class="tp">+${total}pt<span style="font-size:12px;color:var(--muted);font-weight:600"> / ${max}pt</span></span></div>`;
+      + `<span class="rp">${r.pts > 0 ? '+' : ''}${r.pts}点</span></div>`).join('')
+    + `<div class="status-total"><span>今日の合計</span><span class="tp">+${total}点<span style="font-size:12px;color:var(--muted);font-weight:600"> / ${max}点</span></span></div>`;
 }
 
 // チャートの描画とインタラクションそのものはscoreChart.js（ホーム画面と共通）にある
@@ -111,7 +111,7 @@ function renderStats(days, totals, today) {
   const weeklyTarget = window.exerciseWeeklyTarget ? exerciseWeeklyTarget() : 5;
 
   const tiles = [
-    { value: totals.total.toLocaleString('ja-JP'), unit: 'pt', label: '累計ポイント' },
+    { value: totals.total.toLocaleString('ja-JP'), unit: '点', label: '累計スコア' },
     { value: streak, unit: '日', label: '連続で記録' },
     { value: recorded.size, unit: '日', label: '記録した日' },
     { value: thisMonth, unit: '日', label: '今月の記録' },
@@ -123,8 +123,8 @@ function renderStats(days, totals, today) {
     + `<span>${esc(t.label)}</span></div>`).join('');
 
   document.getElementById('statusStatsNote').textContent =
-    `累計ポイントの内わけ: 日々の記録 ${totals.daily.toLocaleString('ja-JP')}pt ＋ `
-    + `週の運動ボーナス ${(totals.bonusWeeks * GOHAN_WEEK_BONUS).toLocaleString('ja-JP')}pt（${totals.bonusWeeks}週ぶん）`;
+    `累計スコアの内わけ: 日々の記録 ${totals.daily.toLocaleString('ja-JP')}点 ＋ `
+    + `週の運動ボーナス ${(totals.bonusWeeks * GOHAN_WEEK_BONUS).toLocaleString('ja-JP')}点（${totals.bonusWeeks}週ぶん）`;
 }
 
 // 相棒の「のうりょく」。直近30日の記録から6つの力を0〜100で出す。

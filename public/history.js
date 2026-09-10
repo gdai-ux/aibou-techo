@@ -1347,8 +1347,8 @@ function openSettingsMenu() {
             <span class="settings-menu-desc" id="settingsItemAccountDesc">ログアウト・アカウントの削除</span>
           </button>
           <button type="button" class="settings-menu-item" id="settingsItemPoints">
-            <span class="settings-menu-title">ポイントの説明</span>
-            <span class="settings-menu-desc">何をするとどれだけポイントがもらえるか</span>
+            <span class="settings-menu-title">スコアの説明</span>
+            <span class="settings-menu-desc">何をすると何点入るか</span>
           </button>
           <button type="button" class="settings-menu-item" id="settingsItemExerciseTarget">
             <span class="settings-menu-title">運動の週目標</span>
@@ -1531,8 +1531,8 @@ function openPointRulesModal() {
     overlay.id = 'pointRulesModal';
     overlay.innerHTML = `
       <div class="modal-panel">
-        <h3>ポイントの説明</h3>
-        <p class="hs-note">1日の記録でもらえるポイントは、下の内訳を全部合わせて<b>最大100pt（満点）</b>です。</p>
+        <h3>スコアの説明</h3>
+        <p class="hs-note">1日の記録で入るスコアは、下の内訳を全部合わせて<b>最大100点（満点）</b>です。</p>
         <div class="point-rules">` +
       gohanPointRules().map((r) => `
           <div class="point-rule-row">
@@ -1541,7 +1541,7 @@ function openPointRulesModal() {
             <span class="pr-pts">${escapeHtml(r.pts)}</span>
           </div>`).join('') + `
         </div>
-        <p class="hs-note">ポイントはどこにも保存せず、直近1年ぶんの記録から毎回計算し直します。記録が続くとキャラクターのレベルが上がり、姿が変わっていきます（ホーム画面の📊ボタンから、今のレベルと積み上げを見られます）。</p>
+        <p class="hs-note">スコアはどこにも保存せず、直近1年ぶんの記録から毎回計算し直します。記録が続くとキャラクターのレベルが上がり、姿が変わっていきます（ホーム画面の📊ボタンから、今のレベルと積み上げを見られます）。</p>
         <div class="modal-actions">
           <button type="button" class="cancel-btn" id="pointRulesClose">閉じる</button>
         </div>
@@ -1566,7 +1566,7 @@ function openExerciseTargetModal() {
     overlay.innerHTML = `
       <div class="modal-panel">
         <h3>運動の週目標</h3>
-        <p class="hs-note">週に何日運動したら「今週の運動」を達成にするか。育成ポイントの週ボーナスにも使います。</p>
+        <p class="hs-note">週に何日運動したら「今週の運動」を達成にするか。スコアの週ボーナスにも使います。</p>
         <div class="body-choice" id="exerciseTargetChoice">` +
       [1, 2, 3, 4, 5, 6, 7].map((n) => `<button type="button" data-days="${n}">${n}</button>`).join('') + `
         </div>

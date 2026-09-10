@@ -24,7 +24,7 @@ function exerciseTarget() {
 // （100/68≒1.47）で広げて、それまでのレベルが変わらないようにしている
 const GOHAN_LEVEL_STEP = 44;
 
-// 累計ポイントからレベルを出す（44ptごとに間隔が広がる二乗のカーブ）
+// 累計スコアからレベルを出す（44点ごとに間隔が広がる二乗のカーブ）
 function gohanLevel(points) {
   return 1 + Math.floor(Math.sqrt(points / GOHAN_LEVEL_STEP));
 }
@@ -91,7 +91,7 @@ function gohanDayPointBreakdown(day) {
   ];
 }
 
-// 1日ぶんの合計ポイント（1日最大100pt＝満点）
+// 1日ぶんの合計スコア（1日最大100点＝満点）
 function gohanDayPoints(day) {
   return gohanDayPointBreakdown(day).reduce((sum, row) => sum + row.pts, 0);
 }
@@ -111,13 +111,13 @@ function gohanMondayKey(dateStr) {
 // 運動の週目標は設定で変えられるので、呼ばれるたびに文言を組み立て直す
 function gohanPointRules() {
   return [
-    { label: '睡眠', detail: '7時間以上 / 6時間台 / 5時間台', pts: '25 / 15 / 8pt' },
-    { label: '運動', detail: '1種目15pt、2種目から+5pt（1行を1種目と数えます）', pts: '最大25pt' },
-    { label: '食事', detail: '朝・昼・夕 それぞれ記録すると', pts: '各10pt' },
-    { label: '体調', detail: '1日1回でも記録すれば', pts: '5pt' },
-    { label: 'メモ', detail: '1日1回でも記録すれば', pts: '5pt' },
-    { label: 'パーフェクトデー', detail: '睡眠・運動・3食・体調がそろった日', pts: '+10pt' },
-    { label: '週の運動ボーナス', detail: `月曜はじまりの週で運動${exerciseTarget()}日以上`, pts: `+${GOHAN_WEEK_BONUS}pt` },
+    { label: '睡眠', detail: '7時間以上 / 6時間台 / 5時間台', pts: '25 / 15 / 8点' },
+    { label: '運動', detail: '1種目15点、2種目から+5点（1行を1種目と数えます）', pts: '最大25点' },
+    { label: '食事', detail: '朝・昼・夕 それぞれ記録すると', pts: '各10点' },
+    { label: '体調', detail: '1日1回でも記録すれば', pts: '5点' },
+    { label: 'メモ', detail: '1日1回でも記録すれば', pts: '5点' },
+    { label: 'パーフェクトデー', detail: '睡眠・運動・3食・体調がそろった日', pts: '+10点' },
+    { label: '週の運動ボーナス', detail: `月曜はじまりの週で運動${exerciseTarget()}日以上`, pts: `+${GOHAN_WEEK_BONUS}点` },
   ];
 }
 

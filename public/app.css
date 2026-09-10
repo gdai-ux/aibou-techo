@@ -2004,10 +2004,11 @@
   .wake-spin { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: wakeSpin 0.9s linear infinite; }
   @keyframes wakeSpin { to { transform: rotate(360deg); } }
   /* --- 飲食の候補チップ --- */
-  .meal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .meal-chips[hidden] { display: none; }
-  .meal-chips .meal-chip { padding: 6px 11px; font-size: 12px; border-radius: 999px; font-weight: 600; }
-  .meal-chips .meal-chip-same { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  /* 飲食の品目と運動の内容で共通に使う、よく使う項目のボタン */
+  .quick-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .quick-chips[hidden] { display: none; }
+  .quick-chips .quick-chip { padding: 6px 11px; font-size: 12px; border-radius: 999px; font-weight: 600; }
+  .quick-chips .quick-chip-same { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
   /* 今日サボリ魔王を倒した印（ゲーム）。ヘッダーの相棒の右上に乗せる */
   .app-icon { position: relative; }

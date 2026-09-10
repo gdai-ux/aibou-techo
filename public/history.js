@@ -867,6 +867,7 @@ async function loadHistory() {
     // ホーム画面の「今日」カードの数字も同じデータから更新する
     if (typeof renderTodayStats === 'function') renderTodayStats(allDays);
     if (typeof renderMealChips === 'function') renderMealChips(allDays);
+    if (typeof renderExerciseChips === 'function') renderExerciseChips(allDays);
 
     // ハッシュ指定(#day-YYYY-MM-DD)があれば、その日が今週なら「今週」、
     // それより前ならその月の「月ごと」を初期表示にする（記録直後の再読み込みでは

@@ -53,27 +53,42 @@ const WEEKDAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
   panel.parentNode.insertBefore(card, panel);
 })();
 
-// --- 飲食の候補チップ（よく食べるもの・前回と同じ） ---
-// 履歴（history.js の loadHistory）が読めるたびに作り直す。押すと品目の欄に1行足す
-function renderMealChips(days) {
-  const area = document.getElementById('mealItems');
+// --- 入力欄の下に出す「よく使う項目」チップ ---
+// 飲食の品目も運動の内容も「1行に1項目」で書く欄なので、直近の履歴から
+// よく使う行を拾ってボタンにする処理は共通にしてある（別々に書くと、
+// 後から片方だけ直して挙動がずれる）。履歴が読めるたびに作り直す。
+//
+// 履歴の行には「12:30 白米（約250kcal）」のように時刻や推定カロリーが
+// 付いていることがある。ボタンの文字としても、押して入る行としても
+// 邪魔なので、どちらも落としてから使う
+function stripEntryLine(text) {
+  return String(text)
+    .replace(/^\d{1,2}:\d{2}\s+/, '')
+    .replace(/（(約[\d,]+kcal|kcal不明)）\s*$/, '')
+    .trim();
+}
+
+// days: 新しい日が先頭。gather で数える行を集め、lastLines で「前回と同じ」の中身を決める
+function renderQuickChips(days, { textareaId, boxId, gather, lastLines }) {
+  const area = document.getElementById(textareaId);
   if (!area || !Array.isArray(days)) return;
-  let box = document.getElementById('mealChips');
+  let box = document.getElementById(boxId);
   if (!box) {
     box = document.createElement('div');
-    box.id = 'mealChips';
-    box.className = 'meal-chips';
+    box.id = boxId;
+    box.className = 'quick-chips';
     const row = area.closest('.field-row');
     (row || area).parentNode.insertBefore(box, (row || area).nextSibling);
   }
-  const strip = (it) => String(it).replace(/^\d{1,2}:\d{2}\s+/, '').replace(/（(約[\d,]+kcal|kcal不明)）\s*$/, '').trim();
-  const count = new Map();
   const recent = days.slice(0, 60);
-  recent.forEach((d) => (d.meals || []).forEach((m) => (m.items || []).forEach((it) => {
-    const t = strip(it);
+
+  const count = new Map();
+  gather(recent, (line) => {
+    const t = stripEntryLine(line);
     if (t) count.set(t, (count.get(t) || 0) + 1);
-  })));
+  });
   const top = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
+
   const addLine = (text) => {
     const lines = area.value.split('\n').map((s) => s.trim()).filter(Boolean);
     if (!lines.includes(text)) lines.push(text);
@@ -82,32 +97,68 @@ function renderMealChips(days) {
     area.dispatchEvent(new Event('input', { bubbles: true }));
     if (typeof refitTextarea === 'function') refitTextarea(area);
   };
+
   box.textContent = '';
-  // 「前回と同じ」: いま選んでいる種類（朝食など）の直近の食事をまとめて入れる
-  const same = document.createElement('button');
-  same.type = 'button';
-  same.className = 'chip meal-chip meal-chip-same';
-  same.textContent = '前回と同じ';
-  same.addEventListener('click', () => {
-    const form = area.closest('form');
-    const typeInput = form && form.querySelector('[name="mealType"]');
-    const type = typeInput ? typeInput.value : '';
-    const last = recent.flatMap((d) => d.meals || []).find((m) => !type || m.mealType === type);
-    if (!last) return;
-    (last.items || []).map(strip).filter(Boolean).forEach(addLine);
-  });
-  box.appendChild(same);
+  const prev = lastLines(recent).map(stripEntryLine).filter(Boolean);
+  if (prev.length) {
+    const same = document.createElement('button');
+    same.type = 'button';
+    same.className = 'chip quick-chip quick-chip-same';
+    same.textContent = '前回と同じ';
+    same.addEventListener('click', () => prev.forEach(addLine));
+    box.appendChild(same);
+  }
   top.forEach((t) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'chip meal-chip';
+    b.className = 'chip quick-chip';
     b.textContent = t;
     b.addEventListener('click', () => addLine(t));
     box.appendChild(b);
   });
-  box.hidden = !top.length && !recent.some((d) => (d.meals || []).length);
+  box.hidden = !box.children.length;
 }
+
+// 新しい日から順に見て、条件に合う記録のうち一番あとのもの（＝直近）を返す
+function findLatestEntry(recent, pick) {
+  for (const day of recent) {
+    const hit = pick(day);
+    if (hit && hit.length) return hit[hit.length - 1];
+  }
+  return null;
+}
+
+function renderMealChips(days) {
+  renderQuickChips(days, {
+    textareaId: 'mealItems',
+    boxId: 'mealChips',
+    gather: (recent, add) => recent.forEach((d) => (d.meals || []).forEach((m) => (m.items || []).forEach(add))),
+    // 「前回と同じ」は、いま選んでいる種類（朝食など）の直近の食事をまとめて入れる
+    lastLines: (recent) => {
+      const form = document.getElementById('mealItems').closest('form');
+      const typeInput = form && form.querySelector('[name="mealType"]');
+      const type = typeInput ? typeInput.value : '';
+      const last = findLatestEntry(recent, (d) => (d.meals || []).filter((m) => !type || m.mealType === type));
+      return last ? (last.items || []) : [];
+    },
+  });
+}
+
+function renderExerciseChips(days) {
+  const lines = (e) => String(e && e.content || '').split('\n');
+  renderQuickChips(days, {
+    textareaId: 'exerciseContent',
+    boxId: 'exerciseChips',
+    gather: (recent, add) => recent.forEach((d) => (d.exercise || []).forEach((e) => lines(e).forEach(add))),
+    lastLines: (recent) => {
+      const last = findLatestEntry(recent, (d) => d.exercise || []);
+      return last ? lines(last) : [];
+    },
+  });
+}
+
 window.renderMealChips = renderMealChips;
+window.renderExerciseChips = renderExerciseChips;
 
 function updateClock() {
   const d = new Date();

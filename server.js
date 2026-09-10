@@ -750,6 +750,91 @@ app.post('/api/migrate-db', billing.requireAccess, async (req, res) => {
   }
 });
 
+// ---- Notionに残っている過去の記録を、自前DBへ取り込む ----------------------
+// Web版（STORAGE=pg）は保存先がNotionではなく自前のデータベースなので、
+// 以前からNotionに記録してきた人は、そのままでは過去分が1件も見えない。
+// この口は、利用者自身のNotion（設定画面で入れたトークンとページID）を読んで、
+// まだ自前DBに無い日付だけをコピーする。
+//
+// ・Notionの読み取りは notionStore に任せる（本文形式・データベース形式の
+//   どちらでも読める。どちらかは向こうが判断する）
+// ・すでにその日付の記録があれば丸ごと飛ばすので、途中で失敗しても
+//   もう一度押せば続きから再開でき、二重に増えることもない
+// ・Renderの無料枠で長い処理が切られないよう、1回で最大60日ぶんに区切り、
+//   残り日数を返して呼び出し側に繰り返させる（migrate-db と同じ方式）
+const IMPORT_DAYS_PER_CALL = 60;
+
+app.post('/api/import-notion', billing.requireAccess, async (req, res) => {
+  if (STORAGE_MODE !== 'pg') return res.status(400).json({ error: 'この画面では取り込みは不要です' });
+  try {
+    if (!req.user) throw new Error('ログインが必要です');
+    const { token, pageId } = resolveNotionConfig(req);
+    if (!token || !pageId) throw new Error(NOTION_NOT_CONFIGURED);
+
+    const source = notionStore(token, pageId);
+    const notionDays = await source.history(9999);
+    const hasRecords = (d) =>
+      d.sleep || d.review || d.exercise.length || d.condition.length || d.memo.length || d.meals.length;
+    const withRecords = notionDays.filter(hasRecords);
+
+    const already = await pgStore.listDates(req.user.id);
+    const targets = withRecords.filter((d) => !already.has(d.dateStr));
+    // 古い日から順に入れる（途中で止まっても、新しい方が歯抜けになるだけで済む）
+    const batch = targets.slice(-IMPORT_DAYS_PER_CALL);
+
+    let entries = 0;
+    let skipped = 0;
+    for (const day of batch) {
+      const at = { dateStr: day.dateStr, weekday: day.weekday };
+
+      // Notionには「体調」の見出しだけで中身が空、といった記録も残り得る。
+      // それをそのまま保存しようとすると検証で例外になり、その日から先へ
+      // 進めなくなる（次に押しても同じ日で止まる）。書き込む前に日ぶん全部を
+      // 検証にかけ、通らないものだけ落としてから書き込む。
+      const planned = [];
+      const plan = (category, payload) => {
+        try {
+          pgStore.normalizePayload(category, payload);
+          planned.push({ category, payload });
+        } catch (e) {
+          skipped++;
+        }
+      };
+      for (const m of day.memo) plan('memo', { time: m.time || '', content: m.content });
+      for (const e of day.exercise) plan('exercise', { time: e.time || '', content: e.content });
+      for (const c of day.condition) {
+        plan('condition', { time: c.time || '', level: c.level || '', stool: c.stool || '', note: c.note || '' });
+      }
+      for (const meal of day.meals) {
+        // Notionの品目には「12:30 白米」のように時刻が入っていることがある。
+        // ここで time を渡すと保存時にもう一度時刻が付いて二重になるため、
+        // 品目はそのまま渡し、time は空にしておく
+        plan('meal', { time: '', mealType: meal.mealType, items: meal.items || [] });
+      }
+      if (day.sleep) plan('sleep', { bedtime: day.sleep.bedtime, wake: day.sleep.wake });
+
+      for (const p of planned) {
+        await pgStore.appendEntry(req.user.id, p.category, p.payload, at);
+        entries++;
+      }
+      if (day.review && String(day.review.content || '').trim()) {
+        await pgStore.upsertReview(req.user.id, day.dateStr, day.review.content);
+        entries++;
+      }
+    }
+
+    res.json({
+      importedDays: batch.length,
+      importedEntries: entries,
+      skippedEntries: skipped,
+      remaining: targets.length - batch.length,
+      total: withRecords.length,
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 // メタ系エントリ(メモ/運動/睡眠/体調)を編集する
 app.put('/api/entry/meta', billing.requireAccess, async (req, res) => {
   const { blockId, category, payload } = req.body || {};

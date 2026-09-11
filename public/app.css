@@ -2029,6 +2029,82 @@
   .quick-chips[hidden] { display: none; }
   .quick-chips .quick-chip { padding: 6px 11px; font-size: 12px; border-radius: 999px; font-weight: 600; }
   .quick-chips .quick-chip-same { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  /* 上位8件に入らない記録を呼び出す入口。チップの仲間だが、
+     入力候補そのものではないので枠線だけの控えめな見た目にする */
+  .quick-chips .quick-chip-more { color: var(--muted); background: transparent; border: 1px dashed var(--border-strong); }
+
+  /* 「過去から選ぶ」一覧（全期間ぶんを並べてタップで出し入れする） */
+  .entry-picker-search {
+    width: 100%;
+    font: inherit;
+    font-size: 16px; /* 16px未満だとiOSが開いた時に拡大してしまう */
+    color: var(--text);
+    background: var(--fill);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 11px 13px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .entry-picker-search:focus { border-color: var(--accent); }
+  .entry-picker-list {
+    margin-top: 12px;
+    max-height: 46vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .entry-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 2px;
+    text-align: left;
+    font: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .entry-picker-row:last-child { border-bottom: none; }
+  .entry-picker-row:active { background: var(--fill); }
+  .entry-picker-row .epr-text { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.45; }
+  .entry-picker-row .epr-meta { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* 未選択は「＋（押すと入る）」、選択済みはチェック。丸を空のまま並べると
+     何をする行なのか伝わらないので、＋を薄く入れておく */
+  .entry-picker-row .epr-check {
+    position: relative;
+    flex: none;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: transparent;
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .entry-picker-row .epr-check::before {
+    content: "+";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--muted);
+  }
+  .entry-picker-row.is-selected .epr-check { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .entry-picker-row.is-selected .epr-check::before { content: none; }
+  .entry-picker-empty { padding: 24px 4px; text-align: center; font-size: 13px; color: var(--muted); }
 
   /* 今日サボリ魔王を倒した印（ゲーム）。ヘッダーの相棒の右上に乗せる */
   .app-icon { position: relative; }

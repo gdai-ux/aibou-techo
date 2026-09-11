@@ -68,8 +68,24 @@ function stripEntryLine(text) {
     .trim();
 }
 
+// 履歴の行を、同じ内容ごとにまとめる。何回書いたかと、最後に書いた日も持たせる
+// （チップの並び順と、「過去から選ぶ」一覧の並び順・注記に使う）
+function tallyEntryLines(days, gather) {
+  const stat = new Map();
+  gather(days, (line, day) => {
+    const text = stripEntryLine(line);
+    if (!text) return;
+    const cur = stat.get(text) || { text, count: 0, last: '' };
+    cur.count += 1;
+    const date = (day && day.dateStr) || '';
+    if (date > cur.last) cur.last = date;
+    stat.set(text, cur);
+  });
+  return [...stat.values()];
+}
+
 // days: 新しい日が先頭。gather で数える行を集め、lastLines で「前回と同じ」の中身を決める
-function renderQuickChips(days, { textareaId, boxId, gather, lastLines }) {
+function renderQuickChips(days, { textareaId, boxId, gather, lastLines, pickerTitle }) {
   const area = document.getElementById(textareaId);
   if (!area || !Array.isArray(days)) return;
   let box = document.getElementById(boxId);
@@ -82,21 +98,28 @@ function renderQuickChips(days, { textareaId, boxId, gather, lastLines }) {
   }
   const recent = days.slice(0, 60);
 
-  const count = new Map();
-  gather(recent, (line) => {
-    const t = stripEntryLine(line);
-    if (t) count.set(t, (count.get(t) || 0) + 1);
-  });
-  const top = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
+  // チップに出すのは直近60日でよく使った順。一覧（過去から選ぶ）は全期間から。
+  const top = tallyEntryLines(recent, gather)
+    .sort((a, b) => b.count - a.count || (a.last < b.last ? 1 : -1))
+    .slice(0, 8)
+    .map((s) => s.text);
+  const all = tallyEntryLines(days, gather)
+    .sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : b.count - a.count));
 
-  const addLine = (text) => {
-    const lines = area.value.split('\n').map((s) => s.trim()).filter(Boolean);
-    if (!lines.includes(text)) lines.push(text);
+  const lineList = () => area.value.split('\n').map((s) => s.trim()).filter(Boolean);
+  const applyLines = (lines) => {
     area.value = lines.join('\n');
     area.dataset.touched = '1';
     area.dispatchEvent(new Event('input', { bubbles: true }));
     if (typeof refitTextarea === 'function') refitTextarea(area);
   };
+  const addLine = (text) => {
+    const lines = lineList();
+    if (!lines.includes(text)) lines.push(text);
+    applyLines(lines);
+  };
+  const removeLine = (text) => applyLines(lineList().filter((l) => l !== text));
+  const hasLine = (text) => lineList().includes(text);
 
   box.textContent = '';
   const prev = lastLines(recent).map(stripEntryLine).filter(Boolean);
@@ -116,7 +139,113 @@ function renderQuickChips(days, { textareaId, boxId, gather, lastLines }) {
     b.addEventListener('click', () => addLine(t));
     box.appendChild(b);
   });
+  // チップに並ぶのは上位8件だけなので、それ以外（たまにしかしない種目や
+  // 珍しい料理）を呼び出せるよう、全期間の一覧への入口を最後に置く
+  if (all.length > top.length) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'chip quick-chip quick-chip-more';
+    more.textContent = '過去から選ぶ';
+    more.addEventListener('click', () => openEntryPicker({
+      title: pickerTitle || '過去の記録から選ぶ',
+      items: all,
+      add: addLine,
+      remove: removeLine,
+      has: hasLine,
+    }));
+    box.appendChild(more);
+  }
   box.hidden = !box.children.length;
+}
+
+// --- 「過去から選ぶ」一覧 -----------------------------------------------
+// 全期間ぶんを新しく書いた順に並べ、文字でしぼり込みながらタップで
+// 出し入れする。1回で何行も入れたいことが多いので、押しても閉じない。
+let entryPicker = null;
+
+function buildEntryPicker() {
+  if (entryPicker) return entryPicker;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay hidden';
+  overlay.id = 'entryPickerModal';
+  overlay.innerHTML = `
+    <div class="modal-panel">
+      <h3 id="entryPickerTitle">過去の記録から選ぶ</h3>
+      <input type="search" id="entryPickerSearch" class="entry-picker-search" placeholder="記録をさがす" autocomplete="off" spellcheck="false" />
+      <div class="entry-picker-list" id="entryPickerList"></div>
+      <div class="modal-actions">
+        <button type="button" class="save-btn" id="entryPickerDone">完了</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => {
+    overlay.classList.add('hidden');
+    entryPicker.ctx = null;
+  };
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('#entryPickerDone').addEventListener('click', close);
+  overlay.querySelector('#entryPickerSearch').addEventListener('input', renderEntryPickerList);
+  entryPicker = {
+    overlay,
+    close,
+    ctx: null,
+    title: overlay.querySelector('#entryPickerTitle'),
+    search: overlay.querySelector('#entryPickerSearch'),
+    list: overlay.querySelector('#entryPickerList'),
+  };
+  return entryPicker;
+}
+
+// 「12回・9/5」。日付は最後に書いた日
+function entryPickerMeta(item) {
+  const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(item.last || '');
+  const when = m ? `${Number(m[1])}/${Number(m[2])}` : '';
+  return when ? `${item.count}回・${when}` : `${item.count}回`;
+}
+
+function renderEntryPickerList() {
+  const p = entryPicker;
+  if (!p || !p.ctx) return;
+  const q = p.search.value.trim().toLowerCase();
+  const items = q ? p.ctx.items.filter((it) => it.text.toLowerCase().includes(q)) : p.ctx.items;
+  p.list.textContent = '';
+  if (!items.length) {
+    const empty = document.createElement('p');
+    empty.className = 'entry-picker-empty';
+    empty.textContent = q ? '見つかりませんでした。' : 'まだ記録がありません。';
+    p.list.appendChild(empty);
+    return;
+  }
+  items.forEach((it) => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'entry-picker-row';
+    row.innerHTML = '<span class="epr-check" aria-hidden="true">✓</span><span class="epr-text"></span><span class="epr-meta"></span>';
+    row.querySelector('.epr-text').textContent = it.text;
+    row.querySelector('.epr-meta').textContent = entryPickerMeta(it);
+    const mark = (on) => {
+      row.classList.toggle('is-selected', on);
+      row.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    mark(p.ctx.has(it.text));
+    row.addEventListener('click', () => {
+      const on = p.ctx.has(it.text);
+      if (on) p.ctx.remove(it.text); else p.ctx.add(it.text);
+      mark(!on);
+    });
+    p.list.appendChild(row);
+  });
+}
+
+function openEntryPicker(ctx) {
+  const p = buildEntryPicker();
+  p.ctx = ctx;
+  p.title.textContent = ctx.title;
+  // 検索欄にはあえてフォーカスしない（スマホでキーボードが出て一覧が隠れるため）
+  p.search.value = '';
+  renderEntryPickerList();
+  p.list.scrollTop = 0;
+  p.overlay.classList.remove('hidden');
 }
 
 // 新しい日から順に見て、条件に合う記録のうち一番あとのもの（＝直近）を返す
@@ -132,7 +261,8 @@ function renderMealChips(days) {
   renderQuickChips(days, {
     textareaId: 'mealItems',
     boxId: 'mealChips',
-    gather: (recent, add) => recent.forEach((d) => (d.meals || []).forEach((m) => (m.items || []).forEach(add))),
+    pickerTitle: '過去の飲食から選ぶ',
+    gather: (list, add) => list.forEach((d) => (d.meals || []).forEach((m) => (m.items || []).forEach((line) => add(line, d)))),
     // 「前回と同じ」は、いま選んでいる種類（朝食など）の直近の食事をまとめて入れる
     lastLines: (recent) => {
       const form = document.getElementById('mealItems').closest('form');
@@ -149,7 +279,8 @@ function renderExerciseChips(days) {
   renderQuickChips(days, {
     textareaId: 'exerciseContent',
     boxId: 'exerciseChips',
-    gather: (recent, add) => recent.forEach((d) => (d.exercise || []).forEach((e) => lines(e).forEach(add))),
+    pickerTitle: '過去の運動から選ぶ',
+    gather: (list, add) => list.forEach((d) => (d.exercise || []).forEach((e) => lines(e).forEach((line) => add(line, d)))),
     lastLines: (recent) => {
       const last = findLatestEntry(recent, (d) => d.exercise || []);
       return last ? lines(last) : [];

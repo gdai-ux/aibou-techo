@@ -10,7 +10,7 @@
 // 名前が変わると activate で古いキャッシュを丸ごと捨てるので、
 // 「新しいHTMLと古いCSS」のような食い違いが端末に残らない。
 // （実際に、色の変更後に古いCSSだけが残って配色が崩れたことがある）
-const CACHE = 'aibou-techo-v2';
+const CACHE = 'aibou-techo-v3';
 
 // 最初に確保しておく骨格。それ以外のGETも一度見れば自動でキャッシュされる
 const CORE = [
@@ -33,6 +33,7 @@ const CORE = [
   'weather.js',
   'quotes.js',
   'pull-refresh.js',
+  'app-update.js',
   'notion-client.js',
   'auth-client.js',
   'vendor/supabase.js',

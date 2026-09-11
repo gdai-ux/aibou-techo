@@ -21,6 +21,8 @@
   const TEXT_ARMED = '離して更新';
   const TEXT_LOADING = '更新中…';
   const TEXT_DONE = '更新しました';
+  // 書きかけがあって読み込み直せなかった時に出す
+  const TEXT_UPDATE = '新しい版があります';
 
   const indicator = document.createElement('div');
   indicator.className = 'pull-refresh-indicator';
@@ -91,6 +93,9 @@
     progressCircle.style.strokeDashoffset = String(CIRCUMFERENCE);
   }
 
+  // データを取り直すだけだと、アプリ本体（HTML/CSS/JS）は開いた時のまま
+  // 何日も古いことがある。ここで新しい版が出ていないかも見る（app-update.js）。
+  // 新しい版があった時は true（書きかけが無ければ、そのまま読み込み直される）
   async function refreshPage() {
     const tasks = [];
     if (typeof loadCalendar === 'function') tasks.push(loadCalendar());
@@ -99,6 +104,8 @@
     if (typeof loadHistory === 'function') tasks.push(loadHistory());
     if (typeof loadStatus === 'function') tasks.push(loadStatus());
     await Promise.allSettled(tasks);
+    if (typeof checkAppUpdate === 'function') return await checkAppUpdate();
+    return false;
   }
 
   document.addEventListener('touchstart', (e) => {
@@ -144,15 +151,16 @@
     // リングを「一部だけ塗られた弧」に切り替えて、くるくる回るスピナー表示にする
     progressCircle.style.strokeDasharray = `${CIRCUMFERENCE * 0.28} ${CIRCUMFERENCE}`;
     progressCircle.style.strokeDashoffset = '0';
+    let hasUpdate = false;
     try {
-      await refreshPage();
+      hasUpdate = await refreshPage();
     } finally {
       const spent = Date.now() - startedAt;
       if (spent < MIN_SPIN) await new Promise((r) => setTimeout(r, MIN_SPIN - spent));
       // 終わったことが分かるよう、チェックに変えて少しだけ見せてから消す
       indicator.classList.remove('spinning');
       indicator.classList.add('done');
-      label.textContent = TEXT_DONE;
+      label.textContent = hasUpdate ? TEXT_UPDATE : TEXT_DONE;
       setTimeout(() => {
         refreshing = false;
         resetPull();

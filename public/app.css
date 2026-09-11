@@ -1924,11 +1924,13 @@
        いて、右だけ切れそうに見えていた。列は中身のぶんだけ取り、余りは列と列の
        あいだに等分して配る。こうすると両端がカードの端で揃い、数字どうしの
        間隔もそろう（minmax の下限を0にしてあるので、桁が増えて入りきらない時は
-       列の側が縮み、はみ出しは下の font-size の clamp が受け持つ） */
+       列の側が縮み、はみ出しは下の font-size の clamp が受け持つ）。
+       左右に少しだけ内側の余白を取り、両端の数字が上下の罫線の端に
+       ぴったり触れないようにする（触れていると切れそうに見える） */
     grid-template-columns: repeat(4, minmax(0, auto));
     justify-content: space-between;
     gap: 6px;
-    padding: 14px 0;
+    padding: 14px 8px;
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     margin-bottom: 14px;

@@ -64,7 +64,46 @@
     return true;
   }
 
+  // 設定の「アプリを最新にする」から呼ぶ、最後の手段。
+  // Service Worker とキャッシュをいったん全部捨て、URLに印を足して
+  // （印があると、どのキャッシュにも一致しないので必ず取りに行く）読み込み直す
+  async function forceAppUpdate() {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch (e) { /* 消せなくても、下の読み込み直しは試す */ }
+    try { sessionStorage.removeItem(RELOAD_KEY); } catch (e) { /* 無くても困らない */ }
+    location.replace(`${location.pathname}?fresh=${Date.now()}`);
+  }
+
+  // サーバーにある版の日時。「いつのアプリを見ているか」を設定に出すため
+  async function appVersionLabel() {
+    try {
+      const resp = await fetch(PAGE, { method: 'HEAD', cache: 'no-store' });
+      const lm = resp.headers.get('last-modified');
+      const d = lm ? new Date(lm) : null;
+      if (!d || isNaN(d.getTime())) return '';
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch (e) {
+      return '';
+    }
+  }
+
   window.checkAppUpdate = checkAppUpdate;
+  window.forceAppUpdate = forceAppUpdate;
+  window.appVersionLabel = appVersionLabel;
+
+  // 読み込み直しの印はURLに残しておく必要がないので消す
+  if (/[?&]fresh=/.test(location.search)) {
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* 消せなくても動く */ }
+  }
 
   fingerprint().then((tag) => { if (!baseline) baseline = tag; });
 

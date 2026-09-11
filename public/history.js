@@ -1402,6 +1402,10 @@ function openSettingsMenu() {
               <span class="hs-knob"></span>
             </label>
           </div>
+          <button type="button" class="settings-menu-item" id="settingsItemUpdate">
+            <span class="settings-menu-title">アプリを最新にする</span>
+            <span class="settings-menu-desc" id="settingsItemUpdateDesc">画面が古いままの時に押すと、最新の見た目・機能を取り直します</span>
+          </button>
           <div class="settings-menu-item settings-theme-item">
             <span class="settings-menu-title">テーマ</span>
             <div class="theme-choice" id="themeChoice">
@@ -1467,6 +1471,17 @@ function openSettingsMenu() {
       exportHistoryCsv().catch((e) => alert(`書き出せませんでした: ${e.message}`));
     });
     document.getElementById('fontLargeToggle').addEventListener('change', (e) => setFontLarge(e.target.checked));
+    document.getElementById('settingsItemUpdate').addEventListener('click', () => {
+      if (typeof forceAppUpdate === 'function') forceAppUpdate();
+      else location.reload();
+    });
+  }
+  // いま配信されている版の日時を添える（「いつのアプリを見ているか」が分かるように）
+  if (typeof appVersionLabel === 'function') {
+    appVersionLabel().then((label) => {
+      const desc = document.getElementById('settingsItemUpdateDesc');
+      if (desc && label) desc.textContent = `画面が古いままの時に押してください（最新の版 ${label}）`;
+    });
   }
   refreshThemeChoice();
   refreshMigrateItem();

@@ -10,7 +10,7 @@
 // 名前が変わると activate で古いキャッシュを丸ごと捨てるので、
 // 「新しいHTMLと古いCSS」のような食い違いが端末に残らない。
 // （実際に、色の変更後に古いCSSだけが残って配色が崩れたことがある）
-const CACHE = 'aibou-techo-v3';
+const CACHE = 'aibou-techo-v4';
 
 // 最初に確保しておく骨格。それ以外のGETも一度見れば自動でキャッシュされる
 const CORE = [
@@ -49,11 +49,32 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// 開いたままの古い画面を、新しい版に入れ替える。
+// ホーム画面に追加したアプリは画面を開いたまま何日でも残るため、
+// こちらが直してもいつまでも古い画面が表示されつづけることがあった
+// （実際に、2日前の画面のまま直らなかった）。新しいSWが動き出した時に、
+// 前面に無い画面だけ読み込み直させる。前面のものは、入力中のものを
+// 消してしまわないよう触らない（そちらは app-update.js が受け持つ）。
+async function reloadStaleWindows() {
+  try {
+    const windows = await self.clients.matchAll({ type: 'window' });
+    await Promise.all(windows.map((c) => {
+      if (c.focused || typeof c.navigate !== 'function') return null;
+      return c.navigate(c.url).catch(() => {});
+    }));
+  } catch (e) { /* 対応していないブラウザでは何もしない */ }
+}
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    ).then(() => self.clients.claim()).then(() => {
+      // 読み込み直しは activate の完了を待たせない（戻り値を返さない）。
+      // 待たせると、始まった読み込み自体がこのSWの起動完了待ちになり、
+      // お互い待ち合ってどちらも進まなくなる
+      reloadStaleWindows();
+    })
   );
 });
 

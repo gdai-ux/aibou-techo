@@ -103,6 +103,29 @@ try {
   .msg { margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); min-height: 1.6em; }
   .msg.ok { color: var(--ok); }
   .msg.err { color: var(--err); }
+  /* メールに書かれた6桁のコード。ホーム画面に追加したアプリの中では、
+     メールのリンクを押しても別のブラウザが開いてしまい、アプリには戻って
+     こられない。コードなら、いま開いている画面のまま入れる */
+  .code-box { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .code-box[hidden] { display: none; }
+  input[type="text"].code-input {
+    width: 100%;
+    font: inherit;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    background: var(--fill);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 13px 14px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="text"].code-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
   .note { margin: 18px 0 0; font-size: 12px; color: var(--muted); line-height: 1.7; text-align: center; }
   .note a { color: var(--accent); text-decoration: none; }
 </style>
@@ -119,8 +142,14 @@ try {
       <label for="email">メールアドレス</label>
       <input type="email" id="email" name="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required />
       <button type="submit" id="sendBtn">ログイン用のリンクを送る</button>
-      <p class="msg" id="msg">パスワードは不要です。届いたメールのリンクを開くとログインできます。</p>
+      <p class="msg" id="msg">パスワードは不要です。届いたメールのリンクを開くか、書かれている6桁のコードを入れるとログインできます。</p>
     </form>
+    <div class="code-box" id="codeBox" hidden>
+      <label for="code">メールに書かれた6桁のコード</label>
+      <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" class="code-input" />
+      <button type="button" id="codeBtn">このコードで入る</button>
+      <p class="msg" id="codeMsg">リンクが別のブラウザで開いてしまう時は、こちらを使ってください。</p>
+    </div>
   </div>
   <p class="note">登録すると、<a href="terms.html">利用規約</a>・<a href="privacy.html">プライバシーポリシー</a>に同意したものとみなします。</p>
 
@@ -130,6 +159,10 @@ try {
     const form = document.getElementById('loginForm');
     const msg = document.getElementById('msg');
     const sendBtn = document.getElementById('sendBtn');
+    const codeBox = document.getElementById('codeBox');
+    const codeInput = document.getElementById('code');
+    const codeBtn = document.getElementById('codeBtn');
+    const codeMsg = document.getElementById('codeMsg');
     const params = new URLSearchParams(location.search);
     const next = (params.get('next') || 'index.html').replace(/[^a-zA-Z0-9_.\-]/g, '') || 'index.html';
 
@@ -208,7 +241,38 @@ try {
         return;
       }
       msg.className = 'msg ok';
-      msg.textContent = `${email} にリンクを送りました。メールを開いてリンクを押してください（届くまで1〜2分かかることがあります）。`;
+      msg.textContent = `${email} に送りました（届くまで1〜2分かかることがあります）。メールのリンクを押すか、下に6桁のコードを入れてください。`;
+      codeBox.hidden = false;
+      sendBtn.textContent = 'もう一度送る';
+      sendBtn.disabled = false;
+    });
+
+    // コードで入る。ホーム画面に追加したアプリの中でメールのリンクを押すと、
+    // 既定のブラウザ（Chromeなど）が開いてしまい、アプリ側はログインできない。
+    // しかもリンクは1回きりなので、あとからSafariで開いても「期限切れ」になる。
+    // コードなら、いま開いているこの画面のまま最後まで進められる
+    codeBtn.addEventListener('click', async () => {
+      if (!client) return;
+      const email = document.getElementById('email').value.trim();
+      const token = codeInput.value.replace(/[^0-9]/g, '');
+      if (!email || token.length < 6) {
+        codeMsg.className = 'msg err';
+        codeMsg.textContent = 'メールアドレスと、6桁のコードを入れてください。';
+        return;
+      }
+      codeBtn.disabled = true;
+      codeMsg.className = 'msg';
+      codeMsg.textContent = '確認しています…';
+      const { data, error } = await client.auth.verifyOtp({ email, token, type: 'email' });
+      if (error || !data || !data.session) {
+        codeBtn.disabled = false;
+        codeMsg.className = 'msg err';
+        codeMsg.textContent = /expired/i.test(error && error.message || '')
+          ? 'コードの期限が切れています。上からもう一度送ってください。'
+          : 'コードが合いませんでした。メールに書かれた6桁の数字をもう一度ご確認ください。';
+        return;
+      }
+      location.replace(next);
     });
   </script>
 </body>

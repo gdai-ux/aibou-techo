@@ -1919,7 +1919,14 @@
   .today-card .clock-time { font-size: 19px; }
   .today-stats {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    /* 4等分にすると、中身のいちばん広い「摂取 kcal」だけが列の幅いっぱいになり、
+       中身の狭い「スコア」の側にあきが残る。実機では左18px・右1pxまで食い違って
+       いて、右だけ切れそうに見えていた。列は中身のぶんだけ取り、余りは列と列の
+       あいだに等分して配る。こうすると両端がカードの端で揃い、数字どうしの
+       間隔もそろう（minmax の下限を0にしてあるので、桁が増えて入りきらない時は
+       列の側が縮み、はみ出しは下の font-size の clamp が受け持つ） */
+    grid-template-columns: repeat(4, minmax(0, auto));
+    justify-content: space-between;
     gap: 6px;
     padding: 14px 0;
     border-top: 1px solid var(--border);

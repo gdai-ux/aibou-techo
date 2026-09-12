@@ -66,7 +66,6 @@ try {
     <div class="seg-item" data-cat="exercise">運動</div>
     <div class="seg-item" data-cat="meal">飲食</div>
     <div class="seg-item" data-cat="sleep">睡眠</div>
-    <div class="seg-item" data-cat="nap">昼寝</div>
     <div class="seg-item" data-cat="condition">体調</div>
   </div>
 
@@ -122,6 +121,10 @@ try {
     </form>
 
 
+    <div class="sleep-kind" id="sleepKind" hidden>
+      <button type="button" class="chip active" data-kind="sleep">夜の睡眠</button>
+      <button type="button" class="chip" data-kind="nap">昼寝</button>
+    </div>
     <form id="form-nap" class="form" hidden>
       <label>時刻</label>
       <div class="field-row">

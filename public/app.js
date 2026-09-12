@@ -658,6 +658,7 @@ function tapSoundEnabled() {
 }
 function setTapSoundEnabled(on) {
   try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  if (window.syncLocalSetting) syncLocalSetting(SOUND_KEY);
 }
 window.tapSoundEnabled = tapSoundEnabled;
 window.setTapSoundEnabled = setTapSoundEnabled;
@@ -1418,13 +1419,31 @@ function positionSegThumb(activeItem) {
 
 // stepを渡すと、その向きに合わせて新しいフォームが滑り込んでくる
 // （1 … 左スワイプで次のカテゴリ、-1 … 右スワイプで前のカテゴリ）
+// 昼寝は睡眠の一種なので、タブは増やさず「睡眠」タブの中で切り替える。
+// 記録の種類（category）としては別物のままなので、ここで currentCat は 'nap' に
+// なる。タブの見た目だけ「睡眠」に寄せる
+const SLEEP_KINDS = { sleep: true, nap: true };
+const sleepKind = document.getElementById('sleepKind');
+
+function tabCatOf(cat) {
+  return cat === 'nap' ? 'sleep' : cat;
+}
+
+function refreshSleepKind(cat) {
+  if (!sleepKind) return;
+  sleepKind.hidden = !SLEEP_KINDS[cat];
+  sleepKind.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('active', b.dataset.kind === cat));
+}
+
 function setCategory(cat, step = 0) {
   if (cat === currentCat) return;
   currentCat = cat;
   refreshTimeFields();
-  const activeItem = Array.from(segItems).find((t) => t.dataset.cat === cat);
-  segItems.forEach((t) => t.classList.toggle('active', t.dataset.cat === cat));
+  const tabCat = tabCatOf(cat);
+  const activeItem = Array.from(segItems).find((t) => t.dataset.cat === tabCat);
+  segItems.forEach((t) => t.classList.toggle('active', t.dataset.cat === tabCat));
   positionSegThumb(activeItem);
+  refreshSleepKind(cat);
   forms.forEach((f) => {
     f.classList.remove('from-next', 'from-prev');
     f.hidden = f.id !== `form-${cat}`;
@@ -1440,6 +1459,12 @@ function setCategory(cat, step = 0) {
 }
 
 segItems.forEach(t => t.addEventListener('click', () => setCategory(t.dataset.cat)));
+// 睡眠タブの中の「夜の睡眠 / 昼寝」
+if (sleepKind) {
+  sleepKind.querySelectorAll('[data-kind]').forEach((b) => {
+    b.addEventListener('click', () => setCategory(b.dataset.kind));
+  });
+}
 positionSegThumb(document.querySelector('.seg-item.active'));
 window.addEventListener('resize', () => positionSegThumb(document.querySelector('.seg-item.active')));
 
@@ -1601,6 +1626,7 @@ function fxCalm() {
 }
 function setFxCalm(on) {
   try { localStorage.setItem(FX_KEY, on ? 'calm' : 'full'); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  if (window.syncLocalSetting) syncLocalSetting(FX_KEY);
   document.documentElement.classList.toggle('fx-calm', on);
 }
 window.fxCalm = fxCalm;
@@ -1613,6 +1639,7 @@ function headerSceneOn() {
 }
 function setHeaderScene(on) {
   try { localStorage.setItem(HEADER_SCENE_KEY, on ? 'on' : 'off'); } catch (e) { /* 同上 */ }
+  if (window.syncLocalSetting) syncLocalSetting(HEADER_SCENE_KEY);
   document.documentElement.classList.toggle('header-plain', !on);
 }
 window.headerSceneOn = headerSceneOn;
@@ -2294,6 +2321,7 @@ function setHomeSection(key, on) {
   const s = homeSectionsSetting();
   if (on) delete s[key]; else s[key] = false;
   try { localStorage.setItem('homeSections', JSON.stringify(s)); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  if (window.syncLocalSetting) syncLocalSetting('homeSections');
   document.documentElement.classList.toggle('hs-off-' + key, !on);
 }
 

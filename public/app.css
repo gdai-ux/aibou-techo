@@ -363,6 +363,15 @@
   .condition-levels {
     grid-template-columns: repeat(5, 1fr);
   }
+  /* 睡眠タブの中の「夜の睡眠 / 昼寝」。タブを6つに増やすほどの別物ではなく、
+     睡眠の一種なので、睡眠タブの中で選ばせる */
+  .sleep-kind {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .sleep-kind[hidden] { display: none; }
   /* 隣のマイクボタン（.smart-voice-btn）と同じ輪郭だけの作りにそろえている。
      どちらかを変える時は両方あわせて直すこと。
      幅と上の余白は .submit-row の中では上書きされる（単独で使う画面のための既定値） */

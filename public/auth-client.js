@@ -31,6 +31,25 @@ function authAccessToken() {
   return null;
 }
 
+// 保存してあるセッションを、期限切れなら取り直して、使えるアクセストークンを返す。
+// localStorage を読み直すのではなく、ここで受け取ったトークンをそのまま使う
+// （supabase-js が保存し終えるのを待たずに済むように）。
+// getSession() は期限切れを見つけると中で更新してくれるが、端末が長く眠っていた
+// 時など取りこぼすことがあるので、だめなら明示的にも一度試す
+async function authRefreshedToken(client) {
+  try {
+    const { data } = await client.auth.getSession();
+    if (data && data.session && data.session.access_token) return data.session.access_token;
+  } catch (e) { /* 下で明示的に試す */ }
+  try {
+    const r = await client.auth.refreshSession();
+    const session = r && r.data && r.data.session;
+    return (session && session.access_token) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 let supabaseClient = null;
 
 function authClient(config) {
@@ -67,6 +86,20 @@ async function authBoot() {
         location.replace(location.pathname);
         return;
       }
+    }
+    // サーバーが「ログインしていない」と言っても、この端末に残っている
+    // アクセストークンが期限切れ（Supabaseの既定で1時間）なだけのことがある。
+    // 更新用のトークンは別に残っているので、取り直してからもう一度確かめる。
+    // これが無かったため、1時間以上あけて開くたびにログインを求められていた
+    const refreshed = client ? await authRefreshedToken(client) : null;
+    if (refreshed) {
+      try {
+        const resp = await fetch('/api/status', {
+          headers: { ...notionHeaders(), Authorization: `Bearer ${refreshed}` },
+        });
+        const fresh = await resp.json();
+        if (fresh && fresh.loggedIn) return;
+      } catch (e) { /* 届かない時は下のログイン画面へ送る */ }
     }
     const next = encodeURIComponent(location.pathname.replace(/^\//, '') || 'index.html');
     location.replace(`login.html?next=${next}`);

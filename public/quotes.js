@@ -444,6 +444,7 @@ function loadFavorites() {
 function saveFavorites(list) {
   try {
     localStorage.setItem(QUOTE_FAVORITES_KEY, JSON.stringify(list));
+    if (window.syncLocalSetting) syncLocalSetting(QUOTE_FAVORITES_KEY);
   } catch (e) {
     // 保存できない環境（プライベートモード等）でも表示自体は続ける
   }
@@ -471,6 +472,7 @@ function loadPinnedQuote() {
 function savePinnedQuote(quote) {
   try {
     localStorage.setItem(QUOTE_PINNED_KEY, JSON.stringify({ text: quote.text, author: quote.author }));
+    if (window.syncLocalSetting) syncLocalSetting(QUOTE_PINNED_KEY);
   } catch (e) {
     // 保存できない環境でも表示自体は続ける
   }

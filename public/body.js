@@ -35,6 +35,7 @@ function bodyProfile() {
 
 function saveBodyProfile(p) {
   try { localStorage.setItem(BODY_KEY, JSON.stringify(p)); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  if (window.syncLocalSetting) syncLocalSetting(BODY_KEY);
 }
 
 // BMI（体重kg ÷ 身長m の二乗）。日本肥満学会の区分も返す

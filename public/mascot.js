@@ -314,6 +314,61 @@ function saveExerciseWeeklyTarget(days) {
   return v;
 }
 
+// --- 設定を端末の外にも残す ---------------------------------------------
+// もともと設定はこの端末のlocalStorageにしか無く、ホーム画面のアプリを入れ直すと
+// まとめて消えていた。実際に、選んでいたキャラクターが既定の「ごはんくん」に戻り、
+// からだの設定（＝摂取kcalの目安）も初期値に戻ってしまった。
+// キャラクターだけはサーバーに保存する口があったが、「サーバーにまだ無い時に
+// この端末の値を上げておく」処理が無かったため、アプリの中で選び直していない限り
+// サーバーには一度も入らず、消えたら取り戻せなかった。
+//
+// ここでは2つを足す:
+//   1. 種まき … サーバーに無く、この端末に値がある設定は、起動時に上げておく
+//   2. 取り戻し … この端末に無く、サーバーにある設定は、起動時に書き戻す
+// 「この端末にある値」を勝手に上書きはしない。押し負けて設定が戻るのを防ぐため
+// （それこそ今回困ったことなので）。
+
+// localStorageの中身をそのまま預ける設定。端末をまたいで残したいものだけ。
+// 入れないもの: 未送信キュー・チャット履歴・ゲームの記録など、その端末限りのもの
+const SYNCED_LOCAL_KEYS = [
+  'bodyProfile',               // 身長・体重・目標（摂取kcalの目安のもと）
+  'homeSections',              // ホーム画面に出す項目
+  'themeSetting',              // ブラック / ホワイト
+  'fontLarge',                 // 文字を大きめに
+  'tapSound',                  // 効果音
+  'fxLevel',                   // 演出をひかえめに
+  'headerScene',               // ヘッダーの景色
+  'lifelog-quote-favorites',   // 格言のお気に入り
+  'lifelog-quote-pinned',      // 固定した格言
+];
+
+// 直近にサーバーから受け取った内容。1項目だけ変えた時に、他の項目を
+// 消してしまわないよう、ここへ重ねてから丸ごと送る
+let serverLocalMirror = {};
+
+function localSettingsSnapshot(keys) {
+  const out = {};
+  keys.forEach((k) => {
+    try {
+      const v = localStorage.getItem(k);
+      if (v !== null) out[k] = v;
+    } catch (e) { /* 読めない端末では何も預けない */ }
+  });
+  return out;
+}
+
+// 書き戻した設定を画面に効かせる。項目ごとに反映処理を呼び分けると抜けが出るので、
+// 一度だけ読み込み直す（入れ直した直後の一回だけ起きる）
+const SETTINGS_RESTORED_KEY = 'settingsRestoredAt';
+function reloadOnceAfterRestore() {
+  try {
+    const at = Number(sessionStorage.getItem(SETTINGS_RESTORED_KEY) || 0);
+    if (at && Date.now() - at < 60 * 1000) return; // 繰り返さない
+    sessionStorage.setItem(SETTINGS_RESTORED_KEY, String(Date.now()));
+  } catch (e) { /* 使えなくても読み込み直す */ }
+  location.reload();
+}
+
 // 起動時に、サーバー側の設定と端末の設定を照らし合わせる。サーバーの方が
 // 新しければ（別の端末で選び直していたら）、この端末の表示も合わせ直す
 async function mascotSyncFromServer() {
@@ -322,6 +377,7 @@ async function mascotSyncFromServer() {
     if (!resp.ok) return;
     const data = await resp.json();
     if (!data) return;
+    const seed = {};
     if (data.mascot && data.mascot.char) {
       const current = mascotLoadSettings();
       if (data.mascot.char !== current.char || (data.mascot.name || '') !== current.name) {
@@ -329,13 +385,56 @@ async function mascotSyncFromServer() {
         mascotRenderAll();
         if (window.regenerateDailyReview) regenerateDailyReview();
       }
+    } else {
+      // サーバーにまだ無い。この端末で選んである時だけ上げておく。
+      // 既定のままの端末が上げると、他の端末の選択を上書きしてしまうため
+      const current = mascotLoadSettings();
+      if (current.char !== 'gohan' || current.name) seed.mascot = current;
     }
     if (data.exerciseTarget && data.exerciseTarget !== exerciseWeeklyTarget()) {
       try { localStorage.setItem(EXERCISE_TARGET_KEY, String(data.exerciseTarget)); } catch (e) { /* 保存できなくても表示は変わる */ }
       if (window.loadExerciseRing) loadExerciseRing();
+    } else if (!data.exerciseTarget) {
+      const v = exerciseWeeklyTarget();
+      if (v !== EXERCISE_TARGET_DEFAULT) seed.exerciseTarget = v;
     }
+
+    // その他の設定（localStorageの中身をそのまま預けているもの）
+    const mirror = (data && data.local) || {};
+    serverLocalMirror = { ...mirror };
+    const localSeed = {};
+    let restored = 0;
+    SYNCED_LOCAL_KEYS.forEach((k) => {
+      let mine = null;
+      try { mine = localStorage.getItem(k); } catch (e) { return; }
+      const theirs = Object.prototype.hasOwnProperty.call(mirror, k) ? mirror[k] : null;
+      if (mine !== null && theirs !== mine) {
+        localSeed[k] = mine; // この端末の値を正とし、サーバーにも置いておく
+      } else if (mine === null && typeof theirs === 'string') {
+        try { localStorage.setItem(k, theirs); restored += 1; } catch (e) { /* 書けなければあきらめる */ }
+      }
+    });
+    if (Object.keys(localSeed).length) {
+      serverLocalMirror = { ...mirror, ...localSeed };
+      seed.local = serverLocalMirror;
+    }
+    if (Object.keys(seed).length) pushSettingsToServer(seed);
+    if (restored) reloadOnceAfterRestore();
   } catch (e) { /* オフライン等。端末に保存済みの設定で表示を続ける */ }
 }
+
+// 設定を変えた時に呼ぶ。変えた直後にサーバーへも置いておく
+function syncLocalSetting(key) {
+  if (!SYNCED_LOCAL_KEYS.includes(key)) return;
+  let value = null;
+  try { value = localStorage.getItem(key); } catch (e) { return; }
+  const next = { ...serverLocalMirror };
+  // 端末側で消した設定は、預けている方からも消す（消したのに戻ってこないように）
+  if (value === null) delete next[key]; else next[key] = value;
+  serverLocalMirror = next;
+  pushSettingsToServer({ local: serverLocalMirror });
+}
+window.syncLocalSetting = syncLocalSetting;
 
 function mascotCurrentChar() {
   const s = mascotLoadSettings();

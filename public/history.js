@@ -1256,6 +1256,7 @@ function openNotionSettingsModal() {
 // 描画前に読み取って適用する。ここでは切り替えの即時反映だけを行う。
 function applyTheme(theme) {
   try { localStorage.setItem('themeSetting', theme); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  if (window.syncLocalSetting) syncLocalSetting('themeSetting');
   document.documentElement.classList.toggle('theme-light', theme === 'light');
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = theme === 'light' ? '#f2f2f7' : '#000000';
@@ -1282,6 +1283,7 @@ function fontLargeOn() {
 }
 function setFontLarge(on) {
   try { localStorage.setItem(FONT_LARGE_KEY, on ? 'on' : 'off'); } catch (e) { /* 保存できなくても今の画面には効く */ }
+  if (window.syncLocalSetting) syncLocalSetting(FONT_LARGE_KEY);
   document.documentElement.classList.toggle('font-large', on);
 }
 document.documentElement.classList.toggle('font-large', fontLargeOn());

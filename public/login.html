@@ -103,7 +103,9 @@ try {
   .msg { margin: 12px 0 0; font-size: 13px; line-height: 1.6; color: var(--muted); min-height: 1.6em; }
   .msg.ok { color: var(--ok); }
   .msg.err { color: var(--err); }
-  /* メールに書かれた6桁のコード。ホーム画面に追加したアプリの中では、
+  /* メールに書かれたコード。桁数は決め打ちにしない（Supabaseの設定しだいで
+     6桁にも8桁にもなり、6桁までしか入らない欄にしたら8桁が届いて詰まった）。
+     ホーム画面に追加したアプリの中では、
      メールのリンクを押しても別のブラウザが開いてしまい、アプリには戻って
      こられない。コードなら、いま開いている画面のまま入れる */
   .code-box { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
@@ -113,7 +115,7 @@ try {
     font: inherit;
     font-size: 22px;
     font-weight: 700;
-    letter-spacing: 6px;
+    letter-spacing: 4px;
     text-align: center;
     font-variant-numeric: tabular-nums;
     color: var(--text);
@@ -142,11 +144,11 @@ try {
       <label for="email">メールアドレス</label>
       <input type="email" id="email" name="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required />
       <button type="submit" id="sendBtn">ログイン用のリンクを送る</button>
-      <p class="msg" id="msg">パスワードは不要です。届いたメールのリンクを開くか、書かれている6桁のコードを入れるとログインできます。</p>
+      <p class="msg" id="msg">パスワードは不要です。届いたメールのリンクを開くか、書かれているコードを入れるとログインできます。</p>
     </form>
     <div class="code-box" id="codeBox" hidden>
-      <label for="code">メールに書かれた6桁のコード</label>
-      <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" class="code-input" />
+      <label for="code">メールに書かれたコード</label>
+      <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="12345678" class="code-input" />
       <button type="button" id="codeBtn">このコードで入る</button>
       <p class="msg" id="codeMsg">リンクが別のブラウザで開いてしまう時は、こちらを使ってください。</p>
     </div>
@@ -241,7 +243,7 @@ try {
         return;
       }
       msg.className = 'msg ok';
-      msg.textContent = `${email} に送りました（届くまで1〜2分かかることがあります）。メールのリンクを押すか、下に6桁のコードを入れてください。`;
+      msg.textContent = `${email} に送りました（届くまで1〜2分かかることがあります）。メールのリンクを押すか、下にコードを入れてください。`;
       codeBox.hidden = false;
       sendBtn.textContent = 'もう一度送る';
       sendBtn.disabled = false;
@@ -255,9 +257,10 @@ try {
       if (!client) return;
       const email = document.getElementById('email').value.trim();
       const token = codeInput.value.replace(/[^0-9]/g, '');
+      // 桁数はメールに書かれているものをそのまま受ける（決め打ちにしない）
       if (!email || token.length < 6) {
         codeMsg.className = 'msg err';
-        codeMsg.textContent = 'メールアドレスと、6桁のコードを入れてください。';
+        codeMsg.textContent = 'メールアドレスと、メールに書かれたコードを入れてください。';
         return;
       }
       codeBtn.disabled = true;
@@ -269,7 +272,7 @@ try {
         codeMsg.className = 'msg err';
         codeMsg.textContent = /expired/i.test(error && error.message || '')
           ? 'コードの期限が切れています。上からもう一度送ってください。'
-          : 'コードが合いませんでした。メールに書かれた6桁の数字をもう一度ご確認ください。';
+          : 'コードが合いませんでした。メールに書かれた数字をもう一度ご確認ください。';
         return;
       }
       location.replace(next);

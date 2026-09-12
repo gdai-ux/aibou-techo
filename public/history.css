@@ -742,6 +742,27 @@ html.font-large body { zoom: 1.12; }
 }
 .modal-panel .now-btn:active { transform: scale(0.95); }
 
+/* ホイールで選ぶ時刻の欄では、もとの input は見た目だけ消す。
+   display:none にすると「必須」のチェックが飛ばされてしまうので、
+   大きさを潰して流れからも外す（このクラスは history.js が付ける）。
+   ここが抜けていたため、時刻の欄が「もとの入力欄＋ホイールの欄」の
+   二重に並び、左に寄って見えていた */
+input.time-input-hidden {
+  /* 大きさは !important で押し切る。app.css 側の入力欄の指定が
+     あとから読み込まれて勝ってしまい、幅が画面いっぱいのまま残るため */
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  margin: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 .time-select-wrap {
   /* 見えている時刻の欄。押すと画面中央にホイールが開く。
      ボタン要素なのでブラウザ既定の枠・背景・フォントを打ち消しておく */

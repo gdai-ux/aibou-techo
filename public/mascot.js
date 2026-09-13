@@ -9,34 +9,46 @@
 //   ほっぺ（gohan-deco-cheeks） / 王冠（gohan-deco-ume） /
 //   きらきら（gohan-deco-nori） / 金のオーラ（CSS側のfilter）
 
-// ねこの下絵（20×20）。
-//   C=毛 / I=耳の内側 / E=目 / H=目のハイライト / m=鼻 / W=口まわりとおなか
-// 模様（しま・ぶち）は patches で上から押す。透明なマス（.）は押しても変えないので、
-// 模様を足しても輪郭は崩れない
+// ねこの下絵（24×24）。座った正面向き。
+//   C=毛 / W=おなかと口まわり / E=目 / m=鼻 / T=しっぽ
+// 輪郭の黒い線とヒゲは、下絵には描かずに catMap があとから足す。
+// 手で輪郭を描くと、模様を変えるたびに線を引き直すことになるため
 const CAT_BASE = [
-  '....................',
-  '...CC..........CC...',
-  '...CIC........CIC...',
-  '..CCIIC......CIICC..',
-  '..CCCCCC....CCCCCC..',
-  '..CCCCCCCCCCCCCCCC..',
-  '.CCCCCCCCCCCCCCCCCC.',
-  '.CCCCCCCCCCCCCCCCCC.',
-  '.CCCEEECCCCCCEEECCC.',
-  '.CCCHEECCCCCCHEECCC.',
-  '.CCCEEECCCCCCEEECCC.',
-  '.CCCCCCCCmmCCCCCCCC.',
-  '..CCCCCCWWWWCCCCCC..',
-  '..CCCCCCCCCCCCCCCC..',
-  '...CCCCCCCCCCCCCC...',
-  '....CCCCCCCCCCCC....',
-  '....CCCWWWWWWCCC..C.',
-  '....CCCWWWWWWCCC.CC.',
-  '....CCWWWWWWWWCC.CC.',
-  '.....CCCC..CCCC.....',
+  '........................',
+  '........................',
+  '....CC..........CC......',
+  '....CCC........CCC......',
+  '....CCCC......CCCC......',
+  '....CCCCCCCCCCCCCC......',
+  '...CCCCCCCCCCCCCCCC.....',
+  '...CCCCCCCCCCCCCCCC.....',
+  '...CCCEECCCCCCEECCC.....',
+  '...CCCEECCCCCCEECCC.....',
+  '...CCCCCCCmmCCCCCCC.....',
+  '...CCCCCCCWWCCCCCCC.....',
+  '....CCCCCCCCCCCCCC......',
+  '.....CCCCCCCCCCCC.......',
+  '......CCCCCCCCCC....TT..',
+  '.....CCCCCCCCCCCC...TT..',
+  '.....CCCWWWWWWCCC...TT..',
+  '....CCCCWWWWWWCCCC..TT..',
+  '....CCCCWWWWWWCCCC.TT...',
+  '....CCCCWWWWWWCCCCTT....',
+  '....CCCCCCCCCCCCCC......',
+  '.....CCCC....CCCC.......',
+  '........................',
+  '........................',
 ];
 
-// 下絵に模様を押した地図を作る。patches は [x, y, 幅, 高さ, 文字]
+// ヒゲ（左右3本ぶんずつ）。輪郭を引いたあとに置くので、線が太らない
+const CAT_WHISKERS = [[0, 9], [1, 9], [2, 9], [0, 11], [1, 11], [2, 11],
+                      [21, 9], [22, 9], [23, 9], [21, 11], [22, 11], [23, 11]];
+
+// しっぽのまとまり。この位置から右下は別のグループに入れて、CSSで揺らす
+const CAT_TAIL_FROM = { x: 18, y: 13 };
+
+// 下絵に模様を押し、まわりに輪郭線（K）を引き、最後にヒゲを置いた地図を作る。
+// patches は [x, y, 幅, 高さ, 文字]
 function catMap(patches) {
   const rows = CAT_BASE.map((r) => r.split(''));
   (patches || []).forEach(([x, y, w, h, ch]) => {
@@ -48,11 +60,26 @@ function catMap(patches) {
       }
     }
   });
-  return rows.map((r) => r.join(''));
+  // 輪郭線: 何か描いてあるマスの隣で、まだ空のマスを黒くする
+  const out = rows.map((r) => r.slice());
+  rows.forEach((row, y) => {
+    row.forEach((ch, x) => {
+      if (ch !== '.') return;
+      const near = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]
+        .some(([i, j]) => rows[j] && rows[j][i] && rows[j][i] !== '.');
+      if (near) out[y][x] = 'K';
+    });
+  });
+  CAT_WHISKERS.forEach(([x, y]) => { if (out[y] && out[y][x] !== undefined) out[y][x] = 'K'; });
+  return out.map((r) => r.join(''));
 }
 
-// ねこ共通の飾りの位置（20×20ぶん）
-const CAT_DECO = { cheeks: [[2, 10], [17, 10]], crown: { cx: 9, topY: 3 } };
+// ねこ共通の設定（24×24ぶん）。anim を付けたキャラクターは、しっぽが揺れて目がまばたきする
+const CAT_DECO = {
+  cheeks: [[3, 10], [19, 10]],
+  crown: { cx: 11, topY: 4 },
+  anim: { tailFrom: CAT_TAIL_FROM, tailPivot: { x: 18, y: 20 }, eyeLetters: 'EH' },
+};
 
 const MASCOT_CHARS = [
   {
@@ -303,35 +330,38 @@ const MASCOT_CHARS = [
   {
     id: 'kuroneko', name: 'くろねこ',
     difficulty: 'oni', tone: 'oni', speech: 'cat', bio: '容赦しない黒ねこの相棒',
-    colors: { C: '#3f3f46', I: '#8a6a74', E: '#ffd60a', H: '#ffffff', m: '#f79bb1', W: '#e8e8ec' },
+    colors: { C: '#4a4a55', T: '#4a4a55', K: '#17171c', W: '#e8e8ec', E: '#ffd60a', m: '#f79bb1' },
     ...CAT_DECO, map: catMap([]),
   },
   {
     id: 'toraneko', name: 'とらねこ',
     difficulty: 'extreme', tone: 'strict', speech: 'cat', bio: 'ストイックな縞ねこの相棒',
-    colors: { C: '#e8a33d', S: '#9a5f1c', I: '#f2b8a8', E: '#2f6b3a', H: '#ffffff', m: '#f79bb1', W: '#fff6e8' },
+    colors: { C: '#eba448', T: '#eba448', S: '#c07a1e', K: '#4a2c0c', W: '#fbe7c8', E: '#2f6b3a', m: '#f79bb1' },
     ...CAT_DECO,
-    map: catMap([[7, 5, 6, 1, 'S'], [3, 6, 4, 1, 'S'], [13, 6, 4, 1, 'S'], [8, 7, 4, 1, 'S'],
-                 [2, 13, 4, 1, 'S'], [14, 13, 4, 1, 'S'], [17, 17, 2, 1, 'S']]),
+    map: catMap([[9, 5, 6, 1, 'S'], [5, 7, 3, 1, 'S'], [16, 7, 3, 1, 'S'],
+                 [4, 12, 4, 1, 'S'], [14, 12, 4, 1, 'S'],
+                 [5, 15, 3, 1, 'S'], [14, 15, 3, 1, 'S'],
+                 [20, 15, 2, 1, 'S'], [20, 17, 2, 1, 'S']]),
   },
   {
     id: 'shironeko', name: 'しろねこ',
     difficulty: 'normal', tone: 'normal', speech: 'cat', bio: 'まっすぐ言う白ねこの相棒',
-    colors: { C: '#f2f2f5', I: '#f7c6cf', E: '#4a8fd9', H: '#ffffff', m: '#f79bb1', W: '#ffffff' },
+    colors: { C: '#f4f4f7', T: '#f4f4f7', K: '#8a8a96', W: '#ffffff', E: '#4a8fd9', m: '#f79bb1' },
     ...CAT_DECO, map: catMap([]),
   },
   {
     id: 'mikeneko', name: 'みけねこ',
     difficulty: 'easy', tone: 'gentle', speech: 'cat', bio: 'そっと寄り添う三毛ねこの相棒',
-    colors: { C: '#f6f3ec', O: '#e8a33d', K: '#4a4a52', I: '#f7c6cf', E: '#6b8f3a', H: '#ffffff', m: '#f79bb1', W: '#ffffff' },
+    colors: { C: '#f7f4ed', T: '#f7f4ed', O: '#eba448', D: '#5a5a64', K: '#6b5a4a', W: '#ffffff', E: '#6b8f3a', m: '#f79bb1' },
     ...CAT_DECO,
-    map: catMap([[2, 1, 5, 5, 'O'], [13, 1, 5, 5, 'K'], [2, 12, 4, 3, 'O'], [14, 12, 4, 3, 'K'], [16, 16, 3, 3, 'K']]),
+    map: catMap([[4, 2, 5, 4, 'O'], [14, 2, 5, 4, 'D'], [4, 12, 5, 3, 'O'], [15, 12, 4, 3, 'D'],
+                 [18, 13, 4, 4, 'D']]),
   },
   {
     id: 'maruneko', name: 'まるねこ',
     difficulty: 'easy', tone: 'sweet', speech: 'cat', bio: 'なんでも褒めるまるいねこの相棒',
-    colors: { C: '#9aa3ad', I: '#f0c2cc', E: '#2c2c2e', H: '#ffffff', m: '#f79bb1', W: '#e9eef3' },
-    ...CAT_DECO, map: catMap([[4, 15, 12, 1, 'W'], [3, 14, 14, 1, 'C']]),
+    colors: { C: '#9fa8b3', T: '#9fa8b3', K: '#3c434c', W: '#edf1f5', E: '#2c2c2e', m: '#f79bb1' },
+    ...CAT_DECO, map: catMap([[5, 14, 14, 2, 'C']]),
   },
 ];
 
@@ -546,18 +576,44 @@ function mascotSvg(char) {
   const grid = char.map.length;
   const u = Math.max(1, Math.round(grid / 12));  // 飾りの1マスぶん
   const pad = Math.max(2, Math.round(grid / 6)); // 王冠のぶん、上に空ける
+  // 動かしたい部分（しっぽ・目）は別のまとまりに分けて描く。
+  // ひとつのまとまりに入れてしまうと、しっぽだけ揺らすことができない
+  const anim = char.anim;
+  const inTail = (x, y) => !!(anim && anim.tailFrom && x >= anim.tailFrom.x && y >= anim.tailFrom.y);
+  const isEye = (ch) => !!(anim && anim.eyeLetters && anim.eyeLetters.indexOf(ch) >= 0);
   const rects = [];
+  const tailRects = [];
+  const eyeCells = [];
   char.map.forEach((row, y) => {
     let x = 0;
     while (x < row.length) {
       const ch = row[x];
       if (ch === '.') { x++; continue; }
       const color = char.colors[ch];
+      const tail = inTail(x, y);
+      const eye = isEye(ch);
       const x0 = x;
-      while (x < row.length && row[x] !== '.' && char.colors[row[x]] === color) x++;
-      rects.push(`<rect x="${x0}" y="${y}" width="${x - x0}" height="1" fill="${color}"/>`);
+      // 色が同じでも、しっぽと体の境目では切る（別のまとまりに入れるため）
+      while (x < row.length && row[x] !== '.' && char.colors[row[x]] === color
+             && inTail(x, y) === tail && isEye(row[x]) === eye) x++;
+      const rect = `<rect x="${x0}" y="${y}" width="${x - x0}" height="1" fill="${color}"/>`;
+      if (tail) tailRects.push(rect);
+      else if (eye) eyeCells.push({ x: x0, y, w: x - x0, color, rect });
+      else rects.push(rect);
     }
   });
+  // まばたき。目のいちばん下の段だけを残した線を「閉じた目」として重ねる
+  const eyeBottom = eyeCells.length ? Math.max(...eyeCells.map((c) => c.y)) : 0;
+  const eyesOpen = eyeCells.map((c) => c.rect).join('');
+  const eyesShut = eyeCells.filter((c) => c.y === eyeBottom)
+    .map((c) => `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="1" fill="${c.color}"/>`).join('');
+  const pivot = anim && anim.tailPivot ? anim.tailPivot : null;
+  const tailGroup = tailRects.length
+    ? `<g class="cat-tail"${pivot ? ` style="transform-origin:${pivot.x}px ${pivot.y + pad}px"` : ''}>${tailRects.join('')}</g>`
+    : '';
+  const eyeGroups = eyeCells.length
+    ? `<g class="cat-eyes">${eyesOpen}</g><g class="cat-blink">${eyesShut}</g>`
+    : '';
   // レベルで増える飾り（既定は非表示。CSSのgohan-stage-*で出す）
   const cheeks = char.cheeks.map(([x, y]) => `<rect x="${x}" y="${y}" width="${u}" height="${u}" fill="#f79bb1"/>`).join('');
   const { cx, topY } = char.crown;
@@ -566,7 +622,7 @@ function mascotSvg(char) {
     `<rect x="${cx - u}" y="${topY - u * 2}" width="${u}" height="${u}" fill="#ffd60a"/>` +
     `<rect x="${cx + u}" y="${topY - u * 2}" width="${u}" height="${u}" fill="#ffd60a"/>`;
   const sparkle = `<rect x="0" y="0" width="${u}" height="${u}" fill="#ffd60a"/><rect x="${grid - u}" y="${u * 3}" width="${u}" height="${u}" fill="#ffd60a"/>`;
-  return `<svg class="gohan-kun" viewBox="0 -${pad} ${grid} ${grid + pad}" shape-rendering="crispEdges" aria-hidden="true">${rects.join('')}` +
+  return `<svg class="gohan-kun" viewBox="0 -${pad} ${grid} ${grid + pad}" shape-rendering="crispEdges" aria-hidden="true">${rects.join('')}${tailGroup}${eyeGroups}` +
     `<g class="gohan-deco gohan-deco-cheeks">${cheeks}</g>` +
     `<g class="gohan-deco gohan-deco-ume">${crown}</g>` +
     `<g class="gohan-deco gohan-deco-nori">${sparkle}</g></svg>`;

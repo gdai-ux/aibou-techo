@@ -1168,6 +1168,30 @@ body.timewheel-open { overflow: hidden; }
 }
 .mascot-cell svg { width: 38px; height: 44px; }
 .mascot-cell-name { font-size: 10.5px; color: var(--muted); }
+/* ねこの相棒だけ、しっぽがゆれて、ときどきまばたきする。
+   絵を「体」「しっぽ」「目」の3つのまとまりに分けて描いてあるので、
+   しっぽだけを根元から回せる（mascot.js の mascotSvg） */
+.gohan-kun .cat-tail {
+  transform-box: view-box;
+  animation: catTail 1.9s ease-in-out infinite;
+}
+@keyframes catTail {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(9deg); }
+}
+/* まばたきは、開いた目を一瞬消して、閉じた目（下の段だけの線）に入れ替える */
+.gohan-kun .cat-blink { opacity: 0; animation: catBlink 5.6s steps(1) infinite; }
+.gohan-kun .cat-eyes { animation: catEyes 5.6s steps(1) infinite; }
+@keyframes catBlink { 0%, 95% { opacity: 0; } 96%, 99% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes catEyes { 0%, 95% { opacity: 1; } 96%, 99% { opacity: 0; } 100% { opacity: 1; } }
+/* 「演出をひかえめに」を選んでいる時と、端末側で動きを減らす設定の時は止める */
+html.fx-calm .gohan-kun .cat-tail,
+html.fx-calm .gohan-kun .cat-blink,
+html.fx-calm .gohan-kun .cat-eyes { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .gohan-kun .cat-tail, .gohan-kun .cat-blink, .gohan-kun .cat-eyes { animation: none; }
+}
+
 /* 「ねこモード」「そのほかの相棒」の見出し。グリッドの列をまたいで1行使う */
 .mascot-group-title {
   grid-column: 1 / -1;

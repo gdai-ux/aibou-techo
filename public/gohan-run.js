@@ -2,13 +2,14 @@
 //
 // 遊び方は Chrome のオフライン画面の恐竜ゲームと同じ：相棒はひとりで走り続け、
 // 画面か A ボタンを押すとジャンプ。障害物にぶつかったら終わりで、走った距離が点数。
-// ステージは5つ（そうげん→もり→うみ→さばく→うちゅう）。それぞれ決まった距離を
+// ステージは15（そうげん→もり→うみ→…→むげん）。それぞれ決まった距離を
 // 走るとゴールの旗が見えてきて、触れるとクリア。次のステージは少し速く、障害物も多い。
 // 相棒はハート3つ。障害物にぶつかると1つ減って少しのあいだ無敵、0で終わり。
-// ステージをクリアすると1つ回復し、ボス戦にもそのまま持ち越す。
 //
-// 5つ目をクリアするとボス戦。相手は「サボリ魔王 ダラーン」（記録をサボらせようとする
-// 眠そうな魔王）。ボス戦だけ十字キーと B ボタンが増え、B で「ほのおだま」を撃てる。
+// 3ステージ進むごとにボス戦（全5体）。倒すとまた次のステージへ続く。
+// ボス戦の前にハートは満タンに戻る。後の魔王ほど体力が多く、まくらも速く飛んでくる。
+// 相手は「サボリ魔王 ダラーン」から始まる、記録をサボらせようとする眠そうな魔王たち。
+// ボス戦だけ十字キーと B ボタンが増え、B で「ほのおだま」を撃てる。
 // 十字キーの ◀▶ で前後に動き、▼ でしゃがみ、▲ か A でジャンプ。魔王が投げてくる
 // まくら（低い＝ジャンプ、顔の高さ＝しゃがむ）をよけながら、ほのおだまを当てて倒す。
 // 「とじる」や外側を触った時は、いきなり閉じずに一時停止して「ゲームをやめる？」と聞く。
@@ -29,18 +30,47 @@
   const RUNNER_X = 40;    // 相棒の立ち位置（左から）
   const GRAVITY = 1700;   // px/s^2
   const JUMP_V = -620;    // 跳んだ瞬間の速さ（px/s、上向きが負）
-  // 5つのステージ。length はゴールまでの距離（px）、speed は走り始めの速さ、
-  // gapMin/gapMax は障害物が出る間隔（秒）。後のステージほど長く、速く、詰まる
+  // ステージ。length はゴールまでの距離（px）、speed は走り始めの速さ、
+  // gapMin/gapMax は障害物が出る間隔（秒）。後のステージほど長く、速く、詰まる。
+  // 3ステージごとにボス戦が入る（BOSS_EVERY）。倒すとまた次のステージへ続く
   const STAGES = [
-    { key: 'grass',  name: 'そうげん', length: 5000, speed: 270, gapMin: 0.85, gapMax: 1.6 },
-    { key: 'forest', name: 'もり',     length: 5800, speed: 290, gapMin: 0.8,  gapMax: 1.5 },
-    { key: 'sea',    name: 'うみ',     length: 6600, speed: 310, gapMin: 0.75, gapMax: 1.4 },
-    { key: 'desert', name: 'さばく',   length: 7400, speed: 330, gapMin: 0.7,  gapMax: 1.3 },
-    { key: 'space',  name: 'うちゅう', length: 8400, speed: 350, gapMin: 0.65, gapMax: 1.2 },
+    { key: 'grass',   name: 'そうげん',   length: 5000,  speed: 270, gapMin: 0.85, gapMax: 1.60 },
+    { key: 'forest',  name: 'もり',       length: 5400,  speed: 281, gapMin: 0.83, gapMax: 1.56 },
+    { key: 'sea',     name: 'うみ',       length: 5800,  speed: 292, gapMin: 0.81, gapMax: 1.52 },
+    { key: 'desert',  name: 'さばく',     length: 6200,  speed: 303, gapMin: 0.79, gapMax: 1.48 },
+    { key: 'snow',    name: 'ゆきやま',   length: 6600,  speed: 314, gapMin: 0.77, gapMax: 1.44 },
+    { key: 'cave',    name: 'どうくつ',   length: 7000,  speed: 325, gapMin: 0.75, gapMax: 1.40 },
+    { key: 'space',   name: 'うちゅう',   length: 7400,  speed: 336, gapMin: 0.73, gapMax: 1.36 },
+    { key: 'volcano', name: 'かざん',     length: 7800,  speed: 347, gapMin: 0.71, gapMax: 1.32 },
+    { key: 'city',    name: 'まち',       length: 8200,  speed: 358, gapMin: 0.69, gapMax: 1.28 },
+    { key: 'ruins',   name: 'いせき',     length: 8600,  speed: 369, gapMin: 0.67, gapMax: 1.24 },
+    { key: 'storm',   name: 'あらし',     length: 9000,  speed: 380, gapMin: 0.65, gapMax: 1.20 },
+    { key: 'aurora',  name: 'オーロラ',   length: 9400,  speed: 391, gapMin: 0.63, gapMax: 1.16 },
+    { key: 'abyss',   name: 'しんかい',   length: 9800,  speed: 402, gapMin: 0.61, gapMax: 1.12 },
+    { key: 'clock',   name: 'はぐるま',   length: 10200, speed: 413, gapMin: 0.59, gapMax: 1.08 },
+    { key: 'void',    name: 'むげん',     length: 10600, speed: 424, gapMin: 0.57, gapMax: 1.04 },
   ];
-  // ボス戦
-  const BOSS_NAME = 'サボリ魔王 ダラーン';
-  const BOSS_HP = 10;         // ほのおだまを当てる回数
+  // 何ステージごとにボスを出すか
+  const BOSS_EVERY = 3;
+  // そのステージを終えたらボス戦か（0はじまり。2, 5, 8, … の後にボス）
+  function bossAfter(stageIndex) { return (stageIndex + 1) % BOSS_EVERY === 0; }
+  // 何体目のボスか（1はじまり）
+  function bossRoundOf(stageIndex) { return Math.floor((stageIndex + 1) / BOSS_EVERY); }
+  const BOSS_TOTAL = Math.floor(STAGES.length / BOSS_EVERY);
+  // ボス戦。3ステージごとに、別の魔王が出てくる（見た目は同じ形で色と名前が変わる）。
+  // 後の魔王ほど体力が多く、まくらを投げる間隔も短い
+  const BOSS_ROUNDS = [
+    { name: 'サボリ魔王 ダラーン',   body: '#9b5de5', dark: '#6a3fb5', deep: '#4a2f80' },
+    { name: 'よふかし魔王 ヨルーン', body: '#4a6fd0', dark: '#31509e', deep: '#213a75' },
+    { name: 'まんぷく魔王 クイーン', body: '#e0653f', dark: '#b04424', deep: '#7e2f18' },
+    { name: 'ぐうたら魔王 ネボスケ', body: '#4f9d69', dark: '#357a4c', deep: '#245637' },
+    { name: 'サボリ大魔王 ダラーン', body: '#d4af37', dark: '#a8862a', deep: '#6f5a1c' },
+  ];
+  function bossOf(round) { return BOSS_ROUNDS[Math.min(round, BOSS_ROUNDS.length) - 1] || BOSS_ROUNDS[0]; }
+  const BOSS_HP = 10;         // 1体目の体力（ほのおだまを当てる回数）。2体目以降は増える
+  function bossHpOf(round) { return BOSS_HP + (round - 1) * 4; }
+  // まくらを投げる間隔。後の魔王ほど短い（下限あり）
+  function bossAttackGapOf(round) { return Math.max(1.1, 2.4 - (round - 1) * 0.25); }
   const BOSS_SIZE = 72;
   const PLAYER_HEARTS = 3;
   const MOVE_SPEED = 150;     // ◀▶ で動く速さ（px/s）
@@ -59,13 +89,24 @@
     cave:   { sky: 'linear-gradient(180deg,#1b1a20,#33313a)', ground: '#4a4550', line: '#6b6b78', ob1: '#7a7a88', ob2: '#c4c4d4', cloud: '#6b6b78', ink: '#f2f2f7', shape: 'spike' },
     space:  { sky: 'linear-gradient(180deg,#05051a,#1a1b4a)', ground: '#2b2d6b', line: '#ffd60a', ob1: '#9d4edd', ob2: '#e6c4ff', cloud: '#ffe066', ink: '#f2f2f7', shape: 'ball' },
     castle: { sky: 'linear-gradient(180deg,#2b0a3d,#5a1a5e 70%,#7a2a5a)', ground: '#3a2a3f', line: '#ff5e7a', ob1: '#9d4edd', ob2: '#e6c4ff', cloud: '#5a3d6e', ink: '#f2f2f7', shape: 'ball' },
+    // 後半のステージ。形（shape）は前半のものを使い回し、色だけを変えている
+    volcano: { sky: 'linear-gradient(180deg,#4a1414,#a33a1e 70%,#e0743a)', ground: '#5a2a1e', line: '#ff7a3c', ob1: '#ffb703', ob2: '#ff5e3a', cloud: '#7a3a2a', ink: '#f2f2f7', shape: 'spike' },
+    city:    { sky: 'linear-gradient(180deg,#7a8fa8,#cfd9e4)', ground: '#5c6470', line: '#ffd60a', ob1: '#37474f', ob2: '#78909c', cloud: '#ffffff', ink: '#1c1c1e', shape: 'pipe' },
+    ruins:   { sky: 'linear-gradient(180deg,#8a7a5c,#d8cba6)', ground: '#7a6a4a', line: '#b9a06a', ob1: '#5d5040', ob2: '#9b8a70', cloud: '#efe6cd', ink: '#1c1c1e', shape: 'cactus' },
+    storm:   { sky: 'linear-gradient(180deg,#232838,#49506a)', ground: '#2f3446', line: '#ffd60a', ob1: '#6b7a99', ob2: '#aab4cc', cloud: '#3c4356', ink: '#f2f2f7', shape: 'hump' },
+    aurora:  { sky: 'linear-gradient(180deg,#0a1230,#144a52 60%,#1f7a5e)', ground: '#14263a', line: '#6ef0c8', ob1: '#6ef0c8', ob2: '#bff6e6', cloud: '#9ad8ff', ink: '#f2f2f7', shape: 'ball' },
+    abyss:   { sky: 'linear-gradient(180deg,#04101c,#082a44)', ground: '#0b2233', line: '#3fd0e0', ob1: '#ff8f3c', ob2: '#ffd1a8', cloud: '#123b52', ink: '#f2f2f7', shape: 'hump' },
+    clock:   { sky: 'linear-gradient(180deg,#3a2a14,#8a6a2a 70%,#c9a44a)', ground: '#4a3a1e', line: '#ffd60a', ob1: '#b08422', ob2: '#ffe08a', cloud: '#6a5228', ink: '#f2f2f7', shape: 'pipe' },
+    void:    { sky: 'linear-gradient(180deg,#000000,#12021f 60%,#2a0540)', ground: '#160a24', line: '#c77dff', ob1: '#c77dff', ob2: '#f0d6ff', cloud: '#2a0540', ink: '#f2f2f7', shape: 'ball' },
   };
 
-  // サボリ魔王 ダラーン（16×16のドット絵）。紫のかたまりに金の王冠、半分閉じた目、よだれ
-  const BOSS_SVG = (() => {
+  // 魔王のドット絵（16×16）。色だけを差し替えて、何体目かを見分けられるようにする。
+  // 金の王冠、半分閉じた目、よだれ、というだらけた姿は共通
+  function bossSvg(round) {
+    const c = bossOf(round);
     const px = [];
-    const rect = (x, y, w, h, c) => px.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`);
-    const G = '#ffd60a', B = '#9b5de5', D = '#6a3fb5', K = '#2a1f4a', Wt = '#ffffff', L = '#4a2f80', S = '#8fe3ff';
+    const rect = (x, y, w, h, col) => px.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${col}"/>`);
+    const G = '#ffd60a', B = c.body, D = c.dark, K = '#2a1f4a', Wt = '#ffffff', L = c.deep, S = '#8fe3ff';
     rect(4, 0, 1, 1, G); rect(7, 0, 1, 1, G); rect(10, 0, 1, 1, G);
     rect(4, 1, 7, 2, G);
     rect(3, 3, 9, 1, B); rect(2, 4, 11, 1, B); rect(1, 5, 13, 7, B);
@@ -79,7 +120,7 @@
     rect(6, 10, 4, 1, K); rect(5, 9, 1, 1, K); rect(10, 9, 1, 1, K);
     rect(10, 11, 1, 2, S);
     return `<svg class="gr-boss-svg" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">${px.join('')}</svg>`;
-  })();
+  }
 
   const CSS = `
   .gr-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
@@ -532,8 +573,12 @@
     els.runner.classList.remove('gr-hit', 'gr-clear');
     els.runner.classList.add('gohan-walking');
     setStage(0);
-    const bestNote = g.bestStage > STAGES.length ? 'サボリ魔王を撃破済み！' : (g.bestStage >= STAGES.length ? '5ステージクリア済み。次はボス！' : (g.bestStage > 0 ? `ベスト: STAGE ${g.bestStage} クリア` : ''));
-    showMsg('タップでスタート', `全5ステージ＋ボス。ゴールの旗をめざそう${bestNote ? '\n' + bestNote : ''}`);
+    g.bossCleared = false;
+    g.bossRound = 0;
+    g.finalBoss = false;
+    const bestNote = g.bestStage > STAGES.length ? '大魔王まで撃破済み！'
+      : (g.bestStage > 0 ? `ベスト: STAGE ${g.bestStage} クリア` : '');
+    showMsg('タップでスタート', `全${STAGES.length}ステージ。${BOSS_EVERY}つ進むごとにボスが出る${bestNote ? '\n' + bestNote : ''}`);
   }
 
   // ステージを切り替える（テーマ・速さ・障害物をそのステージのものに）
@@ -595,7 +640,14 @@
     if (g.paused) return;
     if (g.state === 'boot' || g.state === 'intro') return; // 電源が入る・ステージ名を見せている間は待つ
     if (g.state === 'idle') { g.state = 'run'; g.startedAt = performance.now(); els.msg.classList.add('hidden'); sound('jump'); g.vy = JUMP_V; return; }
-    if (g.state === 'clear') { if (performance.now() - g.overAt > 400) { if (g.stage + 1 >= STAGES.length) startBoss(); else startStage(g.stage + 1); } return; }
+    if (g.state === 'clear') {
+      if (performance.now() - g.overAt > 400) {
+        // ボスを倒した直後（bossCleared）は、同じボスをもう一度出さずに次のステージへ
+        if (!g.bossCleared && bossAfter(g.stage)) startBoss(bossRoundOf(g.stage));
+        else { g.bossCleared = false; startStage(g.stage + 1); }
+      }
+      return;
+    }
     // ボス撃破の演出中は、タップでその段階を飛ばす。リザルトまで見終わったら、タップでもう一度
     if (g.state === 'bosswin' && g.winPhase !== 'done') { winSkip(); return; }
     if (g.state === 'over' || g.state === 'bosswin') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
@@ -663,7 +715,7 @@
     updateBest();
     // ハートはステージごとに回復せず、ボス戦まで通しで3つ（減ったぶんはそのまま持ち越す）
     g.state = 'clear';
-    if (cleared >= STAGES.length) showMsg(`STAGE ${cleared} クリア！`, 'タップで…ボスがあらわれる');
+    if (bossAfter(g.stage)) showMsg(`STAGE ${cleared} クリア！`, 'タップで…ボスがあらわれる');
     else showMsg(`STAGE ${cleared} クリア！`, `タップで次のステージ（${STAGES[cleared].name}）へ`);
     sound('best');
   }
@@ -680,28 +732,37 @@
   }
 
   // ---- ボス戦 ---------------------------------------------------------------
-  function startBoss() {
+  // round は何体目のボスか（1はじまり）。倒したステージから決まる
+  function startBoss(round) {
+    const r = round || bossRoundOf(g.stage) || 1;
+    g.bossRound = r;
+    const boss = bossOf(r);
     clearField();
     applyTheme('castle');
     els.screen.classList.add('boss');
     els.device.classList.add('boss');
-    els.stageName.textContent = 'BOSS';
+    els.stageName.textContent = `BOSS ${r}/${BOSS_TOTAL}`;
     g.state = 'intro';
-    g.y = 0; g.vy = 0; g.rx = RUNNER_X; g.speed = 120; g.hurt = 0; g.fireCd = 0; // ハートは持ち越し
+    g.y = 0; g.vy = 0; g.rx = RUNNER_X; g.speed = 120; g.hurt = 0; g.fireCd = 0;
+    // ボス戦の前にハートを満タンに戻す（ここまで走り切ったごほうび。
+    // 3ステージごとに区切りが来るので、減ったまま延々と進むことにはならない）
+    g.hearts = PLAYER_HEARTS;
     placeRunner();
     els.runner.classList.remove('gr-clear');
     els.runner.classList.add('gohan-walking');
     renderHearts();
     const el = document.createElement('div');
     el.className = 'gr-boss';
-    el.innerHTML = BOSS_SVG;
+    el.innerHTML = bossSvg(r);
     els.screen.appendChild(el);
-    g.boss = { el, hp: BOSS_HP, x: W - BOSS_SIZE - 24, y: 26, t: 0, attackIn: 2.4, dashIn: 9, dash: null, flash: 0 };
+    const gap = bossAttackGapOf(r);
+    g.boss = { el, hp: bossHpOf(r), hpMax: bossHpOf(r), gap, x: W - BOSS_SIZE - 24, y: 26, t: 0, attackIn: gap, dashIn: 9, dash: null, flash: 0 };
     placeBoss();
-    els.bossName.textContent = BOSS_NAME;
+    els.bossName.textContent = boss.name;
     els.bossBar.style.width = '100%';
     els.bossBar.style.background = '#34c759';
-    showMsg(`BOSS  ${BOSS_NAME}`, '「ねむい…記録なんてサボっちゃえ…」\nB：ほのおだま　▼：しゃがむ　A：ジャンプ');
+    const last = r >= BOSS_TOTAL;
+    showMsg(`BOSS ${r}  ${boss.name}`, `${last ? '「これが最後だ…もう寝かせてくれ…」' : '「ねむい…記録なんてサボっちゃえ…」'}\nB：ほのおだま　▼：しゃがむ　A：ジャンプ`);
     sound('roar');
     g.introLeft = 2.8;
     g.introNext = 'boss';
@@ -722,7 +783,7 @@
     els.screen.appendChild(el);
     // low: 足もと（ジャンプでよける） / head: 顔の高さ（しゃがんでよける）
     const y = kind === 'head' ? 30 : 2;
-    const p = { el, x: g.boss.x - 10, y, w: 24, h: 14, speed: 130 + (BOSS_HP - g.boss.hp) * 6 + Math.random() * 20 };
+    const p = { el, x: g.boss.x - 10, y, w: 24, h: 14, speed: 130 + (g.boss.hpMax - g.boss.hp) * 6 + Math.random() * 20 };
     el.style.transform = `translate(${p.x}px, ${-p.y}px)`;
     g.pillows.push(p);
   }
@@ -755,7 +816,7 @@
     hitFx(x, y, 'HIT!');
     g.score += 50;
     els.score.textContent = pad(g.score);
-    const ratio = Math.max(0, b.hp / BOSS_HP);
+    const ratio = Math.max(0, b.hp / (b.hpMax || BOSS_HP));
     els.bossBar.style.width = `${(ratio * 100).toFixed(0)}%`;
     els.bossBar.style.background = ratio > 0.5 ? '#34c759' : (ratio > 0.2 ? '#ffd60a' : '#ff453a');
     sound('hit');
@@ -787,12 +848,17 @@
   function bossWin() {
     g.state = 'bosswin';
     g.winPhase = 'die';
+    // 最後のボスかどうかで、この後の流れが変わる（最後だけリザルトを出して終わり、
+    // 途中なら次のステージへ続く）
+    g.finalBoss = (g.bossRound || 1) >= BOSS_TOTAL;
+    if (!g.finalBoss) { g.hearts = PLAYER_HEARTS; renderHearts(); }
     g.overAt = performance.now() + 60 * 1000; // リザルトを見終わるまでは、タップで再スタートしない
     g.pillows.forEach((p) => p.el.remove()); g.pillows = [];
     g.fires.forEach((f) => f.el.remove()); g.fires = [];
     els.runner.classList.remove('gohan-walking', 'gr-duck', 'gr-hurt');
     els.msg.classList.add('hidden');
-    if (STAGES.length + 1 > g.bestStage) { g.bestStage = STAGES.length + 1; saveBestStage(g.bestStage); }
+    const reached = g.finalBoss ? STAGES.length + 1 : g.stage + 1;
+    if (reached > g.bestStage) { g.bestStage = reached; saveBestStage(g.bestStage); }
     // 点数の内訳。走ったぶんは g.score にすでに入っている
     const heartsLeft = g.hearts;
     const perfect = heartsLeft >= PLAYER_HEARTS;
@@ -888,7 +954,24 @@
     els.screen.appendChild(conf);
     sound('fanfare');
     later(700, () => say('やったね！', g.rx + RUNNER + 4, GROUND + RUNNER + 2, true));
-    later(2800, winPhaseResult);
+    later(2800, g.finalBoss ? winPhaseResult : winPhaseContinue);
+  }
+
+  // 途中のボスを倒した時。リザルトは出さず、次のステージへ続ける
+  function winPhaseContinue() {
+    g.winPhase = 'done';
+    clearWinTimers();
+    els.screen.querySelectorAll('.gr-bigtext, .gr-say, .gr-confetti').forEach((n) => n.remove());
+    els.runner.classList.remove('gr-slide');
+    els.device.classList.remove('boss');
+    g.rx = RUNNER_X;
+    placeRunner();
+    const next = STAGES[g.stage + 1];
+    const beaten = bossOf(g.bossRound).name;
+    g.bossCleared = true;
+    g.state = 'clear';
+    g.overAt = performance.now();
+    showMsg(`${beaten} を倒した！`, `ハートが回復した\nタップで次のステージ（${next ? next.name : ''}）へ`);
   }
 
   // 段階3: リザルト（内訳の数字が順に回る）
@@ -953,7 +1036,7 @@
   // タップで段階を飛ばす
   function winSkip() {
     if (g.winPhase === 'die') winPhaseWin();
-    else if (g.winPhase === 'win') winPhaseResult();
+    else if (g.winPhase === 'win') { if (g.finalBoss) winPhaseResult(); else winPhaseContinue(); }
     else if (g.winPhase === 'result') winDone();
   }
 
@@ -981,7 +1064,7 @@
     g.clouds.forEach((c) => { c.x -= 10 * dt; if (c.x < -40) c.x = W + 20; c.el.style.transform = `translate(${c.x.toFixed(1)}px, ${c.y}px)`; });
 
     // ボス：ふわふわ浮く。HPが減るほど攻撃が速い。ときどき突進してくる（ジャンプでよける）
-    const phase = 1 + 0.6 * ((BOSS_HP - b.hp) / BOSS_HP); // 1 → 1.6
+    const phase = 1 + 0.6 * ((b.hpMax - b.hp) / b.hpMax); // 1 → 1.6
     if (b.dash) {
       b.dash.t += dt;
       const d = b.dash;
@@ -1007,7 +1090,7 @@
         if (r < 0.5) throwPillow('low');
         else if (r < 0.85) throwPillow('head');
         else { throwPillow('low'); setTimeout(() => { if (open && g.state === 'boss' && g.boss) throwPillow('head'); }, 350); }
-        b.attackIn = (2.2 + Math.random() * 1.0) / phase;
+        b.attackIn = (b.gap + Math.random() * 1.0) / phase;
       }
       b.dashIn -= dt;
       if (b.dashIn <= 0) {
@@ -1216,6 +1299,6 @@
   window.openGohanRunNow = openGame;
   window.closeGohanRun = close;
   // 動作確認用：開いている時に呼ぶとすぐボス戦になる
-  window.gohanRunSkipToBoss = () => { if (open && els) startBoss(); };
+  window.gohanRunSkipToBoss = (round) => { if (open && els) startBoss(round || bossRoundOf(g.stage) || 1); };
   window.gohanRunDebugWin = () => { if (open && g.state === 'boss') bossWin(); };
 })();

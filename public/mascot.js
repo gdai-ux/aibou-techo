@@ -27,13 +27,13 @@ const CAT_BASE = [
   '...CCCCCCCmmCCCCCCC.....',
   '...CCCCCCCWWCCCCCCC.....',
   '....CCCCCCCCCCCCCC......',
-  '.....CCCCCCCCCCCC.......',
+  '.....CCCCCCCCCCCC....TT.',
   '......CCCCCCCCCC....TT..',
   '.....CCCCCCCCCCCC...TT..',
   '.....CCCWWWWWWCCC...TT..',
   '....CCCCWWWWWWCCCC..TT..',
-  '....CCCCWWWWWWCCCC.TT...',
-  '....CCCCWWWWWWCCCCTT....',
+  '....CCCCWWWWWWCCCCTTT...',
+  '....CCCCWWWWWWCCCCTTT...',
   '....CCCCCCCCCCCCCC......',
   '.....CCCC....CCCC.......',
   '........................',
@@ -47,10 +47,30 @@ const CAT_WHISKERS = [[0, 9], [1, 9], [2, 9], [0, 11], [1, 11], [2, 11],
 // しっぽのまとまり。この位置から右下は別のグループに入れて、CSSで揺らす
 const CAT_TAIL_FROM = { x: 18, y: 13 };
 
+// しっぽの上半分の形（3通り）。ドット絵は角度を付けて回すと輪郭がぼやけて、
+// 体だけくっきり・しっぽだけ眠い絵になる。回さずに形を描き分けて
+// パラパラ漫画のように切り替えると、どの瞬間もドットのまま揺れる。
+// 数字は y行目に置くしっぽのマスのx座標。下半分（付け根）は共通で動かさない
+const CAT_TAIL_POSES = [
+  { 13: [21, 22], 14: [21, 22] }, // 右へ反らす
+  { 13: [20, 21], 14: [20, 21] }, // まっすぐ（静止時はこれ）
+  { 13: [19, 20], 14: [19, 20] }, // 体側へ傾ける
+];
+const CAT_TAIL_REST = 1; // 動かさない時に出す形
+
 // 下絵に模様を押し、まわりに輪郭線（K）を引き、最後にヒゲを置いた地図を作る。
-// patches は [x, y, 幅, 高さ, 文字]
-function catMap(patches) {
+// patches は [x, y, 幅, 高さ, 文字]、pose は CAT_TAIL_POSES のひとつ
+function catMap(patches, pose) {
   const rows = CAT_BASE.map((r) => r.split(''));
+  // しっぽの上半分だけ、指定された形に置き換える
+  if (pose) {
+    Object.keys(pose).forEach((key) => {
+      const y = Number(key);
+      const row = rows[y];
+      for (let x = CAT_TAIL_FROM.x; x < row.length; x++) if (row[x] === 'T') row[x] = '.';
+      pose[key].forEach((x) => { row[x] = 'T'; });
+    });
+  }
   (patches || []).forEach(([x, y, w, h, ch]) => {
     for (let j = y; j < y + h; j++) {
       for (let i = x; i < x + w; i++) {
@@ -74,11 +94,20 @@ function catMap(patches) {
   return out.map((r) => r.join(''));
 }
 
+// 同じ模様で、しっぽの形だけ違う地図を3枚作る。体は静止時の形（map）から描き、
+// しっぽのまとまりだけ3枚ぶん作ってCSSで切り替える
+function catMaps(patches) {
+  return {
+    map: catMap(patches, CAT_TAIL_POSES[CAT_TAIL_REST]),
+    tailMaps: CAT_TAIL_POSES.map((pose) => catMap(patches, pose)),
+  };
+}
+
 // ねこ共通の設定（24×24ぶん）。anim を付けたキャラクターは、しっぽが揺れて目がまばたきする
 const CAT_DECO = {
   cheeks: [[3, 10], [19, 10]],
   crown: { cx: 11, topY: 4 },
-  anim: { tailFrom: CAT_TAIL_FROM, tailPivot: { x: 18, y: 20 }, eyeLetters: 'EH' },
+  anim: { tailFrom: CAT_TAIL_FROM, eyeLetters: 'EH' },
 };
 
 const MASCOT_CHARS = [
@@ -331,37 +360,37 @@ const MASCOT_CHARS = [
     id: 'kuroneko', name: 'くろねこ',
     difficulty: 'oni', tone: 'oni', speech: 'cat', bio: '容赦しない黒ねこの相棒',
     colors: { C: '#4a4a55', T: '#4a4a55', K: '#17171c', W: '#e8e8ec', E: '#ffd60a', m: '#f79bb1' },
-    ...CAT_DECO, map: catMap([]),
+    ...CAT_DECO, ...catMaps([]),
   },
   {
     id: 'toraneko', name: 'とらねこ',
     difficulty: 'extreme', tone: 'strict', speech: 'cat', bio: 'ストイックな縞ねこの相棒',
     colors: { C: '#eba448', T: '#eba448', S: '#c07a1e', K: '#4a2c0c', W: '#fbe7c8', E: '#2f6b3a', m: '#f79bb1' },
     ...CAT_DECO,
-    map: catMap([[9, 5, 6, 1, 'S'], [5, 7, 3, 1, 'S'], [16, 7, 3, 1, 'S'],
+    ...catMaps([[9, 5, 6, 1, 'S'], [5, 7, 3, 1, 'S'], [16, 7, 3, 1, 'S'],
                  [4, 12, 4, 1, 'S'], [14, 12, 4, 1, 'S'],
                  [5, 15, 3, 1, 'S'], [14, 15, 3, 1, 'S'],
-                 [20, 15, 2, 1, 'S'], [20, 17, 2, 1, 'S']]),
+                 [20, 14, 2, 1, 'S'], [18, 18, 2, 1, 'S']]),
   },
   {
     id: 'shironeko', name: 'しろねこ',
     difficulty: 'normal', tone: 'normal', speech: 'cat', bio: 'まっすぐ言う白ねこの相棒',
     colors: { C: '#f4f4f7', T: '#f4f4f7', K: '#8a8a96', W: '#ffffff', E: '#4a8fd9', m: '#f79bb1' },
-    ...CAT_DECO, map: catMap([]),
+    ...CAT_DECO, ...catMaps([]),
   },
   {
     id: 'mikeneko', name: 'みけねこ',
     difficulty: 'easy', tone: 'gentle', speech: 'cat', bio: 'そっと寄り添う三毛ねこの相棒',
     colors: { C: '#f7f4ed', T: '#f7f4ed', O: '#eba448', D: '#5a5a64', K: '#6b5a4a', W: '#ffffff', E: '#6b8f3a', m: '#f79bb1' },
     ...CAT_DECO,
-    map: catMap([[4, 2, 5, 4, 'O'], [14, 2, 5, 4, 'D'], [4, 12, 5, 3, 'O'], [15, 12, 4, 3, 'D'],
-                 [18, 13, 4, 4, 'D']]),
+    ...catMaps([[4, 2, 5, 4, 'O'], [14, 2, 5, 4, 'D'], [4, 12, 5, 3, 'O'], [15, 12, 4, 3, 'D'],
+                 [18, 13, 5, 5, 'D']]),
   },
   {
     id: 'maruneko', name: 'まるねこ',
     difficulty: 'easy', tone: 'sweet', speech: 'cat', bio: 'なんでも褒めるまるいねこの相棒',
     colors: { C: '#9fa8b3', T: '#9fa8b3', K: '#3c434c', W: '#edf1f5', E: '#2c2c2e', m: '#f79bb1' },
-    ...CAT_DECO, map: catMap([[5, 14, 14, 2, 'C']]),
+    ...CAT_DECO, ...catMaps([[5, 14, 14, 2, 'C']]),
   },
 ];
 
@@ -584,33 +613,51 @@ function mascotSvg(char) {
   const rects = [];
   const tailRects = [];
   const eyeCells = [];
-  char.map.forEach((row, y) => {
-    let x = 0;
-    while (x < row.length) {
-      const ch = row[x];
-      if (ch === '.') { x++; continue; }
-      const color = char.colors[ch];
-      const tail = inTail(x, y);
-      const eye = isEye(ch);
-      const x0 = x;
-      // 色が同じでも、しっぽと体の境目では切る（別のまとまりに入れるため）
-      while (x < row.length && row[x] !== '.' && char.colors[row[x]] === color
-             && inTail(x, y) === tail && isEye(row[x]) === eye) x++;
-      const rect = `<rect x="${x0}" y="${y}" width="${x - x0}" height="1" fill="${color}"/>`;
-      if (tail) tailRects.push(rect);
-      else if (eye) eyeCells.push({ x: x0, y, w: x - x0, color, rect });
-      else rects.push(rect);
-    }
+  // 地図を1行ずつ見て、同じ色の連続を1つの長方形にまとめる。
+  // どのまとまり（体・しっぽ・目）に入れるかは onRect が決める
+  const walk = (map, onRect) => {
+    map.forEach((row, y) => {
+      let x = 0;
+      while (x < row.length) {
+        const ch = row[x];
+        if (ch === '.') { x++; continue; }
+        const color = char.colors[ch];
+        const tail = inTail(x, y);
+        const eye = isEye(ch);
+        const x0 = x;
+        // 色が同じでも、しっぽと体の境目では切る（別のまとまりに入れるため）
+        while (x < row.length && row[x] !== '.' && char.colors[row[x]] === color
+               && inTail(x, y) === tail && isEye(row[x]) === eye) x++;
+        const rect = `<rect x="${x0}" y="${y}" width="${x - x0}" height="1" fill="${color}"/>`;
+        onRect({ rect, tail, eye, x: x0, y, w: x - x0, color });
+      }
+    });
+  };
+  walk(char.map, ({ rect, tail, eye, x, y, w, color }) => {
+    if (tail) tailRects.push(rect);
+    else if (eye) eyeCells.push({ x, y, w, color, rect });
+    else rects.push(rect);
   });
   // まばたき。目のいちばん下の段だけを残した線を「閉じた目」として重ねる
   const eyeBottom = eyeCells.length ? Math.max(...eyeCells.map((c) => c.y)) : 0;
   const eyesOpen = eyeCells.map((c) => c.rect).join('');
   const eyesShut = eyeCells.filter((c) => c.y === eyeBottom)
     .map((c) => `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="1" fill="${c.color}"/>`).join('');
-  const pivot = anim && anim.tailPivot ? anim.tailPivot : null;
-  const tailGroup = tailRects.length
-    ? `<g class="cat-tail"${pivot ? ` style="transform-origin:${pivot.x}px ${pivot.y + pad}px"` : ''}>${tailRects.join('')}</g>`
-    : '';
+  // しっぽ。形ちがいの地図があれば、その枚数ぶんまとまりを作って重ねておく。
+  // 出す1枚はCSSが切り替える（回さないので、どの形でもドットのまま）
+  let tailGroup = '';
+  if (char.tailMaps && char.tailMaps.length) {
+    tailGroup = char.tailMaps.map((map, i) => {
+      const frame = [];
+      walk(map, ({ rect, tail }) => { if (tail) frame.push(rect); });
+      // 静止時の1枚だけを出しておく。CSSが読めていなくても
+      // 3枚が重なって見えることはない（動く時はCSSが上書きする）
+      const shown = i === CAT_TAIL_REST ? '' : ' opacity="0"';
+      return `<g class="cat-tail cat-tail-${i}"${shown}>${frame.join('')}</g>`;
+    }).join('');
+  } else if (tailRects.length) {
+    tailGroup = `<g class="cat-tail">${tailRects.join('')}</g>`;
+  }
   const eyeGroups = eyeCells.length
     ? `<g class="cat-eyes">${eyesOpen}</g><g class="cat-blink">${eyesShut}</g>`
     : '';

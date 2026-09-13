@@ -1169,22 +1169,29 @@ body.timewheel-open { overflow: hidden; }
 .mascot-cell svg { width: 38px; height: 44px; }
 .mascot-cell-name { font-size: 10.5px; color: var(--muted); }
 /* ねこの相棒だけ、しっぽがゆれて、ときどきまばたきする。
-   絵を「体」「しっぽ」「目」の3つのまとまりに分けて描いてあるので、
-   しっぽだけを根元から回せる（mascot.js の mascotSvg） */
-.gohan-kun .cat-tail {
-  transform-box: view-box;
-  animation: catTail 1.9s ease-in-out infinite;
-}
-@keyframes catTail {
-  0%, 100% { transform: rotate(-7deg); }
-  50% { transform: rotate(9deg); }
-}
+   絵を「体」「しっぽ」「目」のまとまりに分けて描いてある（mascot.js の mascotSvg）。
+   しっぽは角度を付けて回すのではなく、形ちがいを3枚重ねておいて
+   出す1枚を切り替える。回すと輪郭がぼやけて、体はドット・しっぽだけ
+   眠い絵、というちぐはぐな見え方になるため。
+   順番は 右へ反る → まっすぐ → 体側へ → まっすぐ、の4コマでひと回り */
+.gohan-kun .cat-tail { opacity: 0; }
+.gohan-kun .cat-tail-1 { opacity: 1; }  /* 止まっている時に出る形 */
+.gohan-kun .cat-tail-0,
+.gohan-kun .cat-tail-1,
+.gohan-kun .cat-tail-2 { animation: 2s steps(1) infinite; }
+.gohan-kun .cat-tail-0 { animation-name: catTail0; }
+.gohan-kun .cat-tail-1 { animation-name: catTail1; }
+.gohan-kun .cat-tail-2 { animation-name: catTail2; }
+@keyframes catTail0 { 0% { opacity: 1; } 25% { opacity: 0; } }
+@keyframes catTail1 { 0% { opacity: 0; } 25% { opacity: 1; } 50% { opacity: 0; } 75% { opacity: 1; } }
+@keyframes catTail2 { 0% { opacity: 0; } 50% { opacity: 1; } 75% { opacity: 0; } }
 /* まばたきは、開いた目を一瞬消して、閉じた目（下の段だけの線）に入れ替える */
 .gohan-kun .cat-blink { opacity: 0; animation: catBlink 5.6s steps(1) infinite; }
 .gohan-kun .cat-eyes { animation: catEyes 5.6s steps(1) infinite; }
 @keyframes catBlink { 0%, 95% { opacity: 0; } 96%, 99% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes catEyes { 0%, 95% { opacity: 1; } 96%, 99% { opacity: 0; } 100% { opacity: 1; } }
 /* 「演出をひかえめに」を選んでいる時と、端末側で動きを減らす設定の時は止める */
+/* 止める時は、まっすぐの1枚だけが残る */
 html.fx-calm .gohan-kun .cat-tail,
 html.fx-calm .gohan-kun .cat-blink,
 html.fx-calm .gohan-kun .cat-eyes { animation: none; }

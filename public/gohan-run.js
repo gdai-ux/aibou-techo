@@ -298,6 +298,33 @@
   .gr-result-best { margin-top: 4px; text-align: center; font-size: 11px; font-weight: 900; color: #ff9f1c; letter-spacing: 0.1em; animation: grBlink .5s steps(2) infinite; }
   .gr-result-best.hidden { display: none; }
   .gr-result-foot { margin-top: 6px; text-align: center; font-size: 9px; opacity: 0; color: #c9b8ff; }
+  /* エンドロール。最後の魔王を倒した後に流れる */
+  .gr-credits { position: absolute; inset: 0; z-index: 12; overflow: hidden; background: #05040a;
+    color: #f2f2f7; font-size: 10px; line-height: 1.9; text-align: center; }
+  .gr-credits::before { content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.5) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 72% 42%, rgba(255, 255, 255, 0.4) 0 1px, transparent 1.6px),
+      radial-gradient(circle at 44% 78%, rgba(255, 255, 255, 0.35) 0 1px, transparent 1.6px);
+    background-size: 60px 60px, 90px 90px, 120px 120px; opacity: 0.8; }
+  .gr-credits-inner { position: absolute; left: 0; right: 0; top: 0; padding: 0 14px;
+    transform: translateY(${H}px); animation: grRoll var(--roll, 26s) linear forwards; }
+  .gr-credits h5 { margin: 18px 0 6px; font-size: 9px; letter-spacing: 0.34em; color: #c9b8ff; font-weight: 700; }
+  .gr-credits .gr-cr-title { margin: 10px 0 2px; font-size: 15px; font-weight: 900; letter-spacing: 0.08em; color: #ffd60a; }
+  .gr-credits .gr-cr-sub { margin: 0 0 8px; font-size: 9px; color: #9a93b0; }
+  .gr-credits .gr-cr-item { margin: 2px 0; }
+  .gr-credits .gr-cr-stat { display: flex; justify-content: space-between; gap: 10px; margin: 2px auto; max-width: 190px;
+    font-variant-numeric: tabular-nums; }
+  .gr-credits .gr-cr-stat b { color: #ffd60a; font-weight: 700; }
+  .gr-credits .gr-cr-you { margin: 6px 0 2px; font-size: 13px; font-weight: 900; color: #ffd60a; }
+  .gr-credits .gr-cr-end { margin: 26px 0 40px; font-size: 16px; font-weight: 900; letter-spacing: 0.3em; }
+  @keyframes grRoll { from { transform: translateY(${H}px); } to { transform: translateY(-100%); } }
+  /* 流し終わったあとの「THE END」 */
+  .gr-theend { position: absolute; inset: 0; z-index: 13; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px; background: #05040a; color: #f2f2f7;
+    animation: grFadeIn .8s ease both; }
+  .gr-theend b { font-size: 18px; font-weight: 900; letter-spacing: 0.34em; }
+  .gr-theend span { font-size: 9px; color: #c9b8ff; animation: grBlink 1s steps(2) infinite; }
+  @keyframes grFadeIn { from { opacity: 0; } to { opacity: 1; } }
   .gr-result.done .gr-result-foot { opacity: 0.9; animation: grBlink 1s steps(2) infinite; }
   @media (prefers-reduced-motion: reduce) { .gr-runner .gohan-kun { animation: none !important; } .gr-bigtext span, .gr-confetti i, .gr-screen.gr-shake { animation: none !important; } }
   /* 開く時の演出：背景がふわっと暗くなり、本体が下からせり上がり、画面に電源が入る */
@@ -649,8 +676,16 @@
       return;
     }
     // ボス撃破の演出中は、タップでその段階を飛ばす。リザルトまで見終わったら、タップでもう一度
-    if (g.state === 'bosswin' && g.winPhase !== 'done') { winSkip(); return; }
-    if (g.state === 'over' || g.state === 'bosswin') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
+    if (g.state === 'bosswin') {
+      // エンドロール中はタップで早送り、流し終わったあとはタップで最初から
+      if (g.winPhase === 'credits') { creditsEnd(); return; }
+      if (g.winPhase === 'theend') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
+      if (g.winPhase !== 'done') { winSkip(); return; }
+      // リザルトを見終わったところ。最後の魔王ならエンドロールへ続く
+      if (performance.now() - g.overAt > 450) { if (g.finalBoss) startCredits(); else { reset(); jump(); } }
+      return;
+    }
+    if (g.state === 'over') { if (performance.now() - g.overAt > 450) { reset(); jump(); } return; }
     if (g.y <= 0 && !g.held.down) { g.vy = JUMP_V; sound('jump'); }
   }
 
@@ -840,7 +875,7 @@
   function clearWinFx() {
     clearWinTimers();
     if (!els) return;
-    els.screen.querySelectorAll('.gr-flash, .gr-say, .gr-bits, .gr-bigtext, .gr-confetti, .gr-result').forEach((n) => n.remove());
+    els.screen.querySelectorAll('.gr-flash, .gr-say, .gr-bits, .gr-bigtext, .gr-confetti, .gr-result, .gr-credits, .gr-theend').forEach((n) => n.remove());
     els.screen.classList.remove('gr-shake');
     els.runner.classList.remove('gr-slide');
   }
@@ -1032,7 +1067,75 @@
     }
     g.overAt = performance.now();
     if (g.win && g.win.newBest) sound('best');
+    // 最後の魔王を倒した時だけ、この後にエンドロールが続く
+    const foot = panel && panel.querySelector('.gr-result-foot');
+    if (foot && g.finalBoss) foot.textContent = 'タップでエンドロール';
   }
+
+  // ---- エンドロール ---------------------------------------------------------
+  // 最後の魔王を倒した後に流れる。名前を並べるだけの飾りではなく、
+  // 「この回に実際にやったこと」（通ったステージ・倒した魔王・記録）を出す。
+  // 架空のスタッフ名を並べるより、自分の走りが残った方が締まる
+  function creditsHtml() {
+    const w = g.win || { base: 0, timeSec: 0, heartsLeft: 0 };
+    const mmss = w.timeSec ? `${Math.floor(w.timeSec / 60)}:${String(w.timeSec % 60).padStart(2, '0')}` : '--:--';
+    let bossWins = 0;
+    try { bossWins = Number(localStorage.getItem('gohanBossWins') || 0) || 0; } catch (e) { /* プライベートモード等 */ }
+    const name = (window.mascotName ? mascotName() : 'ごはんくん');
+    const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    const rows = [];
+    rows.push('<div class="gr-cr-title">ごはんラン</div>');
+    rows.push('<div class="gr-cr-sub">あいぼう手帳</div>');
+    rows.push('<h5>S T A G E</h5>');
+    STAGES.forEach((st, i) => rows.push(`<div class="gr-cr-item">${String(i + 1).padStart(2, '0')}　${esc(st.name)}</div>`));
+    rows.push('<h5>B O S S</h5>');
+    BOSS_ROUNDS.slice(0, BOSS_TOTAL).forEach((b) => rows.push(`<div class="gr-cr-item">${esc(b.name)}</div>`));
+    rows.push('<h5>R E C O R D</h5>');
+    rows.push(`<div class="gr-cr-stat"><span>スコア</span><b>${g.score.toLocaleString('ja-JP')}</b></div>`);
+    rows.push(`<div class="gr-cr-stat"><span>タイム</span><b>${mmss}</b></div>`);
+    rows.push(`<div class="gr-cr-stat"><span>のこりハート</span><b>${'♥'.repeat(w.heartsLeft) || '—'}</b></div>`);
+    if (bossWins) rows.push(`<div class="gr-cr-stat"><span>魔王 撃破</span><b>${bossWins}回</b></div>`);
+    rows.push('<h5>しゅえん</h5>');
+    rows.push(`<div class="gr-cr-you">${esc(name)}</div>`);
+    rows.push('<h5>そして</h5>');
+    rows.push('<div class="gr-cr-you">きろくを つづけた あなた</div>');
+    rows.push('<div class="gr-cr-item">サボり魔王は、また眠りにつきました。</div>');
+    rows.push('<div class="gr-cr-item">あしたも、1件から。</div>');
+    rows.push('<div class="gr-cr-end">F I N</div>');
+    return `<div class="gr-credits-inner">${rows.join('')}</div>`;
+  }
+
+  function startCredits() {
+    if (!els) return;
+    g.winPhase = 'credits';
+    clearWinTimers();
+    els.screen.querySelectorAll('.gr-result, .gr-confetti, .gr-bigtext, .gr-say').forEach((n) => n.remove());
+    els.runner.classList.remove('gr-clear', 'gr-slide');
+    const box = document.createElement('div');
+    box.className = 'gr-credits';
+    box.innerHTML = creditsHtml();
+    els.screen.appendChild(box);
+    const inner = box.querySelector('.gr-credits-inner');
+    // 行数に合わせて流す時間を決める（短いと速すぎ、長いと待たされる）
+    const seconds = Math.round(Math.min(40, Math.max(18, inner.children.length * 0.62)));
+    inner.style.setProperty('--roll', `${seconds}s`);
+    inner.addEventListener('animationend', creditsEnd, { once: true });
+    sound('fanfare');
+  }
+
+  function creditsEnd() {
+    if (!els || g.winPhase === 'theend') return;
+    g.winPhase = 'theend';
+    const box = els.screen.querySelector('.gr-credits');
+    if (box) box.remove();
+    const end = document.createElement('div');
+    end.className = 'gr-theend';
+    end.innerHTML = '<b>THE END</b><span>タップでもういちど</span>';
+    els.screen.appendChild(end);
+    g.overAt = performance.now();
+    sound('best');
+  }
+
   // タップで段階を飛ばす
   function winSkip() {
     if (g.winPhase === 'die') winPhaseWin();

@@ -85,6 +85,28 @@ function mixHex(a, b, t) {
 
 let lastWeatherCategory = 'cloudy';
 
+// 雨の層をヘッダーに用意する。奥・中・手前の3枚を重ね、遠いものほど
+// 細く・淡く・ゆっくり落とすことで奥行きを出している（見た目はapp.css側）。
+// 一度作れば使い回すので、天気が変わるたびに作り直さない。
+// 表示・非表示は data-weather でCSSが決めるため、ここでは作るだけ
+function ensureRainLayers(header) {
+  if (header.querySelector('.sky-rain')) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'sky-rain';
+  wrap.setAttribute('aria-hidden', 'true');
+  ['far', 'mid', 'near'].forEach((depth) => {
+    const layer = document.createElement('div');
+    layer.className = `sky-rain-layer sky-rain-${depth}`;
+    wrap.appendChild(layer);
+  });
+  // 地面で跳ねている感じのもや
+  const splash = document.createElement('div');
+  splash.className = 'sky-rain-splash';
+  wrap.appendChild(splash);
+  // 背景の一部なので、見出しや相棒より前に入れておく
+  header.insertBefore(wrap, header.firstChild);
+}
+
 function applyHeaderSky(category) {
   if (category) lastWeatherCategory = category;
   const base = SKY_BASE[lastWeatherCategory] || SKY_BASE.cloudy;
@@ -99,6 +121,7 @@ function applyHeaderSky(category) {
     header.style.setProperty('--sky-bottom', bottom);
     header.dataset.sky = band.key;
     header.dataset.weather = lastWeatherCategory;
+    ensureRainLayers(header);
   });
 }
 

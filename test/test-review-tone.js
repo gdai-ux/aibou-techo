@@ -63,7 +63,8 @@ setTimeout(async () => {
   const r1 = await get('/api/review?tone=oni');
   assert.strictEqual(r1.status, 200, JSON.stringify(r1.body));
   assert.ok(systemPrompts[0].includes('鬼コーチ'), '超スパルタの指示が入る');
-  assert.ok(systemPrompts[0].includes('人格否定や侮辱はせず'), '安全の歯止めが入る');
+  assert.ok(systemPrompts[0].includes('人格否定'), '安全の歯止めが入る');
+  assert.ok(systemPrompts[0].includes('健康を害する指示'), '健康を害する指示をさせない歯止めが入る');
   console.log('  超スパルタのプロンプト反映 OK');
 
   // 2. 保存済みなら再生成しない
@@ -80,6 +81,8 @@ setTimeout(async () => {
   const lastUser = userPrompts[userPrompts.length - 1];
   assert.ok(lastUser.includes('たった今増えた記録: 運動（ランニング30分）'), '増えた記録が渡る');
   assert.ok(lastUser.includes('前回のコメント') && lastUser.includes('いいから走れ。'), '前回のコメントが渡る');
+  assert.ok(lastUser.includes('今回の切り口:'), '毎回ちがう切り口が渡る');
+  assert.ok(lastUser.includes('今回の書き出しの型:'), '毎回ちがう書き出しの型が渡る');
   console.log('  口調変更での書き換え OK');
 
   // 4. 不正な口調は既定（ふつう）扱い

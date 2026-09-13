@@ -21,6 +21,7 @@ const { fetchWeather, DEFAULT_LOCATION } = require('./lib/weather');
 const { generateDailyReview, REVIEW_TONES, DEFAULT_TONE } = require('./lib/dailyReview');
 const { chatWithTrainer, buildChatContext } = require('./lib/trainerChat');
 const { yesterdayInfo, todayInfo, dateInfoFor } = require('./lib/format');
+const { parseBodyProfile, bodyTargetKcal, dayKcal } = require('./lib/bodyTarget');
 
 const PORT = process.env.PORT || 3800;
 const OBSIDIAN_FILE_PATH = process.env.OBSIDIAN_FILE_PATH;
@@ -321,6 +322,30 @@ app.get('/api/history', async (req, res) => {
 // 一定時間アクセスが無いとプロセスが再起動するため、メモリキャッシュだけだと
 // 再起動のたびに前日分が再生成され、日によって表示が変わってしまっていた）。
 // 一度生成したコメントは日別の記録として残るので、後から履歴でも振り返れる。
+// ふりかえりに渡す「今日の数字」。からだの設定（目安カロリー）と
+// 運動の週目標は、利用者ごとの設定に入っている
+function reviewWeekStart(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - ((dt.getUTCDay() + 6) % 7)); // 月曜はじまり
+  return dt.toISOString().slice(0, 10);
+}
+
+async function buildReviewTargets(store, days, day, dateStr) {
+  const settings = (await store.getSettings()) || {};
+  const profile = parseBodyProfile(settings.local && settings.local.bodyProfile);
+  const from = reviewWeekStart(dateStr);
+  const exerciseTarget = Number(settings.exerciseTarget) >= 1 ? Number(settings.exerciseTarget) : 5;
+  const exerciseDone = days.filter((d) => d.dateStr >= from && d.dateStr <= dateStr
+    && Array.isArray(d.exercise) && d.exercise.length > 0).length;
+  return {
+    kcalTarget: profile ? bodyTargetKcal(profile) : null,
+    kcalEaten: day ? dayKcal(day).total : 0,
+    exerciseTarget,
+    exerciseDone,
+  };
+}
+
 app.get('/api/review', openaiRateLimit, async (req, res) => {
   try {
     const store = await getStore(req);
@@ -335,8 +360,11 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
     // ふりかえりの対象は「今日ここまで」の記録。記録が増えたり口調を変えたりした時は
     // regenerate=1 で呼ばれ、その時点の進捗で書き直す
     const { dateStr, weekday } = todayInfo();
-    const days = await store.history(5);
+    // 直近の流れも渡すので1週間ぶん見る（「3日続けて睡眠が短い」などを言えるように）
+    const days = await store.history(8);
     const day = days.find((d) => d.dateStr === dateStr) || null;
+    // 目安カロリーと週の運動目標。これが無いと、助言が一般論になってしまう
+    const reviewTargets = await buildReviewTargets(store, days, day, dateStr).catch(() => null);
 
     // 保存済みのふりかえりを書いた後で記録が編集・追加されていたら、
     // 中身が食い違うので自動で書き直す（例: 睡眠時間を直したのに、
@@ -350,7 +378,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
     // 前回のコメントも渡して、同じ言い回しの繰り返しを避けさせる
     if ((regenerate || staleReview) && day && day.review && OPENAI_API_KEY) {
       await consumeAiQuota(req, 'review');
-      const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, previous: day.review.content });
+      const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, previous: day.review.content, recent: days, targets: reviewTargets });
       await store.saveReview(dateStr, weekday, comment, day.review);
       return res.json({ dateStr, weekday, comment, hasData: true });
     }
@@ -368,7 +396,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
 
     if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY が設定されていません');
     await consumeAiQuota(req, 'review');
-    const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest });
+    const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, recent: days, targets: reviewTargets });
     await store.saveReview(dateStr, weekday, comment, null);
     res.json({ dateStr, weekday, comment, hasData: true });
   } catch (err) {

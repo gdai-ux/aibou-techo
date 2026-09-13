@@ -257,7 +257,13 @@ function findLatestEntry(recent, pick) {
   return null;
 }
 
+// 食事の種類を切り替えた時にチップを作り直せるよう、最後に渡された履歴を覚えておく。
+// 「前回と同じ」の中身は種類ごとに違うので、切り替えたのに作り直さないと
+// 朝食を選んでいるのに間食の内容が入る、という食い違いが起きる
+let lastMealChipDays = null;
+
 function renderMealChips(days) {
+  lastMealChipDays = days;
   renderQuickChips(days, {
     textareaId: 'mealItems',
     boxId: 'mealChips',
@@ -1594,7 +1600,11 @@ function setMealType(v) {
   mealChips.forEach(c => c.classList.toggle('active', c.dataset.meal === v));
   if (mealItemsInput) mealItemsInput.placeholder = MEAL_ITEM_PLACEHOLDERS[v] || MEAL_ITEM_PLACEHOLDERS['朝食'];
 }
-mealChips.forEach(c => c.addEventListener('click', () => setMealType(c.dataset.meal)));
+mealChips.forEach(c => c.addEventListener('click', () => {
+  setMealType(c.dataset.meal);
+  // 「前回と同じ」は選んだ種類の直近の食事なので、種類を変えたら作り直す
+  if (typeof renderMealChips === 'function' && lastMealChipDays) renderMealChips(lastMealChipDays);
+}));
 setMealType(defaultMealType());
 
 const conditionChips = document.querySelectorAll('.condition-levels .chip');

@@ -1008,21 +1008,19 @@ function applyGohanVisualState() {
     for (let i = 1; i <= 4; i++) k.classList.toggle(`gohan-stage-${i}`, i <= stage);
   });
   updateBossTrophy();
-  // ヘッダーの帯（進化の色）も、姿の変化と同じ節目で切り替える
-  const belt = gohanBelt(level);
   const header = document.querySelector('.page-header');
   if (header) {
-    header.style.setProperty('--belt-color', belt.color);
-    header.style.setProperty('--belt-trim', belt.trim || belt.color);
-    // ヘッダー足元のステージ演出（草原→森→海→砂漠→雪山→洞窟→宇宙）も、レベルに応じて切り替える
+    // ヘッダー足元のステージ演出（草原→森→海→砂漠→雪山→洞窟→宇宙）は、レベルに応じて切り替える。
+    // 空の色は天気と時間帯で決まる（weather.js）ので、ここでは触らない
     header.dataset.stage = gohanStageTheme(level).key;
   }
   const walker = document.querySelector('.app-icon');
   if (walker) walker.classList.toggle('gohan-sleepy', gohanState.sleepy);
-  // 頭上のバッジに「名前 Lv.○・帯の色」を出す（名前は着せ替え設定に従う）
+  // 頭上のバッジに「名前 Lv.○」を出す（名前は着せ替え設定に従う）。
+  // 帯（白帯・黄帯…）は、レベルと二重に強さを表していて分かりにくかったのでやめた
   const badge = document.getElementById('gohanLv');
   if (badge) {
-    badge.textContent = `${window.mascotName ? mascotName() : 'ごはんくん'} Lv.${level}・${belt.name}`;
+    badge.textContent = `${window.mascotName ? mascotName() : 'ごはんくん'} Lv.${level}`;
     badge.hidden = false;
   }
 }

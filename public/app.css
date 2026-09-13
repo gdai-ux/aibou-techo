@@ -128,12 +128,12 @@
     align-items: center;
     margin: 0 -16px 14px;
     padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
-    /* キャラクターの進化（帯の色）が分かったら、この帯色をヘッダーに薄く重ねる。
-       分かるまで（--belt-colorが未設定の間）は今まで通りの見た目のまま */
-    background: color-mix(in srgb, var(--belt-color, transparent) 28%, var(--bg-blur));
+    /* 空の色は天気と時間帯で決まる（weather.js が --sky-top / --sky-bottom を入れる）。
+       天気が取れるまでは今まで通りの下地のまま */
+    background: var(--bg-blur);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-bottom: 1px solid var(--belt-trim, transparent);
+    border-bottom: 1px solid var(--border);
     transition: background .5s ease, border-color .5s ease;
   }
   .header-title {
@@ -731,7 +731,7 @@
     /* レンガのブロックが並んでいるように見せる：目地（縦線）を等間隔に、
        上端にハイライトを1本。帯の色があればレンガの色もそれに合わせる
        （無ければ地の境界線の色） */
-    background-color: var(--belt-trim, var(--border-strong));
+    background-color: var(--border-strong);
     background-image:
       linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35) 1px, transparent 1px),
       repeating-linear-gradient(90deg, transparent 0 13px, rgba(0, 0, 0, 0.25) 13px 14px);
@@ -828,10 +828,55 @@
   .gohan-block-1 { left: 52%; }
   .gohan-block-2 { left: 66%; }
   /* 草原のテーマは、マリオ1-1のような明るい青空にする
-     （帯の色による色付けより優先。他のテーマはこれまで通りの色合い） */
+     （天気が取れるまでの下地。取れたら下の空の色が上書きする） */
   .page-header.gohan-roam[data-stage="grass"] {
     background: linear-gradient(180deg, #5c94fc 0%, #7fb2ff 55%, #a7dcff 100%);
   }
+  /* 天気と時間帯で決まる空（weather.js）。レベルのステージ指定に勝つよう、
+     属性をひとつ多く書いて詳しくしてある。
+     洞窟と宇宙は空が見えない場所なので、そこだけはステージの色を残す */
+  .page-header.gohan-roam[data-sky][data-stage]:not([data-stage="cave"]):not([data-stage="space"]) {
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 100%);
+  }
+  /* 夜は雲も暗く沈ませる（白いままだと夜空から浮いてしまう） */
+  .page-header.gohan-roam[data-sky="night"] .gohan-cloud {
+    filter: brightness(0.55);
+    opacity: 0.7;
+  }
+  .page-header.gohan-roam[data-sky="dusk"] .gohan-cloud { filter: brightness(0.85) sepia(0.25); }
+  /* 明るい空の上でも文字が読めるように、薄く影を敷く */
+  .page-header.gohan-roam[data-sky] .header-title h1,
+  .page-header.gohan-roam[data-sky] .gohan-lv {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  }
+  /* 雨と雪は、空に細かい粒を流す。文字やキャラクターより奥に描く */
+  .page-header.gohan-roam[data-weather="rain"]::after,
+  .page-header.gohan-roam[data-weather="storm"]::after,
+  .page-header.gohan-roam[data-weather="snow"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .page-header.gohan-roam[data-weather="rain"]::after,
+  .page-header.gohan-roam[data-weather="storm"]::after {
+    background-image: repeating-linear-gradient(102deg,
+      rgba(255, 255, 255, 0.24) 0 1px, transparent 1px 9px);
+    animation: skyRain 0.5s linear infinite;
+  }
+  .page-header.gohan-roam[data-weather="snow"]::after {
+    background-image:
+      radial-gradient(circle, rgba(255, 255, 255, 0.85) 1px, transparent 1.4px),
+      radial-gradient(circle, rgba(255, 255, 255, 0.6) 1px, transparent 1.4px);
+    background-size: 26px 26px, 38px 38px;
+    background-position: 0 0, 13px 9px;
+    animation: skySnow 6s linear infinite;
+  }
+  @keyframes skyRain { from { background-position: 0 0; } to { background-position: -9px 22px; } }
+  @keyframes skySnow { from { background-position: 0 0, 13px 9px; } to { background-position: 0 26px, 13px 47px; } }
+  /* 演出をひかえめにしている時は、粒は出さない */
+  html.fx-calm .page-header.gohan-roam[data-weather]::after { animation: none; opacity: 0.35; }
   .page-header.gohan-roam[data-stage="grass"] .gohan-cloud {
     background: #fff;
     opacity: 0.9;

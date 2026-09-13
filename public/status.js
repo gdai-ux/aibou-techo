@@ -31,9 +31,8 @@ function streakDays(recorded, today) {
 }
 
 function renderHero(state) {
-  const belt = gohanBelt(state.level);
   document.getElementById('statusName').textContent = window.mascotName ? mascotName() : 'ごはんくん';
-  document.getElementById('statusLevel').textContent = `Lv.${state.level}・${belt.name}`;
+  document.getElementById('statusLevel').textContent = `Lv.${state.level}`;
   const profile = window.mascotProfile ? mascotProfile() : { bio: '' };
   document.getElementById('statusBio').textContent = profile.bio || '';
   // ゲームでサボリ魔王を倒した回数（端末に残る記録）
@@ -58,13 +57,6 @@ function renderHero(state) {
   document.querySelectorAll('.status-avatar .gohan-kun').forEach((k) => {
     for (let i = 1; i <= 4; i++) k.classList.toggle(`gohan-stage-${i}`, i <= stage);
   });
-  // ヘッダーの帯（進化の色）も、姿の変化と同じ節目で切り替える
-  const header = document.querySelector('.page-header');
-  if (header) {
-    header.style.setProperty('--belt-color', belt.color);
-    header.style.setProperty('--belt-trim', belt.trim || belt.color);
-  }
-
   // いまのレベルの入り口から次のレベルまでの、どのあたりにいるか
   const start = state.level > 1 ? gohanNextAt(state.level - 1) : 0;
   const span = Math.max(1, state.nextAt - start);
@@ -161,9 +153,8 @@ function renderAbility(days, today, level) {
   const R = 88;
   const pt = (i, r) => { const a = -Math.PI / 2 + (i * Math.PI) / 3; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
   const ring = (r) => scores.map((_, i) => pt(i, r).map((v) => v.toFixed(1)).join(',')).join(' ');
-  // 六角形の色は帯の色（白帯だけは薄すぎるのでアクセント色、黒帯は金の縁取りの色）
-  const belt = gohanBelt(level);
-  const color = belt.trim || (belt.name === '白帯' ? 'var(--accent)' : belt.color);
+  // 六角形の色はアクセント色でそろえる（以前は帯の色を使っていたが、帯はやめた）
+  const color = 'var(--accent)';
   let out = '';
   [0.25, 0.5, 0.75, 1].forEach((f) => { out += `<polygon class="ability-grid" points="${ring(R * f)}"/>`; });
   scores.forEach((_, i) => { const [x, y] = pt(i, R); out += `<line class="ability-axis" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; });

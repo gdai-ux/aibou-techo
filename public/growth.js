@@ -176,22 +176,6 @@ function gohanDecoStage(level) {
   return level >= 20 ? 4 : level >= 14 ? 3 : level >= 8 ? 2 : level >= 3 ? 1 : 0;
 }
 
-// 進化の色（武道の帯の色）。姿の変化（飾り）と同じ節目で、帯の色も一緒に上がる
-// ようにして、段階が上がった時の「ランクアップ感」を強める。
-// 白 → 黄 → 緑 → 茶 → 黒（黒帯は金の縁取りで強さを示す）
-const GOHAN_BELT_COLORS = [
-  { name: '白帯', color: '#e6e6ec' },
-  { name: '黄帯', color: '#ffd60a' },
-  { name: '緑帯', color: '#34c759' },
-  { name: '茶帯', color: '#8b5e34' },
-  { name: '黒帯', color: '#1c1c1e', trim: '#ffd60a' },
-];
-
-// レベルから、いまの帯（{name, color, trim?}）を出す
-function gohanBelt(level) {
-  return GOHAN_BELT_COLORS[gohanDecoStage(level)];
-}
-
 // ヘッダーの足元の「ステージ」演出（背景のテーマ）。帯より細かく切り替わり、
 // レベルが上がるほど景色が草原→森→海→砂漠→雪山→洞窟→宇宙と移り変わっていく。
 // 茶帯のあたりで洞窟（土の中）に、黒帯のあたりで宇宙（夜空に金色の星）に

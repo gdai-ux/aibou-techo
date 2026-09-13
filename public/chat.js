@@ -75,7 +75,7 @@ async function sendChatMessage() {
   showTyping();
 
   try {
-    const profile = window.mascotProfile ? mascotProfile() : { tone: 'normal', bio: '' };
+    const profile = window.mascotProfile ? mascotProfile() : { tone: 'normal', speech: 'normal', bio: '' };
     const name = window.mascotName ? mascotName() : '';
     // 直近の会話だけをサーバーに送る（今回の発言は別で渡すので、それより前のぶん）
     const history = chatMessages
@@ -87,7 +87,7 @@ async function sendChatMessage() {
     const resp = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...notionHeaders() },
-      body: JSON.stringify({ message, tone: profile.tone, name, bio: profile.bio, history }),
+      body: JSON.stringify({ message, tone: profile.tone, speech: profile.speech, name, bio: profile.bio, history }),
     });
     const data = await resp.json();
     hideTyping();

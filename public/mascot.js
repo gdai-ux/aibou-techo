@@ -250,6 +250,111 @@ const MASCOT_CHARS = [
       '............',
     ],
   },
+  // --- ねこの相棒たち ---------------------------------------------------
+  // 話し方が「〜にゃ」になる（speech: 'cat'）。きびしさは他の相棒と同じ幅で
+  // 選べるようにしてあるので、「甘く言われたい」も「詰められたい」も
+  // ねこのまま選べる
+  {
+    id: 'kuroneko', name: 'くろねこ',
+    difficulty: 'oni', tone: 'oni', speech: 'cat', bio: '容赦しない黒ねこの相棒',
+    colors: { K: '#3f3f46', E: '#ffd60a', W: '#e8e8ec', m: '#f79bb1' },
+    cheeks: [[1, 5], [10, 5]], crown: { cx: 5, topY: 0 },
+    map: [
+      '.KK......KK.',
+      '.KKK....KKK.',
+      '.KKKKKKKKKK.',
+      'KKKKKKKKKKKK',
+      'KKEEKKKKEEKK',
+      'KKKKKmmKKKKK',
+      '.KKKKWWKKKK.',
+      '..KKKWWKKK..',
+      '..KKKWWKKK..',
+      '...KKKKKK...',
+      '...K....K...',
+      '...K....K...',
+    ],
+  },
+  {
+    id: 'toraneko', name: 'とらねこ',
+    difficulty: 'extreme', tone: 'strict', speech: 'cat', bio: 'ストイックな縞ねこの相棒',
+    colors: { T: '#e8a33d', S: '#9a5f1c', E: '#2c2c2e', m: '#f79bb1' },
+    cheeks: [[1, 5], [10, 5]], crown: { cx: 5, topY: 0 },
+    map: [
+      '.TT......TT.',
+      '.TSS....SST.',
+      '.TTTTTTTTTT.',
+      'TSTTTTTTTTST',
+      'TTEETTTTEETT',
+      'TTTTTmmTTTTT',
+      '.TSTTTTTTST.',
+      '..TTTTTTTT..',
+      '..TSTTTTST..',
+      '...TTTTTT...',
+      '...T....T...',
+      '...T....T...',
+    ],
+  },
+  {
+    id: 'shironeko', name: 'しろねこ',
+    difficulty: 'normal', tone: 'normal', speech: 'cat', bio: 'まっすぐ言う白ねこの相棒',
+    colors: { W: '#f2f2f5', E: '#4a8fd9', m: '#f79bb1' },
+    cheeks: [[1, 5], [10, 5]], crown: { cx: 5, topY: 0 },
+    map: [
+      '.WW......WW.',
+      '.WWW....WWW.',
+      '.WWWWWWWWWW.',
+      'WWWWWWWWWWWW',
+      'WWEEWWWWEEWW',
+      'WWWWWmmWWWWW',
+      '.WWWWWWWWWW.',
+      '..WWWWWWWW..',
+      '..WWWWWWWW..',
+      '...WWWWWW...',
+      '...W....W...',
+      '...W....W...',
+    ],
+  },
+  {
+    id: 'mikeneko', name: 'みけねこ',
+    difficulty: 'easy', tone: 'gentle', speech: 'cat', bio: 'そっと寄り添う三毛ねこの相棒',
+    colors: { W: '#f4f1e8', O: '#e8a33d', K: '#4a4a4f', E: '#2c2c2e', m: '#f79bb1' },
+    cheeks: [[1, 5], [10, 5]], crown: { cx: 5, topY: 0 },
+    map: [
+      '.OO......KK.',
+      '.OOO....KKK.',
+      '.OOWWWWWWKK.',
+      'OOWWWWWWWWKK',
+      'WWEEWWWWEEWW',
+      'WWWWWmmWWWWW',
+      '.WWWOOWWKKW.',
+      '..WWOOWWKKW.',
+      '..WWWWWWWW..',
+      '...WWWWWW...',
+      '...W....W...',
+      '...W....W...',
+    ],
+  },
+  {
+    id: 'maruneko', name: 'まるねこ',
+    difficulty: 'easy', tone: 'sweet', speech: 'cat', bio: 'なんでも褒めるまるいねこの相棒',
+    colors: { G: '#9aa3ad', P: '#cfd6de', E: '#2c2c2e', m: '#f79bb1' },
+    cheeks: [[1, 6], [10, 6]], crown: { cx: 5, topY: 0 },
+    map: [
+      '.GG......GG.',
+      '.GGG....GGG.',
+      '.GGGGGGGGGG.',
+      'GGGGGGGGGGGG',
+      'GGEEGGGGEEGG',
+      'GGGGGmmGGGGG',
+      'GGPPPPPPPPGG',
+      'GGPPPPPPPPGG',
+      '.GPPPPPPPPG.',
+      '..GGGGGGGG..',
+      '...G....G...',
+      '...G....G...',
+    ],
+  },
+
 ];
 
 // 難易度（相棒の性格のきびしさを表す目安。マックスは星5。レベルには影響しない）の表示用ラベルと星
@@ -444,7 +549,9 @@ function mascotCurrentChar() {
 // 選択中キャラの性格（難易度・口調）。育成のレベル計算とふりかえりの口調が変わる
 function mascotProfile() {
   const c = mascotCurrentChar();
-  return { difficulty: c.difficulty || 'normal', tone: c.tone || 'normal', bio: c.bio || '' };
+  // speech は話し方（ねこは語尾が「〜にゃ」になる）。きびしさ（tone）とは別に持つので、
+  // 「やさしいねこ」も「きびしいねこ」も作れる
+  return { difficulty: c.difficulty || 'normal', tone: c.tone || 'normal', speech: c.speech || 'normal', bio: c.bio || '' };
 }
 
 // 表示名（未設定ならキャラクターの既定名）

@@ -18,7 +18,7 @@ const notionDb = require('./lib/notionDb');
 const crypto = require('crypto');
 
 const { fetchWeather, DEFAULT_LOCATION } = require('./lib/weather');
-const { generateDailyReview, REVIEW_TONES, DEFAULT_TONE } = require('./lib/dailyReview');
+const { generateDailyReview, REVIEW_TONES, REVIEW_SPEECHES, DEFAULT_TONE, DEFAULT_SPEECH } = require('./lib/dailyReview');
 const { chatWithTrainer, buildChatContext } = require('./lib/trainerChat');
 const { yesterdayInfo, todayInfo, dateInfoFor } = require('./lib/format');
 const { parseBodyProfile, bodyTargetKcal, dayKcal } = require('./lib/bodyTarget');
@@ -352,6 +352,8 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
 
     // ふりかえりの口調（超スパルタ〜超やさしい）。不正な値は既定にする
     const tone = REVIEW_TONES[req.query.tone] ? req.query.tone : DEFAULT_TONE;
+    // 話し方（ねこの相棒なら 'cat'）。きびしさとは別に選べる
+    const speech = REVIEW_SPEECHES[req.query.speech] ? req.query.speech : DEFAULT_SPEECH;
     const regenerate = req.query.regenerate === '1';
     // たった今増えた記録の短い説明（クライアントが記録直後に渡す）。
     // コメントが毎回この記録に触れて少しずつ変わるようにする
@@ -378,7 +380,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
     // 前回のコメントも渡して、同じ言い回しの繰り返しを避けさせる
     if ((regenerate || staleReview) && day && day.review && OPENAI_API_KEY) {
       await consumeAiQuota(req, 'review');
-      const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, previous: day.review.content, recent: days, targets: reviewTargets });
+      const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, speech, previous: day.review.content, recent: days, targets: reviewTargets });
       await store.saveReview(dateStr, weekday, comment, day.review);
       return res.json({ dateStr, weekday, comment, hasData: true });
     }
@@ -396,7 +398,7 @@ app.get('/api/review', openaiRateLimit, async (req, res) => {
 
     if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY が設定されていません');
     await consumeAiQuota(req, 'review');
-    const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, recent: days, targets: reviewTargets });
+    const comment = await generateDailyReview(OPENAI_API_KEY, day, tone, { latest, speech, recent: days, targets: reviewTargets });
     await store.saveReview(dateStr, weekday, comment, null);
     res.json({ dateStr, weekday, comment, hasData: true });
   } catch (err) {
@@ -416,6 +418,7 @@ app.post('/api/chat', openaiRateLimit, billing.requireAccess, async (req, res) =
     await consumeAiQuota(req, 'chat');
 
     const tone = REVIEW_TONES[req.body.tone] ? req.body.tone : DEFAULT_TONE;
+    const speech = REVIEW_SPEECHES[req.body.speech] ? req.body.speech : DEFAULT_SPEECH;
     const name = String((req.body && req.body.name) || '').trim().slice(0, 20);
     const bio = String((req.body && req.body.bio) || '').trim().slice(0, 100);
     const rawHistory = Array.isArray(req.body && req.body.history) ? req.body.history : [];
@@ -432,7 +435,7 @@ app.post('/api/chat', openaiRateLimit, billing.requireAccess, async (req, res) =
       context = buildChatContext(days, todayInfo().dateStr);
     } catch (e) { /* 文脈なしで返す */ }
 
-    const reply = await chatWithTrainer(OPENAI_API_KEY, { tone, name, bio, context, history, message });
+    const reply = await chatWithTrainer(OPENAI_API_KEY, { tone, speech, name, bio, context, history, message });
     res.json({ reply });
   } catch (err) {
     sendError(res, err, '相棒とのチャットに失敗しました');

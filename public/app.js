@@ -1355,11 +1355,14 @@ async function loadDailyReview(regenerate = false, latest = '') {
   const labelEl = document.getElementById('reviewLabel');
   // 口調（超スパルタ〜超やさしい）は設定で選び、生成時にサーバーへ渡す
   // 口調は選択中キャラクターの性格に従う（もちくん=超やさしい、ダンベルくん=超スパルタ等）
-  const tone = window.mascotProfile ? mascotProfile().tone : 'normal';
+  const profile = window.mascotProfile ? mascotProfile() : { tone: 'normal', speech: 'normal' };
+  const tone = profile.tone || 'normal';
+  // 話し方（ねこの相棒なら 'cat'）。きびしさとは別に渡す
+  const speech = profile.speech || 'normal';
   try {
     if (regenerate) textEl.textContent = 'いまの進捗で書き直し中…';
     const latestParam = regenerate && latest ? `&latest=${encodeURIComponent(latest)}` : '';
-    const resp = await fetch(`/api/review?tone=${encodeURIComponent(tone)}${regenerate ? '&regenerate=1' : ''}${latestParam}`, { headers: notionHeaders() });
+    const resp = await fetch(`/api/review?tone=${encodeURIComponent(tone)}&speech=${encodeURIComponent(speech)}${regenerate ? '&regenerate=1' : ''}${latestParam}`, { headers: notionHeaders() });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || '取得に失敗しました');
     if (data.dateStr) {

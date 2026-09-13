@@ -859,11 +859,31 @@
     z-index: 0;
     pointer-events: none;
   }
+  /* 雨。もとは端から端まで届く一本線で、ヘッダーに傷が入ったように見えていた。
+     マスクで線を短く切って「落ちる雨粒」にする。背景とマスクを同じだけ
+     動かすので、切れ目ではなく雨粒そのものが落ちて見える */
   .page-header.gohan-roam[data-weather="rain"]::after,
   .page-header.gohan-roam[data-weather="storm"]::after {
-    background-image: repeating-linear-gradient(102deg,
-      rgba(255, 255, 255, 0.24) 0 1px, transparent 1px 9px);
-    animation: skyRain 0.5s linear infinite;
+    /* 動かすぶんだけヘッダーからはみ出させる。ヘッダーはoverflow:hiddenなので
+       はみ出た分は見えず、動かしても上端に切れ目が出ない */
+    inset: -32px -12px;
+    background-image: repeating-linear-gradient(100deg,
+      rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 15px);
+    -webkit-mask-image: repeating-linear-gradient(190deg,
+      #000 0 7px, transparent 7px 26px);
+    mask-image: repeating-linear-gradient(190deg,
+      #000 0 7px, transparent 7px 26px);
+    animation: skyRain 0.6s linear infinite;
+  }
+  /* 雷雨だけは、雨より少し強く降らせる */
+  .page-header.gohan-roam[data-weather="storm"]::after {
+    background-image: repeating-linear-gradient(100deg,
+      rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 11px);
+    -webkit-mask-image: repeating-linear-gradient(190deg,
+      #000 0 9px, transparent 9px 26px);
+    mask-image: repeating-linear-gradient(190deg,
+      #000 0 9px, transparent 9px 26px);
+    animation-duration: 0.42s;
   }
   .page-header.gohan-roam[data-weather="snow"]::after {
     background-image:
@@ -873,7 +893,14 @@
     background-position: 0 0, 13px 9px;
     animation: skySnow 6s linear infinite;
   }
-  @keyframes skyRain { from { background-position: 0 0; } to { background-position: -9px 22px; } }
+  /* 雨は層ごと動かす。背景だけ動かすと、マスクとの位置がずれて
+     「切れ目が流れる」不自然な見え方になる。
+     動かす向きは線と同じ190度、量はマスクの繰り返し1周期ぶんちょうど。
+     こうするとループの折り返しで絵が飛ばず、雨粒だけが落ちて見える */
+  @keyframes skyRain {
+    from { transform: translate(0, 0); }
+    to { transform: translate(-4.51px, 25.59px); }
+  }
   @keyframes skySnow { from { background-position: 0 0, 13px 9px; } to { background-position: 0 26px, 13px 47px; } }
   /* 演出をひかえめにしている時は、粒は出さない */
   html.fx-calm .page-header.gohan-roam[data-weather]::after { animation: none; opacity: 0.35; }

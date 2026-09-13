@@ -46,6 +46,9 @@ function applyClockCardTheme(category, isDay) {
 
 // 天気ごとの「昼の空」。朝焼け・夕焼け・夜は、この色を寄せて作る
 // （24通りを手で決めると調整しきれないので、混ぜて作っている）
+// warm は、朝焼け・夕焼けの色をどれだけ乗せるかの割合。
+// 雨や雷雨の朝に、晴れた日と同じだけ朝焼けを乗せるとベージュ色の空になり、
+// 外を見た感じと食い違っていた（実際そうなった）。雲が厚い日ほど弱くする
 const SKY_BASE = {
   sunny:  ['#5c94fc', '#a7dcff'],
   cloudy: ['#8a96a6', '#c3ccd7'],
@@ -54,6 +57,7 @@ const SKY_BASE = {
   snow:   ['#7e97ad', '#cfe2ee'],
   storm:  ['#4a4566', '#7b76a0'],
 };
+const SKY_WARMTH = { sunny: 1, cloudy: 0.55, fog: 0.45, snow: 0.5, rain: 0.3, storm: 0.2 };
 
 // 時間帯。朝焼け → 昼 → 夕焼け → 夜。
 // top と bottom で寄せ方を変えているのは、朝焼け・夕焼けは地平線側だけが
@@ -85,8 +89,11 @@ function applyHeaderSky(category) {
   if (category) lastWeatherCategory = category;
   const base = SKY_BASE[lastWeatherCategory] || SKY_BASE.cloudy;
   const band = skyBandNow();
-  const top = band.toward ? mixHex(base[0], band.toward, band.top) : base[0];
-  const bottom = band.toward ? mixHex(base[1], band.toward, band.bottom) : base[1];
+  // 夜は天気に関わらず暗くする（暗さは天気で変わらない）。
+  // 朝焼け・夕焼けだけ、天気の悪い日は弱める
+  const warm = band.key === 'night' ? 1 : (SKY_WARMTH[lastWeatherCategory] !== undefined ? SKY_WARMTH[lastWeatherCategory] : 0.6);
+  const top = band.toward ? mixHex(base[0], band.toward, band.top * warm) : base[0];
+  const bottom = band.toward ? mixHex(base[1], band.toward, band.bottom * warm) : base[1];
   document.querySelectorAll('.page-header').forEach((header) => {
     header.style.setProperty('--sky-top', top);
     header.style.setProperty('--sky-bottom', bottom);

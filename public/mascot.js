@@ -9,6 +9,51 @@
 //   ほっぺ（gohan-deco-cheeks） / 王冠（gohan-deco-ume） /
 //   きらきら（gohan-deco-nori） / 金のオーラ（CSS側のfilter）
 
+// ねこの下絵（20×20）。
+//   C=毛 / I=耳の内側 / E=目 / H=目のハイライト / m=鼻 / W=口まわりとおなか
+// 模様（しま・ぶち）は patches で上から押す。透明なマス（.）は押しても変えないので、
+// 模様を足しても輪郭は崩れない
+const CAT_BASE = [
+  '....................',
+  '...CC..........CC...',
+  '...CIC........CIC...',
+  '..CCIIC......CIICC..',
+  '..CCCCCC....CCCCCC..',
+  '..CCCCCCCCCCCCCCCC..',
+  '.CCCCCCCCCCCCCCCCCC.',
+  '.CCCCCCCCCCCCCCCCCC.',
+  '.CCCEEECCCCCCEEECCC.',
+  '.CCCHEECCCCCCHEECCC.',
+  '.CCCEEECCCCCCEEECCC.',
+  '.CCCCCCCCmmCCCCCCCC.',
+  '..CCCCCCWWWWCCCCCC..',
+  '..CCCCCCCCCCCCCCCC..',
+  '...CCCCCCCCCCCCCC...',
+  '....CCCCCCCCCCCC....',
+  '....CCCWWWWWWCCC..C.',
+  '....CCCWWWWWWCCC.CC.',
+  '....CCWWWWWWWWCC.CC.',
+  '.....CCCC..CCCC.....',
+];
+
+// 下絵に模様を押した地図を作る。patches は [x, y, 幅, 高さ, 文字]
+function catMap(patches) {
+  const rows = CAT_BASE.map((r) => r.split(''));
+  (patches || []).forEach(([x, y, w, h, ch]) => {
+    for (let j = y; j < y + h; j++) {
+      for (let i = x; i < x + w; i++) {
+        if (!rows[j] || rows[j][i] === undefined) continue;
+        if (rows[j][i] === '.') continue; // 輪郭の外には描かない
+        rows[j][i] = ch;
+      }
+    }
+  });
+  return rows.map((r) => r.join(''));
+}
+
+// ねこ共通の飾りの位置（20×20ぶん）
+const CAT_DECO = { cheeks: [[2, 10], [17, 10]], crown: { cx: 9, topY: 3 } };
+
 const MASCOT_CHARS = [
   {
     id: 'gohan', name: 'ごはんくん',
@@ -251,110 +296,43 @@ const MASCOT_CHARS = [
     ],
   },
   // --- ねこの相棒たち ---------------------------------------------------
-  // 話し方が「〜にゃ」になる（speech: 'cat'）。きびしさは他の相棒と同じ幅で
-  // 選べるようにしてあるので、「甘く言われたい」も「詰められたい」も
-  // ねこのまま選べる
+  // ねこだけ絵を細かくしてある（20×20。ほかの相棒は12×12）。
+  // 大きな頭・まるい目・ハイライトで、かわいさを出すには12マスでは足りなかった。
+  // 5匹とも同じ下絵（CAT_BASE）を使い、色と模様（patches）だけを変えている。
+  // 1匹ずつ20行を書くと、直したい時に5か所さわることになるため。
   {
     id: 'kuroneko', name: 'くろねこ',
     difficulty: 'oni', tone: 'oni', speech: 'cat', bio: '容赦しない黒ねこの相棒',
-    colors: { K: '#3f3f46', E: '#ffd60a', W: '#e8e8ec', m: '#f79bb1' },
-    cheeks: [[1, 5], [10, 5]], crown: { cx: 5, topY: 0 },
-    map: [
-      '.KK......KK.',
-      '.KKK....KKK.',
-      '.KKKKKKKKKK.',
-      'KKKKKKKKKKKK',
-      'KKEEKKKKEEKK',
-      'KKKKKmmKKKKK',
-      '.KKKKWWKKKK.',
-      '..KKKWWKKK..',
-      '..KKKWWKKK..',
-      '...KKKKKK...',
-      '...K....K...',
-      '...K....K...',
-    ],
+    colors: { C: '#3f3f46', I: '#8a6a74', E: '#ffd60a', H: '#ffffff', m: '#f79bb1', W: '#e8e8ec' },
+    ...CAT_DECO, map: catMap([]),
   },
   {
     id: 'toraneko', name: 'とらねこ',
     difficulty: 'extreme', tone: 'strict', speech: 'cat', bio: 'ストイックな縞ねこの相棒',
-    colors: { T: '#e8a33d', S: '#9a5f1c', E: '#2c2c2e', m: '#f79bb1' },
-    cheeks: [[1, 5], [10, 5]], crown: { cx: 5, topY: 0 },
-    map: [
-      '.TT......TT.',
-      '.TSS....SST.',
-      '.TTTTTTTTTT.',
-      'TSTTTTTTTTST',
-      'TTEETTTTEETT',
-      'TTTTTmmTTTTT',
-      '.TSTTTTTTST.',
-      '..TTTTTTTT..',
-      '..TSTTTTST..',
-      '...TTTTTT...',
-      '...T....T...',
-      '...T....T...',
-    ],
+    colors: { C: '#e8a33d', S: '#9a5f1c', I: '#f2b8a8', E: '#2f6b3a', H: '#ffffff', m: '#f79bb1', W: '#fff6e8' },
+    ...CAT_DECO,
+    map: catMap([[7, 5, 6, 1, 'S'], [3, 6, 4, 1, 'S'], [13, 6, 4, 1, 'S'], [8, 7, 4, 1, 'S'],
+                 [2, 13, 4, 1, 'S'], [14, 13, 4, 1, 'S'], [17, 17, 2, 1, 'S']]),
   },
   {
     id: 'shironeko', name: 'しろねこ',
     difficulty: 'normal', tone: 'normal', speech: 'cat', bio: 'まっすぐ言う白ねこの相棒',
-    colors: { W: '#f2f2f5', E: '#4a8fd9', m: '#f79bb1' },
-    cheeks: [[1, 5], [10, 5]], crown: { cx: 5, topY: 0 },
-    map: [
-      '.WW......WW.',
-      '.WWW....WWW.',
-      '.WWWWWWWWWW.',
-      'WWWWWWWWWWWW',
-      'WWEEWWWWEEWW',
-      'WWWWWmmWWWWW',
-      '.WWWWWWWWWW.',
-      '..WWWWWWWW..',
-      '..WWWWWWWW..',
-      '...WWWWWW...',
-      '...W....W...',
-      '...W....W...',
-    ],
+    colors: { C: '#f2f2f5', I: '#f7c6cf', E: '#4a8fd9', H: '#ffffff', m: '#f79bb1', W: '#ffffff' },
+    ...CAT_DECO, map: catMap([]),
   },
   {
     id: 'mikeneko', name: 'みけねこ',
     difficulty: 'easy', tone: 'gentle', speech: 'cat', bio: 'そっと寄り添う三毛ねこの相棒',
-    colors: { W: '#f4f1e8', O: '#e8a33d', K: '#4a4a4f', E: '#2c2c2e', m: '#f79bb1' },
-    cheeks: [[1, 5], [10, 5]], crown: { cx: 5, topY: 0 },
-    map: [
-      '.OO......KK.',
-      '.OOO....KKK.',
-      '.OOWWWWWWKK.',
-      'OOWWWWWWWWKK',
-      'WWEEWWWWEEWW',
-      'WWWWWmmWWWWW',
-      '.WWWOOWWKKW.',
-      '..WWOOWWKKW.',
-      '..WWWWWWWW..',
-      '...WWWWWW...',
-      '...W....W...',
-      '...W....W...',
-    ],
+    colors: { C: '#f6f3ec', O: '#e8a33d', K: '#4a4a52', I: '#f7c6cf', E: '#6b8f3a', H: '#ffffff', m: '#f79bb1', W: '#ffffff' },
+    ...CAT_DECO,
+    map: catMap([[2, 1, 5, 5, 'O'], [13, 1, 5, 5, 'K'], [2, 12, 4, 3, 'O'], [14, 12, 4, 3, 'K'], [16, 16, 3, 3, 'K']]),
   },
   {
     id: 'maruneko', name: 'まるねこ',
     difficulty: 'easy', tone: 'sweet', speech: 'cat', bio: 'なんでも褒めるまるいねこの相棒',
-    colors: { G: '#9aa3ad', P: '#cfd6de', E: '#2c2c2e', m: '#f79bb1' },
-    cheeks: [[1, 6], [10, 6]], crown: { cx: 5, topY: 0 },
-    map: [
-      '.GG......GG.',
-      '.GGG....GGG.',
-      '.GGGGGGGGGG.',
-      'GGGGGGGGGGGG',
-      'GGEEGGGGEEGG',
-      'GGGGGmmGGGGG',
-      'GGPPPPPPPPGG',
-      'GGPPPPPPPPGG',
-      '.GPPPPPPPPG.',
-      '..GGGGGGGG..',
-      '...G....G...',
-      '...G....G...',
-    ],
+    colors: { C: '#9aa3ad', I: '#f0c2cc', E: '#2c2c2e', H: '#ffffff', m: '#f79bb1', W: '#e9eef3' },
+    ...CAT_DECO, map: catMap([[4, 15, 12, 1, 'W'], [3, 14, 14, 1, 'C']]),
   },
-
 ];
 
 // 難易度（相棒の性格のきびしさを表す目安。マックスは星5。レベルには影響しない）の表示用ラベルと星
@@ -561,7 +539,13 @@ function mascotName() {
 }
 
 // キャラクター定義からSVG文字列を作る（行ごとに同じ色の連続をまとめる）
+// 絵の細かさはキャラクターごとに変えられる（ねこは20×20、ほかは12×12）。
+// 飾り（ほっぺ・王冠・きらきら）の太さも、その細かさに合わせて変える。
+// そろえないと、細かい絵の子だけ飾りが点にしか見えない
 function mascotSvg(char) {
+  const grid = char.map.length;
+  const u = Math.max(1, Math.round(grid / 12));  // 飾りの1マスぶん
+  const pad = Math.max(2, Math.round(grid / 6)); // 王冠のぶん、上に空ける
   const rects = [];
   char.map.forEach((row, y) => {
     let x = 0;
@@ -575,14 +559,14 @@ function mascotSvg(char) {
     }
   });
   // レベルで増える飾り（既定は非表示。CSSのgohan-stage-*で出す）
-  const cheeks = char.cheeks.map(([x, y]) => `<rect x="${x}" y="${y}" width="1" height="1" fill="#f79bb1"/>`).join('');
+  const cheeks = char.cheeks.map(([x, y]) => `<rect x="${x}" y="${y}" width="${u}" height="${u}" fill="#f79bb1"/>`).join('');
   const { cx, topY } = char.crown;
   const crown =
-    `<rect x="${cx - 1}" y="${topY - 1}" width="3" height="1" fill="#ffd60a"/>` +
-    `<rect x="${cx - 1}" y="${topY - 2}" width="1" height="1" fill="#ffd60a"/>` +
-    `<rect x="${cx + 1}" y="${topY - 2}" width="1" height="1" fill="#ffd60a"/>`;
-  const sparkle = '<rect x="0" y="0" width="1" height="1" fill="#ffd60a"/><rect x="11" y="3" width="1" height="1" fill="#ffd60a"/>';
-  return `<svg class="gohan-kun" viewBox="0 -2 12 14" shape-rendering="crispEdges" aria-hidden="true">${rects.join('')}` +
+    `<rect x="${cx - u}" y="${topY - u}" width="${u * 3}" height="${u}" fill="#ffd60a"/>` +
+    `<rect x="${cx - u}" y="${topY - u * 2}" width="${u}" height="${u}" fill="#ffd60a"/>` +
+    `<rect x="${cx + u}" y="${topY - u * 2}" width="${u}" height="${u}" fill="#ffd60a"/>`;
+  const sparkle = `<rect x="0" y="0" width="${u}" height="${u}" fill="#ffd60a"/><rect x="${grid - u}" y="${u * 3}" width="${u}" height="${u}" fill="#ffd60a"/>`;
+  return `<svg class="gohan-kun" viewBox="0 -${pad} ${grid} ${grid + pad}" shape-rendering="crispEdges" aria-hidden="true">${rects.join('')}` +
     `<g class="gohan-deco gohan-deco-cheeks">${cheeks}</g>` +
     `<g class="gohan-deco gohan-deco-ume">${crown}</g>` +
     `<g class="gohan-deco gohan-deco-nori">${sparkle}</g></svg>`;
@@ -791,25 +775,41 @@ function openMascotSettings() {
   const nameInput = document.getElementById('mascotNameInput');
   const settings = mascotLoadSettings();
   grid.textContent = '';
-  MASCOT_CHARS.forEach((char) => {
-    const cell = document.createElement('button');
-    cell.type = 'button';
-    cell.className = 'mascot-cell' + (char.id === settings.char ? ' selected' : '');
-    cell.dataset.char = char.id;
-    const diff = MASCOT_DIFFICULTY[char.difficulty || 'normal'];
-    cell.innerHTML = `${mascotSvg(char)}<span class="mascot-cell-name">${char.name}</span>` +
-      `<span class="mascot-cell-meta">難易度${diff.stars}・${MASCOT_TONE_LABELS[char.tone || 'normal']}</span>`;
-    cell.addEventListener('click', () => {
-      grid.querySelectorAll('.mascot-cell').forEach((c) => c.classList.remove('selected'));
-      cell.classList.add('selected');
-      nameInput.placeholder = char.name;
-    });
-    grid.appendChild(cell);
+  // ねこと、それ以外（たべもの・どうぐ）は別のものとして分けて並べる。
+  // 混ぜて並べると、ねこを選びたい人が探すことになる
+  const groups = [
+    { title: 'ねこモード', chars: MASCOT_CHARS.filter((c) => c.speech === 'cat') },
+    { title: 'そのほかの相棒', chars: MASCOT_CHARS.filter((c) => c.speech !== 'cat') },
+  ];
+  groups.forEach((group) => {
+    if (!group.chars.length) return;
+    const head = document.createElement('div');
+    head.className = 'mascot-group-title';
+    head.textContent = group.title;
+    grid.appendChild(head);
+    group.chars.forEach((char) => renderMascotCell(grid, char, settings, nameInput));
   });
   nameInput.value = settings.name;
   nameInput.placeholder = mascotCurrentChar().name;
   renderMascotStatus();
   overlay.classList.remove('hidden');
+}
+
+// 相棒ひとりぶんのボタン。選ぶと、名前欄の薄い字（プレースホルダ）もその子の名前に変わる
+function renderMascotCell(grid, char, settings, nameInput) {
+  const cell = document.createElement('button');
+  cell.type = 'button';
+  cell.className = 'mascot-cell' + (char.id === settings.char ? ' selected' : '');
+  cell.dataset.char = char.id;
+  const diff = MASCOT_DIFFICULTY[char.difficulty || 'normal'];
+  cell.innerHTML = `${mascotSvg(char)}<span class="mascot-cell-name">${char.name}</span>` +
+    `<span class="mascot-cell-meta">難易度${diff.stars}・${MASCOT_TONE_LABELS[char.tone || 'normal']}</span>`;
+  cell.addEventListener('click', () => {
+    grid.querySelectorAll('.mascot-cell').forEach((c) => c.classList.remove('selected'));
+    cell.classList.add('selected');
+    nameInput.placeholder = char.name;
+  });
+  grid.appendChild(cell);
 }
 
 // いまの育成の様子（レベル・ポイント・次のレベルまで）を設定画面に出す。

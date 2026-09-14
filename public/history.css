@@ -1299,3 +1299,23 @@ html.fx-calm .gohan-kun .cat-eyes { animation: none; }
 .card h2 .chart-today em { font-style: normal; font-weight: 800; }
 /* ステータス画面: ゲームでサボリ魔王を倒した回数 */
 .status-boss { margin-top: 8px; font-size: 12px; font-weight: 700; color: #ffd60a; }
+
+/* 「新しい版があります」の知らせ。読み込み直しを見送った時だけ出る。
+   画面の下に固定し、押せばその場で読み込み直せる */
+.app-update-notice {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 100;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.app-update-notice:active { transform: scale(0.98); }

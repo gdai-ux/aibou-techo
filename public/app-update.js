@@ -50,6 +50,23 @@
     }
   }
 
+  // 読み込み直しを見送った時に出す知らせ。黙って見送ると、直したはずの画面が
+  // いつまでも古いまま出てきて「壊れた」ように見える。押せばその場で直せる
+  function showUpdateNotice() {
+    if (document.getElementById('appUpdateNotice')) return;
+    const bar = document.createElement('button');
+    bar.type = 'button';
+    bar.id = 'appUpdateNotice';
+    bar.className = 'app-update-notice';
+    bar.textContent = '新しい版があります（タップで読み込み直す）';
+    bar.addEventListener('click', () => {
+      reloading = true;
+      try { sessionStorage.setItem(RELOAD_KEY, String(Date.now())); } catch (e) { /* 無くても読み込み直す */ }
+      location.reload();
+    });
+    document.body.appendChild(bar);
+  }
+
   // 新しい版があれば true。書きかけが無ければそのまま読み込み直す
   async function checkAppUpdate() {
     if (reloading) return true;
@@ -57,7 +74,10 @@
     if (!now) return false;
     if (!baseline) { baseline = now; return false; }
     if (now === baseline) return false;
-    if (hasUnsavedInput() || reloadedJustNow()) return true;
+    if (hasUnsavedInput() || reloadedJustNow()) {
+      showUpdateNotice(); // 見送る時は、黙って見送らない
+      return true;
+    }
     reloading = true;
     try { sessionStorage.setItem(RELOAD_KEY, String(Date.now())); } catch (e) { /* 使えなくても読み込み直す */ }
     location.reload();
@@ -112,4 +132,13 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') checkAppUpdate();
   });
+
+  // 前面に戻ってくる時だけでは足りない。開いたまま使い続けていると
+  // その合図が来ず、新しくしたはずの画面が古いまま出つづける
+  // （眠りの質を足した直後に、実際にそうなった）。
+  // 開いている間は時々見る。中身の要らないHEADなので軽い
+  const POLL_MS = 5 * 60 * 1000;
+  setInterval(() => {
+    if (document.visibilityState === 'visible') checkAppUpdate();
+  }, POLL_MS);
 })();

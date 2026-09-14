@@ -103,10 +103,26 @@
     if (typeof renderQuote === 'function') renderQuote();
     if (typeof loadHistory === 'function') tasks.push(loadHistory());
     if (typeof loadStatus === 'function') tasks.push(loadStatus());
+    // ふりかえりとスコアの推移も引き直す。ここに入れていなかったので、
+    // この2つが読めていない時に引っ張って更新しても直らなかった
+    if (typeof loadDailyReview === 'function') tasks.push(loadDailyReview());
+    if (typeof loadGohanGrowth === 'function') tasks.push(loadGohanGrowth());
     await Promise.allSettled(tasks);
     if (typeof checkAppUpdate === 'function') return await checkAppUpdate();
     return false;
   }
+
+  // しばらく閉じてからまた開いた時は、自分で引き直す。
+  // ホーム画面から開くアプリは画面をそのまま持ち続けるので、何もしないと
+  // 何時間も前の（読み込みに失敗したままの）画面が出てくる
+  const RESUME_AFTER_MS = 60 * 1000;
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+    if (!hiddenAt || Date.now() - hiddenAt < RESUME_AFTER_MS) return;
+    hiddenAt = 0;
+    if (!refreshing) refreshPage().catch(() => { /* 失敗しても表示は前のまま */ });
+  });
 
   document.addEventListener('touchstart', (e) => {
     if (refreshing || isModalOpen() || window.scrollY > 0) {

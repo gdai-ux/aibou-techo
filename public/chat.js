@@ -84,7 +84,7 @@ async function sendChatMessage() {
       .slice(-CHAT_CONTEXT_MAX)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    const resp = await fetch('/api/chat', {
+    const resp = await apiFetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...notionHeaders() },
       body: JSON.stringify({ message, tone: profile.tone, speech: profile.speech, name, bio: profile.bio, history }),

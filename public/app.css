@@ -2314,3 +2314,19 @@
   .legal-links { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
   .legal-links a { font-size: 11.5px; color: var(--muted); text-decoration: none; }
   .legal-links a:active { color: var(--accent); }
+
+/* 読み込みに失敗した時の「タップで再読み込み」。行き止まりのエラー文ではなく、
+   押せば直るものだと分かるように、下線付きの文字にしておく */
+.retry-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.score-chart .retry-link { color: var(--muted); font-size: 12.5px; }

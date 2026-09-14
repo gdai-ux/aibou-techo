@@ -216,7 +216,7 @@ function renderAll(days) {
 async function loadStatus() {
   renderRules();
   try {
-    const resp = await fetch(`/api/history?days=${STATUS_DAYS}`, { headers: notionHeaders() });
+    const resp = await apiFetch(`/api/history?days=${STATUS_DAYS}`);
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || '記録を読み込めませんでした');
     statusDays = data.days || [];

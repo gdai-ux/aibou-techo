@@ -329,7 +329,7 @@ async function loadCalendar(dir) {
     // 過去の月を見ている時は、その月の記録まで届くように多めに読む
     // （サーバー側がNotionの読み込みをキャッシュしているので読みは増えない）
     const days = 45 + Math.max(0, -calendarMonthOffset) * 35;
-    const resp = await fetch(`/api/history?days=${days}`, { headers: notionHeaders() });
+    const resp = await apiFetch(`/api/history?days=${days}`);
     const data = await resp.json();
     if (resp.ok && data.days) {
       recordedDates = new Set(data.days.map((d) => d.dateStr));
@@ -408,16 +408,28 @@ window.openCalendarModal = openCalendarModal;
 // Notionへの読みは増えない。同じ1年ぶんの記録を「ポイントの推移」の
 // チャート（カレンダーがあった場所）にも使い、取得を1回で済ませる。
 async function loadGohanGrowth() {
+  const chartEl = document.getElementById('homeScoreChart');
   try {
-    const resp = await fetch('/api/history?days=365', { headers: notionHeaders() });
+    const resp = await apiFetch('/api/history?days=365');
     const data = await resp.json();
-    if (resp.ok && data.days) {
-      updateGohanGrowth(data.days);
-      const chartEl = document.getElementById('homeScoreChart');
-      if (chartEl) renderScoreChart(chartEl, data.days, new Date());
-    }
+    if (!resp.ok || !data.days) throw new Error(data.error || '取得に失敗しました');
+    updateGohanGrowth(data.days);
+    if (chartEl) renderScoreChart(chartEl, data.days, new Date());
   } catch (e) {
-    // 取得に失敗したら育成表示は前のまま
+    // 育成の表示は前のまま。ただしチャートは「読み込み中…」のまま放置すると
+    // 永久に回っているように見えるので、押せばやり直せる形にする
+    if (chartEl) {
+      chartEl.textContent = '';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'retry-link';
+      retry.textContent = 'スコアの推移を読み込めませんでした（タップで再読み込み）';
+      retry.addEventListener('click', () => {
+        chartEl.innerHTML = '<div class="loading">読み込み中…</div>';
+        loadGohanGrowth();
+      });
+      chartEl.appendChild(retry);
+    }
   }
 }
 loadGohanGrowth();
@@ -554,7 +566,7 @@ window.renderTodayStats = renderTodayStats;
 
 async function loadExerciseRing() {
   try {
-    const resp = await fetch('/api/history?days=14', { headers: notionHeaders() });
+    const resp = await apiFetch('/api/history?days=14');
     const data = await resp.json();
     if (!resp.ok || !data.days) throw new Error('取得に失敗しました');
 
@@ -1368,7 +1380,7 @@ async function loadDailyReview(regenerate = false, latest = '') {
   try {
     if (regenerate) textEl.textContent = 'いまの進捗で書き直し中…';
     const latestParam = regenerate && latest ? `&latest=${encodeURIComponent(latest)}` : '';
-    const resp = await fetch(`/api/review?tone=${encodeURIComponent(tone)}&speech=${encodeURIComponent(speech)}${regenerate ? '&regenerate=1' : ''}${latestParam}`, { headers: notionHeaders() });
+    const resp = await apiFetch(`/api/review?tone=${encodeURIComponent(tone)}&speech=${encodeURIComponent(speech)}${regenerate ? '&regenerate=1' : ''}${latestParam}`);
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || '取得に失敗しました');
     if (data.dateStr) {
@@ -1378,8 +1390,20 @@ async function loadDailyReview(regenerate = false, latest = '') {
     textEl.className = 'review-text';
     textEl.textContent = data.comment;
   } catch (e) {
+    // 行き止まりにしない。通信が一時的に切れただけのことが多いので、
+    // 押せば もう一度だけ取りに行けるようにする（壊れたように見えるのを防ぐ）
     textEl.className = 'review-text err';
-    textEl.textContent = 'ふりかえりを読み込めませんでした';
+    textEl.textContent = '';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'retry-link';
+    retry.textContent = 'ふりかえりを読み込めませんでした（タップで再読み込み）';
+    retry.addEventListener('click', () => {
+      textEl.className = 'review-text';
+      textEl.textContent = '読み込み中…';
+      loadDailyReview(regenerate, latest);
+    });
+    textEl.appendChild(retry);
   }
 }
 loadDailyReview();
@@ -1909,7 +1933,7 @@ async function flushEntryQueue(opts = {}) {
       if (offline || (item.stuck && !opts.force)) { remaining.push(item); continue; }
       let resp;
       try {
-        resp = await fetch('/api/entry', {
+        resp = await apiFetch('/api/entry', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...notionHeaders() },
           body: JSON.stringify({ category: item.category, payload: item.payload, dateStr: item.dateStr, clientId: item.clientId }),
@@ -2002,7 +2026,7 @@ submitBtn.addEventListener('click', async () => {
   statusEl.textContent = '記録中…';
 
   try {
-    const resp = await fetch('/api/entry', {
+    const resp = await apiFetch('/api/entry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...notionHeaders() },
       body: JSON.stringify({ category: currentCat, payload, clientId }),
@@ -2154,7 +2178,7 @@ async function startRecording(button, targetEl) {
     button.disabled = true;
     try {
       const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
-      const resp = await fetch('/api/transcribe', {
+      const resp = await apiFetch('/api/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': blob.type || 'audio/webm', ...notionHeaders() },
         body: blob,
@@ -2269,7 +2293,7 @@ async function startSmartRecording() {
     setSmartVoiceStatus('文字起こし中…', '');
     try {
       const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
-      const transcribeResp = await fetch('/api/transcribe', {
+      const transcribeResp = await apiFetch('/api/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': blob.type || 'audio/webm', ...notionHeaders() },
         body: blob,
@@ -2280,7 +2304,7 @@ async function startSmartRecording() {
       }
 
       setSmartVoiceStatus(`「${transcribeData.text}」を解析中…`, '');
-      const parseResp = await fetch('/api/parse-entry', {
+      const parseResp = await apiFetch('/api/parse-entry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...notionHeaders() },
         body: JSON.stringify({ text: transcribeData.text }),

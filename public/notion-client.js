@@ -55,6 +55,47 @@ function notionHeaders() {
   return headers;
 }
 
+// APIを呼ぶ共通の入口。
+//
+// アクセストークンは1時間で切れる。切れたトークンで送るとサーバーは401を返し、
+// 画面には「読み込めませんでした」や「読み込み中…」だけが残っていた。
+// 起動直後の読み込みは、トークンの取り直し（auth-client.js の authBoot）を
+// 待たずに走るので、しばらくぶりに開くたび高い確率でこうなっていた。
+// ここで401を受けたら、トークンを取り直して1度だけ送り直す。
+// 同時に何本も401になっても、取り直しは1回にまとめる
+let apiRefreshing = null;
+
+function apiRefreshToken() {
+  if (!apiRefreshing) {
+    apiRefreshing = (async () => {
+      try {
+        if (typeof authClient !== 'function' || typeof authRefreshedToken !== 'function') return null;
+        let config = typeof readAuthConfig === 'function' ? readAuthConfig() : null;
+        if (!config && typeof authConfig === 'function') config = await authConfig();
+        const client = authClient(config);
+        return client ? await authRefreshedToken(client) : null;
+      } catch (e) {
+        return null;
+      }
+    })();
+    // 取り直しが終わったら忘れる（次に切れた時は、また取り直せるように）
+    apiRefreshing.finally(() => { apiRefreshing = null; });
+  }
+  return apiRefreshing;
+}
+
+async function apiFetch(url, options = {}) {
+  const send = (extra) => fetch(url, {
+    ...options,
+    headers: { ...notionHeaders(), ...(options.headers || {}), ...(extra || {}) },
+  });
+  const resp = await send();
+  if (resp.status !== 401) return resp;
+  const token = await apiRefreshToken();
+  if (!token) return resp;  // 取り直せないなら、401をそのまま返す（呼び出し側がエラー表示する）
+  return send({ Authorization: `Bearer ${token}` });
+}
+
 // 天気を表示する地域（この端末のブラウザだけに保存する）。
 // 未設定の場合はサーバー側の既定値（大阪）が使われる。
 const WEATHER_LOCATION_KEY = 'lifelog_weather_location';

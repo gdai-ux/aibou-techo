@@ -868,7 +868,7 @@ if (nextMonthBtn) nextMonthBtn.addEventListener('click', () => shiftMonth(1));
 
 async function loadHistory() {
   try {
-    const resp = await fetch('/api/history?days=730', { headers: notionHeaders() });
+    const resp = await apiFetch('/api/history?days=730');
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || '取得に失敗しました');
     allDays = data.days;
@@ -953,7 +953,7 @@ async function runBackfill() {
   try {
     for (let round = 0; round < BACKFILL_MAX_ROUNDS; round++) {
       btn.textContent = `記録を整えています…（${done}件おわり）`;
-      const resp = await fetch('/api/backfill-calories', {
+      const resp = await apiFetch('/api/backfill-calories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...notionHeaders() },
       });
@@ -1095,7 +1095,7 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
         .filter(Boolean)
         .map((s) => (time ? `${time} ${s}` : s));
       if (!items.length) throw new Error('品目を1つ以上入力してください');
-      resp = await fetch('/api/entry/meal', {
+      resp = await apiFetch('/api/entry/meal', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...notionHeaders() },
         body: JSON.stringify({ mealBlockId: currentEdit.mealBlockId, mealType: currentEdit.mealType, items }),
@@ -1118,7 +1118,7 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
         if (!content) throw new Error('内容を入力してください');
         payload = { time: document.getElementById('editTime').value, content };
       }
-      resp = await fetch('/api/entry/meta', {
+      resp = await apiFetch('/api/entry/meta', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...notionHeaders() },
         body: JSON.stringify({ blockId: currentEdit.blockId, category: currentEdit.category, payload }),
@@ -1140,7 +1140,7 @@ async function deleteMetaEntry(blockId) {
   if (!confirm('この記録を削除しますか？')) return;
   const changedDate = entryIndex[blockId] && entryIndex[blockId].dateStr; // 一覧を作り直すと索引が変わるので先に控える
   try {
-    const resp = await fetch(`/api/entry/meta/${blockId}`, { method: 'DELETE', headers: notionHeaders() });
+    const resp = await apiFetch(`/api/entry/meta/${blockId}`, { method: 'DELETE' });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || '削除に失敗しました');
     await loadHistory();
@@ -1154,7 +1154,7 @@ async function deleteMealEntry(mealBlockId) {
   if (!confirm('この食事の記録（品目すべて）を削除しますか？')) return;
   const changedDate = mealIndex[mealBlockId] && mealIndex[mealBlockId].dateStr; // 先に控える
   try {
-    const resp = await fetch(`/api/entry/meal/${mealBlockId}`, { method: 'DELETE', headers: notionHeaders() });
+    const resp = await apiFetch(`/api/entry/meal/${mealBlockId}`, { method: 'DELETE' });
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || '削除に失敗しました');
     await loadHistory();
@@ -1290,7 +1290,7 @@ document.documentElement.classList.toggle('font-large', fontLargeOn());
 
 // --- 記録の書き出し（CSV）。バックアップや、表計算で自分なりに眺めるために ---
 async function exportHistoryCsv() {
-  const resp = await fetch('/api/history?days=730', { headers: notionHeaders() });
+  const resp = await apiFetch('/api/history?days=730');
   const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || '取得に失敗しました');
   const rows = [['日付', '曜日', '種類', '時刻', '内容', 'kcal']];
@@ -1517,7 +1517,7 @@ async function refreshMigrateItem() {
   const importItem = document.getElementById('settingsItemImport');
   if (!item) return;
   try {
-    const resp = await fetch('/api/status', { headers: notionHeaders() });
+    const resp = await apiFetch('/api/status');
     const data = await resp.json();
     item.hidden = !(resp.ok && data.notionConfigured && data.storage === 'page');
     if (importItem) importItem.hidden = !(resp.ok && data.storage === 'pg');
@@ -1589,7 +1589,7 @@ async function runNotionImport() {
     for (let i = 0; i < 200; i++) {
       status.textContent = days ? `取り込み中… ${days}日ぶん（${entries}件）` : '取り込み中…';
       // 連携情報は保存せず、このリクエストのヘッダーにだけ載せる
-      const resp = await fetch('/api/import-notion', {
+      const resp = await apiFetch('/api/import-notion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...notionHeaders(), 'X-Notion-Token': token, 'X-Notion-Page-Id': pageId },
         body: '{}',
@@ -1624,7 +1624,7 @@ async function runDbMigration() {
   try {
     for (let i = 0; i < 400; i++) {
       desc.textContent = `移行中… ${migrated}日ぶんコピーしました`;
-      const resp = await fetch('/api/migrate-db', { method: 'POST', headers: { 'Content-Type': 'application/json', ...notionHeaders() }, body: '{}' });
+      const resp = await apiFetch('/api/migrate-db', { method: 'POST', headers: { 'Content-Type': 'application/json', ...notionHeaders() }, body: '{}' });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || '移行に失敗しました');
       migrated += data.migratedDays;
@@ -1787,7 +1787,7 @@ async function renderAccountQuota() {
   if (!el) return;
   el.innerHTML = '';
   try {
-    const resp = await fetch('/api/status', { headers: notionHeaders() });
+    const resp = await apiFetch('/api/status');
     const data = await resp.json();
     const q = data.quota;
     if (!q) return;
@@ -1944,7 +1944,7 @@ function injectNotionSettingsButton() {
 async function checkNotionSetupNeeded() {
   injectNotionSettingsButton();
   try {
-    const resp = await fetch('/api/status', { headers: notionHeaders() });
+    const resp = await apiFetch('/api/status');
     const data = await resp.json();
     // Web版（ログインあり）かどうかを画面全体で共有する（設定メニューの出し分けに使う）
     window.authRequired = !!data.authRequired;
@@ -1970,7 +1970,7 @@ checkNotionSetupNeeded();
 // 終わったら ?billing=success/cancel を付けてこのアプリへ戻ってくる
 async function startBillingCheckout() {
   try {
-    const resp = await fetch('/api/billing/checkout', { method: 'POST', headers: notionHeaders() });
+    const resp = await apiFetch('/api/billing/checkout', { method: 'POST' });
     const data = await resp.json();
     if (resp.ok && data.url) { window.location.href = data.url; return; }
     window.alert(data.error || '登録ページを開けませんでした');
@@ -1980,7 +1980,7 @@ async function startBillingCheckout() {
 }
 async function openBillingPortal() {
   try {
-    const resp = await fetch('/api/billing/portal', { method: 'POST', headers: notionHeaders() });
+    const resp = await apiFetch('/api/billing/portal', { method: 'POST' });
     const data = await resp.json();
     if (resp.ok && data.url) { window.location.href = data.url; return; }
     window.alert(data.error || 'お支払いの管理画面を開けませんでした');

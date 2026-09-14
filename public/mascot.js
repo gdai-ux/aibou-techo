@@ -423,7 +423,8 @@ function mascotSaveSettings(settings) {
 // 共通口。送れなくても、この端末の表示はlocalStorageの値で成立する
 async function pushSettingsToServer(patch) {
   try {
-    await fetch('/api/settings', {
+    const send = typeof apiFetch === 'function' ? apiFetch : fetch;
+    await send('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(typeof notionHeaders === 'function' ? notionHeaders() : {}) },
       body: JSON.stringify(patch),
@@ -515,7 +516,10 @@ function reloadOnceAfterRestore() {
 // 新しければ（別の端末で選び直していたら）、この端末の表示も合わせ直す
 async function mascotSyncFromServer() {
   try {
-    const resp = await fetch('/api/settings', { headers: typeof notionHeaders === 'function' ? notionHeaders() : {} });
+    // トークンが切れていると401になり、相棒が既定のキャラクターに戻って見える。
+    // apiFetch はその時トークンを取り直して送り直す
+    const send = typeof apiFetch === 'function' ? apiFetch : fetch;
+    const resp = await send('/api/settings', { headers: typeof notionHeaders === 'function' ? notionHeaders() : {} });
     if (!resp.ok) return;
     const data = await resp.json();
     if (!data) return;

@@ -70,6 +70,7 @@ async function authBoot() {
   } catch (e) {
     return; // サーバーに届かない時は、キャッシュ表示（オフライン）に任せる
   }
+  authConfigCache = status; // トークンを取り直す時にこの設定を使う（apiFetch から）
   try { localStorage.setItem(AUTH_STATUS_KEY, JSON.stringify({ authRequired: !!status.authRequired })); } catch (e) { /* 任意 */ }
   if (!status.authRequired) return;
 
@@ -123,7 +124,7 @@ async function authSignOut() {
 
 // アカウント削除。サーバーが記録と認証側の利用者を消す
 async function authDeleteAccount() {
-  const resp = await fetch('/api/account', { method: 'DELETE', headers: notionHeaders() });
+  const resp = await apiFetch('/api/account', { method: 'DELETE' });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(data.error || 'アカウントの削除に失敗しました');
   await authSignOut();

@@ -360,8 +360,22 @@
     gap: 6px;
   }
   .meal-types,
-  .condition-levels {
+  .condition-levels,
+  .sleep-qualities {
     grid-template-columns: repeat(5, 1fr);
+  }
+  /* 眠りの質。体調の「調子」と同じ並びにそろえる。
+     「ぐっすり」は4文字あり、5列だと375px級の端末で2行に折れてしまうので、
+     この列だけ文字を小さくして1行に収める */
+  .sleep-qualities {
+    display: grid;
+    gap: 6px;
+  }
+  .sleep-qualities .chip {
+    font-size: 12.5px;
+    padding-left: 2px;
+    padding-right: 2px;
+    white-space: nowrap;
   }
   /* 睡眠タブの中の「夜の睡眠 / 昼寝」。タブを6つに増やすほどの別物ではなく、
      睡眠の一種なので、睡眠タブの中で選ばせる */

@@ -156,6 +156,15 @@ try {
         <input type="time" name="wake" id="sleepWake" step="300" required />
         <button type="button" class="now-btn" data-target="sleepWake"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg></button>
       </div>
+      <label>眠りの質（任意。もう一度タップで解除）</label>
+      <div class="sleep-qualities">
+        <div class="chip" data-quality="ぐっすり">ぐっすり</div>
+        <div class="chip" data-quality="良い">良い</div>
+        <div class="chip" data-quality="普通">普通</div>
+        <div class="chip" data-quality="浅い">浅い</div>
+        <div class="chip" data-quality="眠れず">眠れず</div>
+      </div>
+      <input type="hidden" name="quality" />
       <div class="hint" id="sleepDuration"></div>
     </form>
 
@@ -351,6 +360,14 @@ try {
           <div class="field-row">
             <input type="time" id="editWake" step="300" />
             <button type="button" class="now-btn" data-target="editWake"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg></button>
+          </div>
+          <label>眠りの質（任意。もう一度タップで解除）</label>
+          <div class="chip-row" id="editQualityChips">
+        <div class="chip" data-value="ぐっすり">ぐっすり</div>
+        <div class="chip" data-value="良い">良い</div>
+        <div class="chip" data-value="普通">普通</div>
+        <div class="chip" data-value="浅い">浅い</div>
+        <div class="chip" data-value="眠れず">眠れず</div>
           </div>
         </div>
 

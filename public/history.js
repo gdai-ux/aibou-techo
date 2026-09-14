@@ -549,9 +549,10 @@ function renderDayList(days) {
     let dayBurnedKcal = 0; // その日の運動の合計消費カロリー（同上）
 
     if (d.sleep && d.sleep.blockId) {
-      const durationText = d.sleep.hours !== undefined && d.sleep.hours !== null
-        ? `（${d.sleep.hours}時間${d.sleep.minutes}分）` : '';
-      entryIndex[d.sleep.blockId] = { dateStr: d.dateStr, category: 'sleep', bedtime: d.sleep.bedtime, wake: d.sleep.wake };
+      const qualityText = d.sleep.quality ? `　${escapeHtml(d.sleep.quality)}` : '';
+      const durationText = (d.sleep.hours !== undefined && d.sleep.hours !== null
+        ? `（${d.sleep.hours}時間${d.sleep.minutes}分）` : '') + qualityText;
+      entryIndex[d.sleep.blockId] = { dateStr: d.dateStr, category: 'sleep', bedtime: d.sleep.bedtime, wake: d.sleep.wake, quality: d.sleep.quality || '' };
       // 睡眠記録は起床後（＝その日の見出しの下）に記録されるものなので、
       // 起床は常にその見出しの日のもの。「起床でその日を始める」という
       // 直感的な並びになるよう、起床は時刻の数値に関わらず必ずその日の先頭に
@@ -1005,6 +1006,14 @@ editStoolChips.forEach((c) => c.addEventListener('click', () => {
   editStoolChips.forEach((x) => x.classList.toggle('active', x.dataset.value === editStoolValue));
 }));
 
+// 眠りの質（任意）。あとから思い出して足せるよう、編集でも選べるようにする
+const editQualityChips = document.querySelectorAll('#editQualityChips .chip');
+let editQualityValue = '';
+editQualityChips.forEach((c) => c.addEventListener('click', () => {
+  editQualityValue = editQualityValue === c.dataset.value ? '' : c.dataset.value; // もう一度タップで解除
+  editQualityChips.forEach((x) => x.classList.toggle('active', x.dataset.value === editQualityValue));
+}));
+
 function openModal(title) {
   document.getElementById('editModalTitle').textContent = title;
   modalStatus.textContent = '';
@@ -1027,6 +1036,8 @@ function openEditModal(blockId) {
     showFields('field-bedtime');
     document.getElementById('editBedtime').value = (entry.bedtime || '').padStart(5, '0');
     document.getElementById('editWake').value = (entry.wake || '').padStart(5, '0');
+    editQualityValue = entry.quality || '';
+    editQualityChips.forEach((x) => x.classList.toggle('active', x.dataset.value === editQualityValue));
     openModal('睡眠を編集');
   } else if (entry.category === 'condition') {
     showFields('field-time', 'field-level');
@@ -1106,7 +1117,7 @@ document.getElementById('saveEditBtn').addEventListener('click', async () => {
         const bedtime = document.getElementById('editBedtime').value;
         const wake = document.getElementById('editWake').value;
         if (!bedtime || !wake) throw new Error('就寝・起床時刻を入力してください');
-        payload = { bedtime, wake };
+        payload = { bedtime, wake, quality: editQualityValue };
       } else if (currentEdit.category === 'condition') {
         const editNoteValue = document.getElementById('editNote').value.trim();
         if (!editLevelValue && !editStoolValue && !editNoteValue) {

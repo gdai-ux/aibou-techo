@@ -941,6 +941,13 @@ body.timewheel-open { overflow: hidden; }
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
 }
+/* 編集画面の「眠りの質」も、入力側と同じ理由で1行に収める */
+#editQualityChips .chip {
+  font-size: 12.5px;
+  padding-left: 2px;
+  padding-right: 2px;
+  white-space: nowrap;
+}
 .header-actions {
   display: flex;
   align-items: center;

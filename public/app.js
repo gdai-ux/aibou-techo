@@ -1642,6 +1642,19 @@ conditionChips.forEach(c => c.addEventListener('click', () => {
   setConditionLevel(next);
 }));
 
+// 眠りの質。時間だけでは「長く寝たのに疲れが残る」日が見えないので、
+// 本人の感覚を残せるようにしている。任意なので、既定では何も選ばない
+const sleepQualityChips = document.querySelectorAll('#form-sleep .sleep-qualities .chip');
+const sleepQualityInput = document.querySelector('#form-sleep input[name="quality"]');
+function setSleepQuality(v) {
+  if (!sleepQualityInput) return;
+  sleepQualityInput.value = v;
+  sleepQualityChips.forEach((c) => c.classList.toggle('active', c.dataset.quality === v));
+}
+sleepQualityChips.forEach((c) => c.addEventListener('click', () => {
+  setSleepQuality(sleepQualityInput.value === c.dataset.quality ? '' : c.dataset.quality); // もう一度タップで解除
+}));
+
 const stoolChips = document.querySelectorAll('.stool-options .chip');
 const stoolInput = document.querySelector('input[name="stool"]');
 function setStool(v) {
@@ -1997,6 +2010,8 @@ function clearFormAfterRecord(form) {
     refitTextarea(contentField); // 1行分の高さに戻す
   } else if (currentCat === 'condition') {
     form.querySelector('input[name="note"]').value = '';
+  } else if (currentCat === 'sleep') {
+    setSleepQuality(''); // 前の日に選んだ質が残ったままにならないようにする
   }
 }
 

@@ -875,6 +875,13 @@
   .page-header .sky-rain { display: none; }
   .page-header.gohan-roam[data-weather="rain"] .sky-rain,
   .page-header.gohan-roam[data-weather="storm"] .sky-rain { display: block; }
+  /* ヘッダーは横並び（flex）なので、この入れ物を浮かせておかないと
+     雨の日だけ場所を取って、見出しを右へ押してしまう */
+  .sky-rain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
   .sky-rain-layer {
     position: absolute;
     /* 動かすぶんだけ外へはみ出させる。ヘッダーは overflow:hidden なので

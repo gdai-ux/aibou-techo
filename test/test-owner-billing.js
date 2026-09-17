@@ -26,4 +26,13 @@ ok(other.access === false && other.state === 'expired', 'ほかの利用者は�
 const noEmail = billing.decide({ plan: 'free', trialEndsAt: past, email: null, subscription: null });
 ok(noEmail.state === 'expired', 'メールが無い行でも誤って通さない');
 
+// 環境変数を入れ忘れても、既定の運営者は無料で使えること
+delete process.env.OWNER_EMAILS;
+delete require.cache[require.resolve('../lib/billing')];
+const fallback = require(require('path').join(__dirname, '..', 'lib/billing'));
+const mine = fallback.decide({ plan: 'free', trialEndsAt: past, email: 'gachidai@gmail.com', subscription: null });
+ok(mine.access === true && mine.state === 'owner', '環境変数なしでも、既定の運営者は無料で使える');
+ok(fallback.decide({ plan: 'free', trialEndsAt: past, email: 'x@y.z', subscription: null }).state === 'expired',
+  '環境変数なしでも、ほかの利用者はこれまで通り');
+
 if (!process.exitCode) console.log('\nALL ASSERTIONS PASSED');

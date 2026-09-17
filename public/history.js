@@ -1783,6 +1783,7 @@ const BILLING_STATE_LABELS = {
   active: () => '契約中',
   trialing: () => '契約中（Stripeのトライアル）',
   past_due: () => 'お支払いに問題があります',
+  owner: () => '運営者アカウント（制限なし）',
   comp: () => 'プレミアム（無料付与）',
   grandfathered: () => '無料でご利用いただけます',
   expired: () => '無料トライアルが終了しました',

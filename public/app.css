@@ -1189,11 +1189,48 @@
     50% { opacity: 1; transform: translateY(-3px); }
   }
   /* ごはんくんの頭上に付いてまわるレベルバッジ */
+  /* 相棒の名前とレベル。歩き回るキャラクターの頭上ではなく、
+     ヘッダーの決まった場所に固定で出す（探さなくて済むように） */
+  .header-title-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    position: relative;
+    z-index: 3;
+  }
+  .gohan-status[hidden] { display: none; }
+  .gohan-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+  .gohan-xp-row { display: flex; align-items: center; gap: 6px; }
+  /* 次のレベルまでの残り。いつ上がるか分からない、という声から足した */
+  .gohan-xp {
+    width: 96px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .gohan-xp-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width .5s var(--ease, ease);
+  }
+  .gohan-xp-text {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
+  }
   .gohan-lv {
-    position: absolute;
-    bottom: calc(100% + 1px);
-    left: 50%;
-    transform: translateX(-50%);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0;

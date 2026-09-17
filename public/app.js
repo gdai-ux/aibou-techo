@@ -1034,12 +1034,35 @@ function applyGohanVisualState() {
   }
   const walker = document.querySelector('.app-icon');
   if (walker) walker.classList.toggle('gohan-sleepy', gohanState.sleepy);
-  // 頭上のバッジに「名前 Lv.○」を出す（名前は着せ替え設定に従う）。
+  // ヘッダーの決まった場所に「名前 Lv.○」と、次のレベルまでのゲージを出す。
+  // 以前はキャラクターの頭の上に付けていたが、歩き回るので探しにくかった。
   // 帯（白帯・黄帯…）は、レベルと二重に強さを表していて分かりにくかったのでやめた
   const badge = document.getElementById('gohanLv');
-  if (badge) {
-    badge.textContent = `${window.mascotName ? mascotName() : 'ごはんくん'} Lv.${level}`;
-    badge.hidden = false;
+  if (badge) badge.textContent = `${window.mascotName ? mascotName() : 'ごはんくん'} Lv.${level}`;
+  renderGohanXp();
+  const status = document.getElementById('gohanStatus');
+  if (status) status.hidden = false;
+}
+
+// 次のレベルまでの進み具合。「いつ上がるのか分からない」という声から足した。
+// レベルの間隔は上がるほど広がるので、割合は「このレベルの中で何割進んだか」で出す
+function renderGohanXp() {
+  const fill = document.getElementById('gohanXpFill');
+  const text = document.getElementById('gohanXpText');
+  if (!fill || !text || !gohanState || !gohanState.level) return;
+  const level = gohanState.level;
+  const start = gohanNextAt(level - 1);   // このレベルに上がった時の累計pt（Lv1は0）
+  const next = gohanState.nextAt;         // 次のレベルに上がる累計pt
+  const need = Math.max(1, next - start);
+  const gained = Math.max(0, Math.min(need, Math.round(gohanState.total) - start));
+  const pct = Math.round((gained / need) * 100);
+  fill.style.width = `${pct}%`;
+  const remain = Math.max(0, need - gained);
+  text.textContent = remain > 0 ? `次まで${remain}pt` : 'まもなくレベルアップ';
+  const bar = fill.parentElement;
+  if (bar) {
+    bar.setAttribute('role', 'img');
+    bar.setAttribute('aria-label', `次のレベルまで残り${remain}ポイント（${pct}%）`);
   }
 }
 

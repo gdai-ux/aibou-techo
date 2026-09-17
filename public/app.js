@@ -1059,10 +1059,10 @@ function renderGohanXp() {
   fill.style.width = `${pct}%`;
   const remain = Math.max(0, need - gained);
   text.textContent = remain > 0 ? `次まで${remain}pt` : 'まもなくレベルアップ';
-  const bar = fill.parentElement;
-  if (bar) {
-    bar.setAttribute('role', 'img');
-    bar.setAttribute('aria-label', `次のレベルまで残り${remain}ポイント（${pct}%）`);
+  const bar = document.getElementById('gohanXpFill');
+  if (bar && bar.parentElement) {
+    bar.parentElement.setAttribute('role', 'img');
+    bar.parentElement.setAttribute('aria-label', `次のレベルまで残り${remain}ポイント（${pct}%）`);
   }
 }
 

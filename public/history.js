@@ -1939,15 +1939,19 @@ function injectNotionSettingsButton() {
   // 3つに分かれて間延びしないようにする。並びの入れ替え（ホーム画面だけ
   // ステータスボタンを先に出す）は、ここでは触らずCSSのorderで行う
   // （history.htmlの「記録に戻る」リンクの並びは変えたくないため）。
-  const lastChild = header.lastElementChild;
+  // ホーム画面のヘッダーは2段（上段＝相棒の状態、下段＝見出しとボタン）なので、
+  // 包む相手は下段（.header-row）の中から選ぶ。ヘッダーの最後の子をそのまま
+  // 包むと、見出しごと右側にまとめられて並びが崩れる（実際に崩れた）
+  const row = header.querySelector('.header-row') || header;
+  const lastChild = row.lastElementChild;
   if (lastChild) {
     const wrap = document.createElement('div');
     wrap.className = 'header-actions';
-    header.insertBefore(wrap, lastChild);
+    row.insertBefore(wrap, lastChild);
     wrap.appendChild(btn);
     wrap.appendChild(lastChild);
   } else {
-    header.appendChild(btn);
+    row.appendChild(btn);
   }
 }
 

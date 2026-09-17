@@ -103,7 +103,7 @@
   /* 背景のドット絵も散歩中のキャラクターも、タイトルの上を通り得る。
      アプリ名が隠れないよう文字を最前面に置き、後ろを何が通っても輪郭が
      残るように軽く影を落とす（ゲームのロゴと同じ処理で世界観とも合う） */
-  .header-title h1 {
+  .page-header h1 {
     position: relative;
     z-index: 3;
     text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -859,7 +859,7 @@
   }
   .page-header.gohan-roam[data-sky="dusk"] .gohan-cloud { filter: brightness(0.85) sepia(0.25); }
   /* 明るい空の上でも文字が読めるように、薄く影を敷く */
-  .page-header.gohan-roam[data-sky] .header-title h1,
+  .page-header.gohan-roam[data-sky] h1,
   .page-header.gohan-roam[data-sky] .gohan-lv {
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
   }
@@ -1199,6 +1199,21 @@
     align-items: stretch;
     gap: 6px;
   }
+  /* 上段＝見出し（左上の角）と相棒の帯（右）。下段＝歩くキャラクターとボタン */
+  .header-topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    z-index: 3;
+  }
+  /* 見出しは折り返さない。日本語は単語の切れ目が無いので、横に詰められると
+     「あいぼう手 / 帳」のように途中で折れてしまう。縮むのは相棒の帯の側 */
+  .header-topline h1 {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
   .header-row {
     display: flex;
     justify-content: space-between;
@@ -1208,7 +1223,8 @@
   }
   .gohan-status[hidden] { display: none; }
   .gohan-status {
-    align-self: flex-end;
+    flex: 0 1 auto;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 7px;
@@ -1230,10 +1246,21 @@
     letter-spacing: 0.2px;
     white-space: nowrap;
     color: #fff;
+    /* ここは縮ませない。削られると「く…」になって何の相棒か分からなくなる。
+       詰まった時に細くするのはゲージ側（.gohan-xp） */
+    flex: 0 0 auto;
+    max-width: 46vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* 狭い端末では「次まで○pt」を省く。残りはゲージの伸びで分かるので、
+     名前が「く…」まで削られるより、こちらを落とす方がまし */
+  @media (max-width: 360px) {
+    .gohan-xp-text { display: none; }
   }
   /* 次のレベルまでの残り。いつ上がるか分からない、という声から足した */
   .gohan-xp {
-    flex: 0 1 84px;
+    flex: 0 1 72px;
     min-width: 44px;
     height: 6px;
     border-radius: 999px;
@@ -1252,6 +1279,7 @@
     font-weight: 600;
     color: rgba(255, 255, 255, 0.82);
     white-space: nowrap;
+    flex: 0 0 auto;
   }
   .app-icon { position: relative; }
   /* --- レベルアップ演出（金色のリング・きらきら・LEVEL UP!の文字） --- */

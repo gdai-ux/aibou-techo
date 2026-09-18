@@ -1809,7 +1809,8 @@ const wakeInput = document.querySelector('#form-sleep input[name="wake"]');
 const sleepDurationEl = document.getElementById('sleepDuration');
 function updateSleepDuration() {
   // 就寝と起床が同じ時刻の間は、まだ入力されていないのと同じなので何も出さない
-  // （どちらの欄も既定では「いま」が入るため、開いた直後は必ず同じ時刻になる）
+  // （就寝22:00・起床6:00という既定値を入れてあるので、ふだんは開いた直後から
+  //   睡眠時間が出る。同じ時刻になるのは、人が手で揃えた時くらい）
   if (!bedtimeInput.value || !wakeInput.value || bedtimeInput.value === wakeInput.value) {
     sleepDurationEl.textContent = '';
     return;

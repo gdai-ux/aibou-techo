@@ -218,8 +218,12 @@ function enhanceTimeInputAsWheel(input) {
   input.classList.add('time-input-hidden');
   input.tabIndex = -1;
 
+  // 空の欄をどの時刻から始めるか。欄ごとに data-default で指定できる。
+  // 就寝・起床は 00:00 から回すと遠いので、ありそうな時刻に置いておく
+  const emptyDefault = roundToStepMinutes(input.dataset.default || '', TIME_STEP_MINUTES, allow24) || '00:00';
+
   function currentValue() {
-    return roundToStepMinutes(nativeValueProp.get.call(input), TIME_STEP_MINUTES, allow24) || '00:00';
+    return roundToStepMinutes(nativeValueProp.get.call(input), TIME_STEP_MINUTES, allow24) || emptyDefault;
   }
 
   function updateDisplay() {
@@ -270,6 +274,10 @@ function openTimeWheelFor(input) {
 // （実際にブラウザで確認済み。値が空になる）ため type="text" にしてある。
 // そちらもホイール化の対象に含める。
 document.querySelectorAll('input[type="time"][step], input[data-allow-24]').forEach(enhanceTimeInputAsWheel);
+// 既定値（就寝22:00・起床6:00）を書き入れた直後に、睡眠時間の表示も合わせておく。
+// ここで入れる時は input イベントを飛ばさないので、明示的に呼ぶ必要がある。
+// app.js はこのファイルより先に読み込まれるので、この時点なら関数は用意できている
+if (typeof updateSleepDuration === 'function') updateSleepDuration();
 
 // --- ボトムシートの下スワイプで閉じる -------------------------------------
 // すべてのモーダル（.modal-panel）共通。iOSのシートと同じく、

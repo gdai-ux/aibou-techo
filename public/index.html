@@ -161,12 +161,12 @@ try {
     <form id="form-sleep" class="form" hidden>
       <label>就寝時刻</label>
       <div class="field-row">
-        <input type="text" name="bedtime" id="sleepBedtime" data-allow-24 autocomplete="off" required />
+        <input type="text" name="bedtime" id="sleepBedtime" data-allow-24 data-default="22:00" autocomplete="off" required />
         <button type="button" class="now-btn" data-target="sleepBedtime"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg></button>
       </div>
       <label>起床時刻</label>
       <div class="field-row">
-        <input type="time" name="wake" id="sleepWake" step="300" required />
+        <input type="time" name="wake" id="sleepWake" step="300" data-default="06:00" required />
         <button type="button" class="now-btn" data-target="sleepWake"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3.5 2"></path></svg></button>
       </div>
       <label>眠りの質（もう一度タップで解除）</label>

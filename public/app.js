@@ -2176,14 +2176,37 @@ function pauseMic() {
   if (micStream) micStream.getTracks().forEach((t) => { t.enabled = false; });
 }
 
-// アプリを離れた時。マイクを完全に手放す（次に使う時は許可を聞かれる）
+function isRecording() {
+  if (activeRecorder && activeRecorder.state === 'recording') return true;
+  // smartRecorder はこの下で宣言されるので、読み込み途中に呼ばれても落ちないようにする
+  try { return !!(smartRecorder && smartRecorder.state === 'recording'); } catch (e) { return false; }
+}
+
+// アプリを離れた時。マイクを完全に手放す（次に使う時は許可を聞かれる）。
+// ただし録音中は手放さない。手放すとトラックが止まって録音が途中で終わり、
+// ボタンの見た目と中の状態が食い違う。初回は「マイクを許可しますか」の
+// ダイアログでアプリが後ろに回った瞬間にこれが起きていて、
+// 話しても文字が入らず、止めるつもりのもう一度のタップが
+// 「録り直し」になってしまっていた
 function releaseMic() {
-  if (!micStream) return;
+  if (!micStream || isRecording()) return;
   micStream.getTracks().forEach((t) => t.stop());
   micStream = null;
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) releaseMic(); });
 window.addEventListener('pagehide', releaseMic);
+
+// 音声入力の知らせ。alertは一瞬で消えて何が起きたか残らないので、
+// 記録の結果と同じ場所（#status）に出して画面に残す
+function voiceNotice(msg, isErr) {
+  const el = document.getElementById('status');
+  if (!el) { if (isErr) alert(msg); return; }
+  el.className = isErr ? 'err' : '';
+  el.textContent = msg;
+}
+
+// 押したまま忘れても、いつまでも録り続けないようにする上限
+const MAX_RECORD_MS = 60 * 1000;
 
 function pickMimeType() {
   const candidates = ['audio/mp4', 'audio/webm', 'audio/wav'];
@@ -2195,14 +2218,14 @@ function pickMimeType() {
 
 async function startRecording(button, targetEl) {
   if (!navigator.mediaDevices || !window.MediaRecorder) {
-    alert('このブラウザは音声入力に対応していません');
+    voiceNotice('このブラウザは音声入力に対応していません', true);
     return;
   }
   let stream;
   try {
     stream = await getMicStream();
   } catch (e) {
-    alert('マイクを使用できませんでした: ' + e.message);
+    voiceNotice('マイクを使えませんでした。設定でマイクの許可をご確認ください（' + e.message + '）', true);
     return;
   }
 
@@ -2211,12 +2234,19 @@ async function startRecording(button, targetEl) {
   const chunks = [];
   recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
   recorder.onstop = async () => {
+    clearTimeout(stopTimer);
     pauseMic();
     activeRecorder = null;
     button.classList.remove('recording');
     button.disabled = true;
     try {
       const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
+      // 空のまま送るとサーバー側で弾かれるだけなので、ここで止めて理由を出す
+      if (!blob.size) {
+        voiceNotice('録音できていませんでした。もう一度、マイクを押してから話してみてください', true);
+        return;
+      }
+      voiceNotice('文字起こし中…', false);
       const resp = await apiFetch('/api/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': blob.type || 'audio/webm', ...notionHeaders() },
@@ -2228,12 +2258,14 @@ async function startRecording(button, targetEl) {
         const sep = targetEl.tagName === 'TEXTAREA' ? '\n' : ' ';
         targetEl.value = targetEl.value ? `${targetEl.value}${sep}${t}` : t;
         targetEl.dispatchEvent(new Event('input'));
+        if (typeof refitTextarea === 'function') refitTextarea(targetEl);
+        voiceNotice('', false);
       } else {
         // 無料枠を使い切った時（429）は、失敗ではなく案内としてそのまま見せる
-        alert(resp.status === 429 ? data.error : '文字起こしに失敗しました: ' + (data.error || '不明なエラー'));
+        voiceNotice(resp.status === 429 ? data.error : '文字起こしに失敗しました: ' + (data.error || '不明なエラー'), true);
       }
     } catch (e) {
-      alert('通信エラー: ' + e.message);
+      voiceNotice('通信エラー: ' + e.message, true);
     } finally {
       button.disabled = false;
     }
@@ -2241,14 +2273,24 @@ async function startRecording(button, targetEl) {
   recorder.start();
   activeRecorder = recorder;
   button.classList.add('recording');
+  // 押したまま忘れても、上限で自分から止めて文字にする
+  var stopTimer = setTimeout(() => {
+    if (recorder.state === 'recording') recorder.stop();
+  }, MAX_RECORD_MS);
 }
 
 document.querySelectorAll('.voice-btn').forEach((btn) => {
   const targetEl = document.getElementById(btn.dataset.target);
   btn.addEventListener('click', () => {
-    if (activeRecorder && activeRecorder.state === 'recording') {
-      activeRecorder.stop();
-      return;
+    if (activeRecorder) {
+      if (activeRecorder.state === 'recording') {
+        activeRecorder.stop();
+        return;
+      }
+      // 録音が途中で終わっていた場合。そのままだと押しても止まらず
+      // 録り直しになってしまうので、取り残しを片付けてから始める
+      activeRecorder = null;
+      document.querySelectorAll('.voice-btn.recording').forEach((b) => b.classList.remove('recording'));
     }
     startRecording(btn, targetEl);
   });
@@ -2309,14 +2351,14 @@ function applyParsedEntry(parsed) {
 
 async function startSmartRecording() {
   if (!navigator.mediaDevices || !window.MediaRecorder) {
-    alert('このブラウザは音声入力に対応していません');
+    setSmartVoiceStatus('このブラウザは音声入力に対応していません', 'err');
     return;
   }
   let stream;
   try {
     stream = await getMicStream();
   } catch (e) {
-    alert('マイクを使用できませんでした: ' + e.message);
+    setSmartVoiceStatus('マイクを使えませんでした。設定でマイクの許可をご確認ください', 'err');
     return;
   }
 
@@ -2325,6 +2367,7 @@ async function startSmartRecording() {
   const chunks = [];
   recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
   recorder.onstop = async () => {
+    clearTimeout(smartStopTimer);
     pauseMic();
     smartRecorder = null;
     smartVoiceBtn.classList.remove('recording');
@@ -2332,6 +2375,7 @@ async function startSmartRecording() {
     setSmartVoiceStatus('文字起こし中…', '');
     try {
       const blob = new Blob(chunks, { type: recorder.mimeType || mimeType || 'audio/webm' });
+      if (!blob.size) throw new Error('録音できていませんでした。もう一度、マイクを押してから話してみてください');
       const transcribeResp = await apiFetch('/api/transcribe', {
         method: 'POST',
         headers: { 'Content-Type': blob.type || 'audio/webm', ...notionHeaders() },
@@ -2363,6 +2407,10 @@ async function startSmartRecording() {
   smartRecorder = recorder;
   smartVoiceBtn.classList.add('recording');
   setSmartVoiceStatus('録音中…もう一度タップで終了', '');
+  // 押したまま忘れても、上限で自分から止めて文字にする
+  var smartStopTimer = setTimeout(() => {
+    if (recorder.state === 'recording') recorder.stop();
+  }, MAX_RECORD_MS);
 }
 
 smartVoiceBtn.addEventListener('click', () => {

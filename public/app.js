@@ -912,6 +912,7 @@ function launchGohanRocket(kun) {
 // ヘッダーのSVGをそのまま複製するので、着せ替えやレベルの飾りも引き継がれる
 function showGohanBig(deltaPts) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || fxCalm()) return;
+  if (!gohanShown()) return; // 相棒を消しているのに、お祝いだけ大きく出てはおかしい
   if (document.querySelector('.gohan-big-overlay')) return;
   const src = document.querySelector('.app-icon .gohan-kun');
   if (!src) return;
@@ -1157,6 +1158,7 @@ function spawnSubmitSparkles(btn) {
 // 記録のたびに出る「成長」（緑）とはっきり別物に見えるようにしている。
 function showLevelUpCelebration(fromLevel = 0, deltaPts = 0) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || fxCalm()) return;
+  if (!gohanShown()) return; // 同上
   if (document.querySelector('.lvup-overlay')) return;
   const src = document.querySelector('.app-icon .gohan-kun');
   if (!src) return;
@@ -1263,11 +1265,21 @@ function playGohanLevelUp(fromLevel = 0, deltaPts = 0) {
 // 累計ポイント（gohanState.total）が実際に立ち位置を決める。
 // 顔が左右対称なので向きの反転は不要。横位置(x)はJSが.app-iconの
 // transformで動かし、体の弾み・跳びはCSSのアニメーションが担当する。
+// 相棒を出すかどうかは「ホーム画面の表示」の設定（hs-off-mascot）で決まる。
+// 消している間は走らせる処理を動かさない
+function gohanShown() {
+  return !document.documentElement.classList.contains('hs-off-mascot');
+}
+let gohanRoamRunning = false;
+
 function startGohanRoam() {
   const header = document.querySelector('.page-header');
   const walker = header && header.querySelector('.app-icon');
   if (!walker || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  // 空の色（天気と時間帯）はこのクラスに紐づいているので、相棒を消していても付けておく
   header.classList.add('gohan-roam');
+  if (gohanRoamRunning || !gohanShown()) return;
+  gohanRoamRunning = true;
   // 着せ替えでSVGは別のノードに差し替わるので、掴んだままにせず毎回探す
   const currentKun = () => walker.querySelector('.gohan-kun');
   const title = header.querySelector('h1');
@@ -1339,7 +1351,17 @@ function startGohanRoam() {
   let idleUntil = 0;
   let last = null;
 
+  // 設定で相棒を消した時は、動かしたぶんを元に戻してから止まる
+  function stopRoam() {
+    gohanRoamRunning = false;
+    walker.style.transform = '';
+    walker.classList.remove('gohan-walking');
+    scenery.forEach((el) => { el.style.transform = ''; });
+    if (ground) ground.style.backgroundPositionX = '';
+  }
+
   function tick(t) {
+    if (!gohanShown()) { stopRoam(); return; }
     if (last === null) last = t;
     const dt = Math.min(0.05, (t - last) / 1000);
     last = t;
@@ -2426,6 +2448,7 @@ smartVoiceBtn.addEventListener('click', () => {
 // 保存形式は { quote: false } のように「OFFの項目だけfalse」。未記載はON扱いなので
 // 新しい項目が増えても既定で表示される。記録フォームは常に表示する。
 const HOME_SECTIONS = [
+  { key: 'mascot', label: '相棒のキャラクター' },
   { key: 'clock', label: '時計と天気' },
   { key: 'quote', label: '今日の格言' },
   { key: 'review', label: '今日の活動' },
@@ -2445,6 +2468,9 @@ function setHomeSection(key, on) {
   try { localStorage.setItem('homeSections', JSON.stringify(s)); } catch (e) { /* 保存できなくても今の画面には効く */ }
   if (window.syncLocalSetting) syncLocalSetting('homeSections');
   document.documentElement.classList.toggle('hs-off-' + key, !on);
+  // 相棒はCSSで消すだけでなく、走らせる処理そのものを止める／また始める
+  // （隠れたままフレームごとに動かし続けるのは無駄なので）
+  if (key === 'mascot' && on) startGohanRoam();
 }
 
 window.openHomeSectionsSettings = function () {

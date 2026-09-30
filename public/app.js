@@ -1700,6 +1700,19 @@ sleepQualityChips.forEach((c) => c.addEventListener('click', () => {
   setSleepQuality(sleepQualityInput.value === c.dataset.quality ? '' : c.dataset.quality); // もう一度タップで解除
 }));
 
+// 満腹だったかどうか。品目とkcalだけでは「食べ過ぎた／足りなかった」の感覚が
+// 残らないので、1つだけ選べるようにしている。眠りの質と同じく任意
+const fullnessChips = document.querySelectorAll('#form-meal .fullness-options .chip');
+const fullnessInput = document.querySelector('#form-meal input[name="fullness"]');
+function setFullness(v) {
+  if (!fullnessInput) return;
+  fullnessInput.value = v;
+  fullnessChips.forEach((c) => c.classList.toggle('active', c.dataset.fullness === v));
+}
+fullnessChips.forEach((c) => c.addEventListener('click', () => {
+  setFullness(fullnessInput.value === c.dataset.fullness ? '' : c.dataset.fullness); // もう一度タップで解除
+}));
+
 const stoolChips = document.querySelectorAll('.stool-options .chip');
 const stoolInput = document.querySelector('input[name="stool"]');
 function setStool(v) {
@@ -1858,7 +1871,7 @@ function buildPayload(cat) {
   const data = new FormData(form);
   if (cat === 'meal') {
     const items = (data.get('items') || '').split('\n').map(s => s.trim()).filter(Boolean);
-    return { mealType: data.get('mealType'), items, time: data.get('time') || '' };
+    return { mealType: data.get('mealType'), items, time: data.get('time') || '', fullness: data.get('fullness') || '' };
   }
   if (cat === 'nap') {
     // 分数は数値で送る（FormDataは文字列で返すため）
@@ -2050,6 +2063,7 @@ function clearFormAfterRecord(form) {
   form.classList.remove('time-open');
   if (currentCat === 'meal') {
     form.querySelector('textarea[name="items"]').value = '';
+    setFullness(''); // 前の食事で選んだおなかの具合が残らないようにする
   } else if (currentCat === 'exercise' || currentCat === 'memo') {
     const contentField = form.querySelector('[name="content"]');
     contentField.value = '';

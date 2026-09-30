@@ -126,6 +126,12 @@ try {
         <div class="chip" data-meal="飲み物">飲み物</div>
       </div>
       <input type="hidden" name="mealType" required />
+      <label>おなか（もう一度タップで解除）</label>
+      <div class="fullness-options">
+        <div class="chip" data-fullness="満腹">満腹</div>
+        <div class="chip" data-fullness="まだ入る">まだ入る</div>
+      </div>
+      <input type="hidden" name="fullness" />
       <label>食べたもの（1行に1品目）</label>
       <div class="field-row">
         <textarea name="items" id="mealItems" rows="1" class="auto-grow" placeholder="白米&#10;味噌汁&#10;卵豆腐" required></textarea>

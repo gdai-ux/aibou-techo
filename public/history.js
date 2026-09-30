@@ -646,7 +646,10 @@ function renderDayList(days) {
       const kcals = parsed.map((x) => x.kcal).filter((k) => k !== null);
       const mealKcal = kcals.length ? kcals.reduce((a, b) => a + b, 0) : null;
       dayKcal += mealKcal || 0;
-      const kcalLabel = mealKcal !== null ? `・${formatKcal(mealKcal)}` : '';
+      // おなかの具合を選んでいれば、kcalの隣に添える。
+      // 「何を食べて、どれだけで、満腹になったか」が1行で分かる
+      const kcalLabel = (mealKcal !== null ? `・${formatKcal(mealKcal)}` : '')
+        + (meal.fullness ? `・${meal.fullness}` : '');
       // 他の記録（体調・運動・メモ）と同じ1行の形にそろえる。
       // 品目が複数ある場合は読点でつないで1行に収める。
       entries.push({

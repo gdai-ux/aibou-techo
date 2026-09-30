@@ -361,8 +361,27 @@
   }
   .meal-types,
   .condition-levels,
-  .sleep-qualities {
+  .sleep-qualities,
+  .brain-levels {
     grid-template-columns: repeat(5, 1fr);
+  }
+  /* あたまの調子。「もやもや」「働かない」は4文字あり、5列だと狭い端末で
+     2行に折れるので、眠りの質と同じく文字を小さくして1行に収める */
+  .brain-levels {
+    display: grid;
+    gap: 6px;
+  }
+  .brain-levels .chip {
+    font-size: 12.5px;
+    padding-left: 2px;
+    padding-right: 2px;
+    white-space: nowrap;
+  }
+  /* その日のチェック。3つなので3列。複数選べる（1つだけ選ぶ他の列と違う） */
+  .day-flags {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
   }
   /* 眠りの質。体調の「調子」と同じ並びにそろえる。
      「ぐっすり」は4文字あり、5列だと375px級の端末で2行に折れてしまうので、

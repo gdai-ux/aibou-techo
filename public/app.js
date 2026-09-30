@@ -1713,6 +1713,38 @@ fullnessChips.forEach((c) => c.addEventListener('click', () => {
   setFullness(fullnessInput.value === c.dataset.fullness ? '' : c.dataset.fullness); // もう一度タップで解除
 }));
 
+// あたまの調子。集中・頭の重さ・切り替えのしにくさはだいたい一緒に動くので、
+// 分けずに5段階1つ。調子（体全体）とは別に取る
+const brainChips = document.querySelectorAll('#form-condition .brain-levels .chip');
+const brainInput = document.querySelector('#form-condition input[name="brain"]');
+function setBrain(v) {
+  if (!brainInput) return;
+  brainInput.value = v;
+  brainChips.forEach((c) => c.classList.toggle('active', c.dataset.brain === v));
+}
+brainChips.forEach((c) => c.addEventListener('click', () => {
+  setBrain(brainInput.value === c.dataset.brain ? '' : c.dataset.brain); // もう一度タップで解除
+}));
+
+// その日のチェック（酒・ポルノ・自慰）。あたまの調子と並べて見るためのもので、
+// 数ではなく「あったか・なかったか」だけを持つ。複数選べる
+const flagChips = document.querySelectorAll('#form-condition .day-flags .chip');
+const flagsInput = document.querySelector('#form-condition input[name="flags"]');
+function currentFlags() {
+  return (flagsInput && flagsInput.value ? flagsInput.value.split('・') : []).filter(Boolean);
+}
+function setFlags(list) {
+  if (!flagsInput) return;
+  flagsInput.value = list.join('・');
+  flagChips.forEach((c) => c.classList.toggle('active', list.includes(c.dataset.flag)));
+}
+flagChips.forEach((c) => c.addEventListener('click', () => {
+  const list = currentFlags();
+  const i = list.indexOf(c.dataset.flag);
+  if (i >= 0) list.splice(i, 1); else list.push(c.dataset.flag);
+  setFlags(list);
+}));
+
 const stoolChips = document.querySelectorAll('.stool-options .chip');
 const stoolInput = document.querySelector('input[name="stool"]');
 function setStool(v) {
@@ -1879,6 +1911,8 @@ function buildPayload(cat) {
   }
   const obj = {};
   for (const [k, v] of data.entries()) obj[k] = v;
+  // チェックは「酒・自慰」のような1つの文字列で持っているので、配列に直して送る
+  if (cat === 'condition') obj.flags = (obj.flags || '').split('・').filter(Boolean);
   return obj;
 }
 
@@ -2070,6 +2104,8 @@ function clearFormAfterRecord(form) {
     refitTextarea(contentField); // 1行分の高さに戻す
   } else if (currentCat === 'condition') {
     form.querySelector('input[name="note"]').value = '';
+    setBrain('');   // 前の記録で選んだものが残らないようにする
+    setFlags([]);
   } else if (currentCat === 'sleep') {
     setSleepQuality(''); // 前の日に選んだ質が残ったままにならないようにする
   }

@@ -202,6 +202,15 @@ try {
         <div class="chip" data-level="最悪">最悪</div>
       </div>
       <input type="hidden" name="level" required />
+      <label>あたま（もう一度タップで解除）</label>
+      <div class="brain-levels">
+        <div class="chip" data-brain="冴えてる">冴えてる</div>
+        <div class="chip" data-brain="軽い">軽い</div>
+        <div class="chip" data-brain="普通">普通</div>
+        <div class="chip" data-brain="もやもや">もやもや</div>
+        <div class="chip" data-brain="働かない">働かない</div>
+      </div>
+      <input type="hidden" name="brain" />
       <label>排便（もう一度タップで解除）</label>
       <div class="stool-options">
         <div class="chip" data-stool="水っぽい">水っぽい</div>
@@ -210,6 +219,13 @@ try {
         <div class="chip" data-stool="硬め">硬め</div>
       </div>
       <input type="hidden" name="stool" />
+      <label>チェック（あてはまるものを押す・複数可）</label>
+      <div class="day-flags">
+        <div class="chip" data-flag="酒">酒</div>
+        <div class="chip" data-flag="ポルノ">ポルノ</div>
+        <div class="chip" data-flag="自慰">自慰</div>
+      </div>
+      <input type="hidden" name="flags" />
       <label>内容</label>
       <div class="field-row">
         <input type="text" name="note" id="conditionNote" placeholder="水っぽい下痢、頭痛など" />

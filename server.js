@@ -244,6 +244,8 @@ app.get('/api/status', async (req, res) => {
       notionConfigured: true,
       voiceConfigured: Boolean(OPENAI_API_KEY),
       storage: 'pg',
+      dbReady,
+      dbError: dbReady ? '' : dbError,
     });
   }
   const { token, pageId } = resolveNotionConfig(req);
@@ -928,17 +930,34 @@ app.delete('/api/entry/meal/:mealBlockId', billing.requireAccess, async (req, re
   }
 });
 
-async function start() {
-  if (STORAGE_MODE === 'pg') {
-    // 自前DBのモード: 起動時にスキーマを整え、認証の設定が無ければ注意を出す
+// DBの支度（スキーマを整える）。つながらない時は、あきらめずに間隔を空けてやり直す。
+// SupabaseやRenderのDBは、しばらく使わないと眠ることがあり、起きるまで数分かかる
+let dbReady = STORAGE_MODE !== 'pg';
+let dbError = '';
+async function prepareDb(attempt = 1) {
+  try {
     await db.migrate();
-    if (!authConfigured()) console.warn('[aibou-techo] SUPABASE_JWT_SECRET も SUPABASE_JWKS_URL も無いため、ログインできません');
+    dbReady = true;
+    dbError = '';
+    console.log('[aibou-techo] データベースの準備ができました');
+  } catch (err) {
+    dbReady = false;
+    dbError = err.message;
+    const waitSec = Math.min(60, attempt * 5);
+    console.error(`[aibou-techo] データベースにつながりません（${attempt}回目）: ${err.message} — ${waitSec}秒後にやり直します`);
+    setTimeout(() => prepareDb(attempt + 1), waitSec * 1000);
   }
+}
+
+function start() {
+  // 先に受け付けを始める。DBの支度を待ってから listen すると、DBが眠っている間
+  // ポートが開かず、Renderの「起動中」からいつまでも進まない（実際にそうなった）。
+  // 画面だけでも開けば、何が起きているかを本人に伝えられる
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`あいぼう手帳 server running: http://localhost:${PORT} (storage: ${STORAGE_MODE})`);
   });
+  if (STORAGE_MODE !== 'pg') return;
+  if (!authConfigured()) console.warn('[aibou-techo] SUPABASE_JWT_SECRET も SUPABASE_JWKS_URL も無いため、ログインできません');
+  prepareDb();
 }
-start().catch((err) => {
-  console.error('[aibou-techo] 起動に失敗しました:', err.message);
-  process.exit(1);
-});
+start();

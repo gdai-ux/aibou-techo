@@ -2247,7 +2247,10 @@
      ふりかえりの丸い顔を消す。地面・土管・丘・雲は相棒が走るための舞台なので
      いっしょに消し、空の色（天気と時間帯）はそのまま残す */
   html.hs-off-mascot .page-header .app-icon,
-  html.hs-off-mascot .review-avatar { display: none; }
+  html.hs-off-mascot .review-avatar,
+  /* 名前・レベル・経験値のゲージも相棒のものなので、いっしょに消す。
+     相棒を消したのに「くろねこ Lv.7」だけ残っていると、消し忘れに見える */
+  html.hs-off-mascot .gohan-status { display: none; }
   html.hs-off-mascot .page-header.gohan-roam .gohan-ground,
   html.hs-off-mascot .page-header.gohan-roam .gohan-pipe,
   html.hs-off-mascot .page-header.gohan-roam .gohan-hill,

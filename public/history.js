@@ -595,11 +595,14 @@ function renderDayList(days) {
     d.condition.forEach((c) => {
       const levelText = c.level ? `<span style="color:${LEVEL_COLORS[c.level] || 'inherit'}">${escapeHtml(c.level)}</span>` : '';
       const stoolText = c.stool ? `　🚽${escapeHtml(c.stool)}` : '';
+      // あたまの調子と、その日のチェック。体の調子と並べて1行に収める
+      const brainText = c.brain ? `　あたま:${escapeHtml(c.brain)}` : '';
+      const flagsText = (c.flags && c.flags.length) ? `　${escapeHtml(c.flags.join('・'))}` : '';
       const noteText = c.note ? `${c.level ? '：' : ''}${escapeHtml(c.note)}` : '';
-      entryIndex[c.blockId] = { dateStr: d.dateStr, category: 'condition', time: c.time, level: c.level, stool: c.stool, note: c.note };
+      entryIndex[c.blockId] = { dateStr: d.dateStr, category: 'condition', time: c.time, level: c.level, stool: c.stool, brain: c.brain || '', flags: c.flags || [], note: c.note };
       entries.push({
         sortMinutes: parseTimeMinutes(c.time),
-        html: `<div class="entry-row"><span class="entry-main">${entryHead('体調', c.time)}${levelText}${stoolText}${noteText}</span>${actionButtons(c.blockId)}</div>`,
+        html: `<div class="entry-row"><span class="entry-main">${entryHead('体調', c.time)}${levelText}${brainText}${stoolText}${flagsText}${noteText}</span>${actionButtons(c.blockId)}</div>`,
       });
     });
     d.exercise.forEach((e) => {

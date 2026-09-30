@@ -2256,7 +2256,19 @@
   html.hs-off-mascot .page-header.gohan-roam .gohan-hill,
   html.hs-off-mascot .page-header.gohan-roam .gohan-block,
   html.hs-off-mascot .page-header.gohan-roam .gohan-cloud { display: none; }
-  /* キャラクターと頭上のバッジのために空けていた高さは、消したら詰める */
+  /* 相棒を消すと、2段に分ける理由（上段＝名前とレベル、下段＝歩くキャラクター）が
+     無くなる。見出しとボタンだけを1段に並べ直して、帯を細くする */
+  html.hs-off-mascot .page-header.has-gohan-status {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: calc(9px + env(safe-area-inset-top));
+    padding-bottom: 9px;
+  }
+  html.hs-off-mascot .header-topline { flex: 0 1 auto; min-width: 0; }
+  html.hs-off-mascot .header-row { flex: 0 0 auto; }
+  /* キャラクターの居場所は要らないので、高さの確保もやめる */
   html.hs-off-mascot .header-title { min-height: 0; }
 
   /* --- はじめての案内（最初の1回だけ） --- */

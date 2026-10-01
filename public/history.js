@@ -558,12 +558,9 @@ function renderDayList(days) {
 
     if (d.sleep && d.sleep.blockId) {
       const qualityText = d.sleep.quality ? `　${escapeHtml(d.sleep.quality)}` : '';
-      // あたまの調子と、前の晩のチェック。睡眠と並べて1行で読めるようにする
-      const brainText = d.sleep.brain ? `　あたま:${escapeHtml(d.sleep.brain)}` : '';
-      const sleepFlags = (d.sleep.flags && d.sleep.flags.length) ? `　${escapeHtml(d.sleep.flags.join('・'))}` : '';
       const durationText = (d.sleep.hours !== undefined && d.sleep.hours !== null
-        ? `（${d.sleep.hours}時間${d.sleep.minutes}分）` : '') + qualityText + brainText + sleepFlags;
-      entryIndex[d.sleep.blockId] = { dateStr: d.dateStr, category: 'sleep', bedtime: d.sleep.bedtime, wake: d.sleep.wake, quality: d.sleep.quality || '', brain: d.sleep.brain || '', flags: d.sleep.flags || [] };
+        ? `（${d.sleep.hours}時間${d.sleep.minutes}分）` : '') + qualityText;
+      entryIndex[d.sleep.blockId] = { dateStr: d.dateStr, category: 'sleep', bedtime: d.sleep.bedtime, wake: d.sleep.wake, quality: d.sleep.quality || '' };
       // 睡眠記録は起床後（＝その日の見出しの下）に記録されるものなので、
       // 起床は常にその見出しの日のもの。「起床でその日を始める」という
       // 直感的な並びになるよう、起床は時刻の数値に関わらず必ずその日の先頭に
